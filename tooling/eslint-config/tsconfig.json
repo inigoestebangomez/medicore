@@ -1,0 +1,5 @@
+{
+  "extends": "@medicore/tsconfig/base.json",
+  "compilerOptions": { "composite": true, "noEmit": true },
+  "include": ["*.js"]
+}
