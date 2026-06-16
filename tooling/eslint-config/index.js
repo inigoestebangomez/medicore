@@ -19,13 +19,7 @@ module.exports = {
     'import/order': [
       'error',
       {
-        groups: [
-          'builtin',
-          'external',
-          'internal',
-          ['parent', 'sibling'],
-          'index',
-        ],
+        groups: ['builtin', 'external', 'internal', ['parent', 'sibling'], 'index'],
         newlinesBetween: 'always',
         alphabetize: { order: 'asc', caseInsensitive: true },
       },
@@ -35,10 +29,7 @@ module.exports = {
       'error',
       { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
     ],
-    '@typescript-eslint/consistent-type-imports': [
-      'error',
-      { prefer: 'type-imports' },
-    ],
+    '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
     '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
     '@typescript-eslint/no-floating-promises': 'error',
     '@typescript-eslint/no-misused-promises': [
@@ -53,4 +44,4 @@ module.exports = {
       typescript: {},
     },
   },
-}
+};

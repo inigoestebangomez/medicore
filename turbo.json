@@ -15,6 +15,13 @@
     "test": {
       "dependsOn": ["build"]
     },
+    "test:unit": {},
+    "test:integration": {
+      "dependsOn": ["build"]
+    },
+    "test:e2e": {
+      "dependsOn": ["build"]
+    },
     "lint": {},
     "type-check": {
       "dependsOn": ["build"]

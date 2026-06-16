@@ -1,4 +1,5 @@
 # 04-design-spec.md
+
 ## MediCore — Especificación de Diseño
 
 > **Versión:** 1.0 | **Estado:** Aprobado | **Fecha:** 2026-06
@@ -47,81 +48,81 @@ La paleta está construida sobre un azul-pizarra profundo como color de identida
 ```css
 :root {
   /* ── BRAND ── */
-  --color-brand-900:    #0F1F2E;   /* Azul pizarra profundo — identidad primaria */
-  --color-brand-800:    #162840;
-  --color-brand-700:    #1E3A57;
-  --color-brand-600:    #2A5580;   /* Interactivo principal (botones, links) */
-  --color-brand-500:    #3B72A8;
-  --color-brand-400:    #5D94C6;
-  --color-brand-200:    #B8D4EA;
-  --color-brand-100:    #E3EEF6;
-  --color-brand-50:     #F2F7FB;   /* Fondos de superficie activa */
+  --color-brand-900: #0f1f2e; /* Azul pizarra profundo — identidad primaria */
+  --color-brand-800: #162840;
+  --color-brand-700: #1e3a57;
+  --color-brand-600: #2a5580; /* Interactivo principal (botones, links) */
+  --color-brand-500: #3b72a8;
+  --color-brand-400: #5d94c6;
+  --color-brand-200: #b8d4ea;
+  --color-brand-100: #e3eef6;
+  --color-brand-50: #f2f7fb; /* Fondos de superficie activa */
 
   /* ── NEUTRALES ── */
-  --color-neutral-950:  #0A0F14;
-  --color-neutral-900:  #111827;
-  --color-neutral-800:  #1F2937;
-  --color-neutral-700:  #374151;
-  --color-neutral-600:  #4B5563;
-  --color-neutral-500:  #6B7280;
-  --color-neutral-400:  #9CA3AF;
-  --color-neutral-300:  #D1D5DB;
-  --color-neutral-200:  #E5E7EB;
-  --color-neutral-100:  #F3F4F6;
-  --color-neutral-50:   #F9FAFB;   /* Fondo base de la app */
-  --color-white:        #FFFFFF;
+  --color-neutral-950: #0a0f14;
+  --color-neutral-900: #111827;
+  --color-neutral-800: #1f2937;
+  --color-neutral-700: #374151;
+  --color-neutral-600: #4b5563;
+  --color-neutral-500: #6b7280;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-100: #f3f4f6;
+  --color-neutral-50: #f9fafb; /* Fondo base de la app */
+  --color-white: #ffffff;
 
   /* ── SEÑALÉTICA CLÍNICA (uso semántico estricto, nunca decorativo) ── */
-  --color-status-critical:    #C0392B;   /* Alergia anafilaxia, alerta urgente */
-  --color-status-critical-bg: #FEF2F0;
-  --color-status-warning:     #C07A12;   /* Alerta moderada, pendiente de revisión */
-  --color-status-warning-bg:  #FEF9EC;
-  --color-status-active:      #1A7A4A;   /* Medicación activa, cirugía programada */
-  --color-status-active-bg:   #EDFAF2;
-  --color-status-draft:       #5B6B7A;   /* Informe en borrador */
-  --color-status-draft-bg:    #F0F3F5;
-  --color-status-signed:      #2A5580;   /* Informe firmado (brand profundo) */
-  --color-status-signed-bg:   #E3EEF6;
-  --color-status-completed:   #1A7A4A;   /* Cirugía completada */
-  --color-status-cancelled:   #9CA3AF;   /* Cancelado / inactivo */
+  --color-status-critical: #c0392b; /* Alergia anafilaxia, alerta urgente */
+  --color-status-critical-bg: #fef2f0;
+  --color-status-warning: #c07a12; /* Alerta moderada, pendiente de revisión */
+  --color-status-warning-bg: #fef9ec;
+  --color-status-active: #1a7a4a; /* Medicación activa, cirugía programada */
+  --color-status-active-bg: #edfaf2;
+  --color-status-draft: #5b6b7a; /* Informe en borrador */
+  --color-status-draft-bg: #f0f3f5;
+  --color-status-signed: #2a5580; /* Informe firmado (brand profundo) */
+  --color-status-signed-bg: #e3eef6;
+  --color-status-completed: #1a7a4a; /* Cirugía completada */
+  --color-status-cancelled: #9ca3af; /* Cancelado / inactivo */
 
   /* ── SUPERFICIES ── */
-  --surface-base:       var(--color-neutral-50);
-  --surface-card:       var(--color-white);
-  --surface-sidebar:    var(--color-brand-900);
-  --surface-header:     var(--color-white);
-  --surface-overlay:    rgba(15, 31, 46, 0.6);
+  --surface-base: var(--color-neutral-50);
+  --surface-card: var(--color-white);
+  --surface-sidebar: var(--color-brand-900);
+  --surface-header: var(--color-white);
+  --surface-overlay: rgba(15, 31, 46, 0.6);
 
   /* ── BORDES ── */
-  --border-default:     var(--color-neutral-200);
-  --border-strong:      var(--color-neutral-300);
-  --border-focus:       var(--color-brand-600);
+  --border-default: var(--color-neutral-200);
+  --border-strong: var(--color-neutral-300);
+  --border-focus: var(--color-brand-600);
 
   /* ── SOMBRAS ── */
-  --shadow-card:        0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-dropdown:    0 4px 16px rgba(0,0,0,0.12);
-  --shadow-modal:       0 20px 60px rgba(0,0,0,0.2);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.2);
 
   /* ── RADIOS ── */
-  --radius-sm:    4px;
-  --radius-md:    8px;
-  --radius-lg:    12px;
-  --radius-full:  9999px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
 
   /* ── ESPACIADO (escala 4px) ── */
-  --space-1:  4px;
-  --space-2:  8px;
-  --space-3:  12px;
-  --space-4:  16px;
-  --space-5:  20px;
-  --space-6:  24px;
-  --space-8:  32px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
   --space-10: 40px;
   --space-12: 48px;
   --space-16: 64px;
 
   /* ── TRANSICIONES ── */
-  --transition-fast:   150ms ease;
+  --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
 }
 ```
@@ -149,9 +150,9 @@ La elección tipográfica tiene un criterio clínico: legibilidad en condiciones
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --font-display:  'DM Sans', system-ui, sans-serif;
-  --font-body:     'Inter', system-ui, sans-serif;
-  --font-mono:     'JetBrains Mono', 'Fira Code', monospace;
+  --font-display: 'DM Sans', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 ```
 
@@ -400,6 +401,7 @@ Esta es la decisión de diseño más importante del sistema y la que habilita la
 Los formularios clínicos (exploración física, técnica quirúrgica, escalas) **no están codificados en el frontend**. Son configuraciones JSON almacenadas en `Organization.settings` que el sistema de formularios dinámicos renderiza en tiempo de ejecución.
 
 Esto permite:
+
 - Añadir una nueva especialidad sin tocar código
 - Personalizar formularios por médico u organización
 - Versionar las plantillas de formulario independientemente del código
@@ -412,51 +414,51 @@ Esto permite:
 // Definición de un campo de formulario
 const FormFieldSchema = z.discriminatedUnion('type', [
   z.object({
-    type:        z.literal('text'),
-    id:          z.string(),
-    label:       z.string(),
+    type: z.literal('text'),
+    id: z.string(),
+    label: z.string(),
     placeholder: z.string().optional(),
-    required:    z.boolean().default(false),
-    multiline:   z.boolean().default(false),
+    required: z.boolean().default(false),
+    multiline: z.boolean().default(false),
   }),
   z.object({
-    type:    z.literal('select'),
-    id:      z.string(),
-    label:   z.string(),
+    type: z.literal('select'),
+    id: z.string(),
+    label: z.string(),
     options: z.array(z.object({ value: z.string(), label: z.string() })),
     required: z.boolean().default(false),
   }),
   z.object({
-    type:  z.literal('scale'),
-    id:    z.string(),
+    type: z.literal('scale'),
+    id: z.string(),
     label: z.string(),
-    min:   z.number(),
-    max:   z.number(),
-    step:  z.number().default(1),
+    min: z.number(),
+    max: z.number(),
+    step: z.number().default(1),
     showLabels: z.boolean().default(true),
   }),
   z.object({
-    type:    z.literal('checkbox'),
-    id:      z.string(),
-    label:   z.string(),
+    type: z.literal('checkbox'),
+    id: z.string(),
+    label: z.string(),
     options: z.array(z.object({ value: z.string(), label: z.string() })),
   }),
   z.object({
-    type:    z.literal('section'),   // Separador visual con título
-    id:      z.string(),
-    title:   z.string(),
+    type: z.literal('section'), // Separador visual con título
+    id: z.string(),
+    title: z.string(),
     collapsible: z.boolean().default(true),
   }),
-])
+]);
 
 // Plantilla de formulario completa
 const FormTemplateSchema = z.object({
-  id:           z.string(),
-  name:         z.string(),           // "Exploración ORL estándar"
-  specialty:    z.string(),           // "ORL" | "Traumatología" | ...
-  version:      z.string(),           // "1.0.0"
-  fields:       z.array(FormFieldSchema),
-})
+  id: z.string(),
+  name: z.string(), // "Exploración ORL estándar"
+  specialty: z.string(), // "ORL" | "Traumatología" | ...
+  version: z.string(), // "1.0.0"
+  fields: z.array(FormFieldSchema),
+});
 ```
 
 ### Plantilla de exploración ORL inicial (ejemplo)
@@ -470,7 +472,8 @@ const FormTemplateSchema = z.object({
   "fields": [
     { "type": "section", "id": "s-ear", "title": "Oídos", "collapsible": true },
     {
-      "type": "select", "id": "otoscopy_right_membrane",
+      "type": "select",
+      "id": "otoscopy_right_membrane",
       "label": "Membrana timpánica derecha",
       "options": [
         { "value": "intact", "label": "Íntegra" },
@@ -479,27 +482,64 @@ const FormTemplateSchema = z.object({
         { "value": "not_visible", "label": "No visible" }
       ]
     },
-    { "type": "text", "id": "otoscopy_right_notes", "label": "Notas oído derecho", "multiline": true },
-    { "type": "select", "id": "otoscopy_left_membrane", "label": "Membrana timpánica izquierda",
-      "options": ["Íntegra", "Retraída", "Perforada", "No visible"] },
-    { "type": "text", "id": "otoscopy_left_notes", "label": "Notas oído izquierdo", "multiline": true },
+    {
+      "type": "text",
+      "id": "otoscopy_right_notes",
+      "label": "Notas oído derecho",
+      "multiline": true
+    },
+    {
+      "type": "select",
+      "id": "otoscopy_left_membrane",
+      "label": "Membrana timpánica izquierda",
+      "options": ["Íntegra", "Retraída", "Perforada", "No visible"]
+    },
+    {
+      "type": "text",
+      "id": "otoscopy_left_notes",
+      "label": "Notas oído izquierdo",
+      "multiline": true
+    },
 
-    { "type": "section", "id": "s-nose", "title": "Nariz y senos paranasales", "collapsible": true },
-    { "type": "select", "id": "septum", "label": "Tabique nasal",
-      "options": ["Centrado", "Desviado derecha", "Desviado izquierda", "Irregular"] },
+    {
+      "type": "section",
+      "id": "s-nose",
+      "title": "Nariz y senos paranasales",
+      "collapsible": true
+    },
+    {
+      "type": "select",
+      "id": "septum",
+      "label": "Tabique nasal",
+      "options": ["Centrado", "Desviado derecha", "Desviado izquierda", "Irregular"]
+    },
     { "type": "text", "id": "rhinoscopy_notes", "label": "Rinoscopia", "multiline": true },
 
     { "type": "section", "id": "s-throat", "title": "Orofaringe", "collapsible": true },
-    { "type": "select", "id": "tonsils", "label": "Amígdalas",
-      "options": ["Normales", "Grado I", "Grado II", "Grado III", "Grado IV", "Ausentes"] },
+    {
+      "type": "select",
+      "id": "tonsils",
+      "label": "Amígdalas",
+      "options": ["Normales", "Grado I", "Grado II", "Grado III", "Grado IV", "Ausentes"]
+    },
     { "type": "text", "id": "oropharynx_notes", "label": "Notas orofaringe", "multiline": true },
 
     { "type": "section", "id": "s-larynx", "title": "Laringe", "collapsible": true },
     { "type": "text", "id": "laryngoscopy_notes", "label": "Laringoscopia", "multiline": true },
 
     { "type": "section", "id": "s-neck", "title": "Cuello", "collapsible": true },
-    { "type": "select", "id": "lymph_nodes", "label": "Adenopatías",
-      "options": ["No palpables", "Submandibular", "Cervical anterior", "Cervical posterior", "Múltiples"] },
+    {
+      "type": "select",
+      "id": "lymph_nodes",
+      "label": "Adenopatías",
+      "options": [
+        "No palpables",
+        "Submandibular",
+        "Cervical anterior",
+        "Cervical posterior",
+        "Múltiples"
+      ]
+    },
     { "type": "text", "id": "neck_notes", "label": "Notas cuello", "multiline": true }
   ]
 }
@@ -675,12 +715,12 @@ El modo oscuro se activa exclusivamente al abrir el visor de imágenes médicas.
 ```css
 /* Tokens modo oscuro — solo activos dentro de .imaging-viewer-mode */
 .imaging-viewer-mode {
-  --surface-base:       #0A0F14;
-  --surface-card:       #111827;
-  --surface-sidebar:    #0A0F14;
-  --color-neutral-50:   #0A0F14;
-  --color-white:        #F9FAFB;
-  --border-default:     #374151;
+  --surface-base: #0a0f14;
+  --surface-card: #111827;
+  --surface-sidebar: #0a0f14;
+  --color-neutral-50: #0a0f14;
+  --color-white: #f9fafb;
+  --border-default: #374151;
 
   /* Los tokens de estado clínico NO cambian en modo oscuro */
   /* El significado del color debe ser consistente en ambos modos */
@@ -762,7 +802,7 @@ para este paciente.
 [+ Nueva consulta]
 ```
 
-Nunca: *"¡Ups! Parece que no hay nada aquí todavía."* — ese tono no encaja con el contexto clínico.
+Nunca: _"¡Ups! Parece que no hay nada aquí todavía."_ — ese tono no encaja con el contexto clínico.
 
 ### Confirmación de acciones destructivas
 
@@ -788,13 +828,13 @@ Nunca: *"¡Ups! Parece que no hay nada aquí todavía."* — ese tono no encaja 
 
 ### Contraste de color
 
-| Combinación | Ratio | Cumplimiento |
-|---|---|---|
-| Texto body sobre `--surface-card` | 12.5:1 | AAA |
-| Texto label sobre `--surface-base` | 7.8:1 | AAA |
-| Blanco sobre `--color-brand-600` | 4.6:1 | AA |
-| `--status-critical` sobre `--status-critical-bg` | 5.2:1 | AA |
-| `--status-active` sobre `--status-active-bg` | 4.8:1 | AA |
+| Combinación                                      | Ratio  | Cumplimiento |
+| ------------------------------------------------ | ------ | ------------ |
+| Texto body sobre `--surface-card`                | 12.5:1 | AAA          |
+| Texto label sobre `--surface-base`               | 7.8:1  | AAA          |
+| Blanco sobre `--color-brand-600`                 | 4.6:1  | AA           |
+| `--status-critical` sobre `--status-critical-bg` | 5.2:1  | AA           |
+| `--status-active` sobre `--status-active-bg`     | 4.8:1  | AA           |
 
 ### Navegación por teclado
 
@@ -814,7 +854,9 @@ Nunca: *"¡Ups! Parece que no hay nada aquí todavía."* — ese tono no encaja 
 
 ```css
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }

@@ -1,4 +1,5 @@
 # 06-testing-strategy.md
+
 ## MediCore — Estrategia de Testing
 
 > **Versión:** 1.0 | **Estado:** Aprobado | **Fecha:** 2026-06
@@ -86,12 +87,12 @@ La cobertura se mide con `jest --coverage` y se reporta en CI. Un PR que baje la
 ```json
 // apps/api/package.json (devDependencies relevantes)
 {
-  "@nestjs/testing":       "^10.0.0",
-  "jest":                  "^29.0.0",
-  "ts-jest":               "^29.0.0",
-  "supertest":             "^6.0.0",
-  "@faker-js/faker":       "^8.0.0",
-  "prisma-mock":           "^0.14.0"
+  "@nestjs/testing": "^10.0.0",
+  "jest": "^29.0.0",
+  "ts-jest": "^29.0.0",
+  "supertest": "^6.0.0",
+  "@faker-js/faker": "^8.0.0",
+  "prisma-mock": "^0.14.0"
 }
 ```
 
@@ -99,12 +100,12 @@ La cobertura se mide con `jest --coverage` y se reporta en CI. Un PR que baje la
 // apps/api/jest.config.ts
 export default {
   moduleFileExtensions: ['js', 'json', 'ts'],
-  rootDir:              'src',
-  testRegex:            '.*\\.spec\\.ts$',
-  transform:            { '^.+\\.(t|j)s$': 'ts-jest' },
-  collectCoverageFrom:  ['**/*.(t|j)s', '!**/*.module.ts', '!**/main.ts'],
-  coverageDirectory:    '../coverage',
-  testEnvironment:      'node',
+  rootDir: 'src',
+  testRegex: '.*\\.spec\\.ts$',
+  transform: { '^.+\\.(t|j)s$': 'ts-jest' },
+  collectCoverageFrom: ['**/*.(t|j)s', '!**/*.module.ts', '!**/main.ts'],
+  coverageDirectory: '../coverage',
+  testEnvironment: 'node',
   // Tests unitarios y de integración separados por proyecto Jest
   projects: [
     {
@@ -116,56 +117,56 @@ export default {
       displayName: 'integration',
       testPathPattern: '\\.integration\\.spec\\.ts$',
       setupFilesAfterEach: ['<rootDir>/../test/setup-integration.ts'],
-      globalSetup:  '<rootDir>/../test/global-setup.ts',
+      globalSetup: '<rootDir>/../test/global-setup.ts',
       globalTeardown: '<rootDir>/../test/global-teardown.ts',
     },
   ],
-}
+};
 ```
 
 ### Frontend (apps/web)
 
 ```typescript
 // apps/web/vitest.config.ts
-import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment:    'jsdom',
-    globals:        true,
-    setupFiles:     ['./test/setup.ts'],
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./test/setup.ts'],
     coverage: {
-      provider:   'v8',
-      reporter:   ['text', 'lcov'],
-      include:    ['src/components/**', 'src/lib/**'],
-      exclude:    ['src/components/ui/**'],  // shadcn/ui — no testeamos librerías externas
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      include: ['src/components/**', 'src/lib/**'],
+      exclude: ['src/components/ui/**'], // shadcn/ui — no testeamos librerías externas
     },
   },
-})
+});
 ```
 
 ### E2E (apps/web)
 
 ```typescript
 // playwright.config.ts
-import { defineConfig } from '@playwright/test'
+import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir:   './e2e',
-  timeout:   30_000,
-  retries:   2,           // reintentos en CI para flakiness de red
+  testDir: './e2e',
+  timeout: 30_000,
+  retries: 2, // reintentos en CI para flakiness de red
   use: {
-    baseURL:     process.env.E2E_BASE_URL || 'http://localhost:3000',
-    trace:       'on-first-retry',
-    screenshot:  'only-on-failure',
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3000',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'tablet',   use: { ...devices['iPad Pro'] } },
+    { name: 'tablet', use: { ...devices['iPad Pro'] } },
   ],
-})
+});
 ```
 
 ### Configuración de base de datos para tests de integración
@@ -178,21 +179,21 @@ export default defineConfig({
 export async function setup() {
   if (process.env.CI) {
     // Neon API: crea branch de test
-    const branch = await createNeonBranch(`test-${process.env.GITHUB_SHA}`)
-    process.env.TEST_DATABASE_URL = branch.connectionString
+    const branch = await createNeonBranch(`test-${process.env.GITHUB_SHA}`);
+    process.env.TEST_DATABASE_URL = branch.connectionString;
   } else {
-    process.env.TEST_DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/medicore_test'
+    process.env.TEST_DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/medicore_test';
   }
 
   // Aplica migraciones en la DB de test
-  await execMigrations(process.env.TEST_DATABASE_URL)
+  await execMigrations(process.env.TEST_DATABASE_URL);
 }
 
 export async function teardown() {
   if (process.env.CI) {
-    await deleteNeonBranch(`test-${process.env.GITHUB_SHA}`)
+    await deleteNeonBranch(`test-${process.env.GITHUB_SHA}`);
   } else {
-    await truncateAllTables(process.env.TEST_DATABASE_URL)
+    await truncateAllTables(process.env.TEST_DATABASE_URL);
   }
 }
 ```
@@ -223,37 +224,36 @@ describe('CreatePatientHandler', () => {
   describe('cuando los datos son válidos', () => {
     it('debería crear el paciente con el NHC generado automáticamente', async () => {
       // Arrange
-      const repository = new InMemoryPatientRepository()
-      const handler    = new CreatePatientHandler(repository)
-      const command    = makeCreatePatientCommand({ nhc: undefined })
+      const repository = new InMemoryPatientRepository();
+      const handler = new CreatePatientHandler(repository);
+      const command = makeCreatePatientCommand({ nhc: undefined });
 
       // Act
-      const result = await handler.execute(command)
+      const result = await handler.execute(command);
 
       // Assert
-      expect(result.nhc).toMatch(/^2026-\d{5}$/)
-      expect(repository.findAll()).toHaveLength(1)
-    })
-  })
+      expect(result.nhc).toMatch(/^2026-\d{5}$/);
+      expect(repository.findAll()).toHaveLength(1);
+    });
+  });
 
   describe('cuando ya existe un paciente con datos similares', () => {
     it('debería lanzar DuplicatePatientError con los candidatos', async () => {
       // Arrange
-      const repository = new InMemoryPatientRepository()
-      await repository.save(makePatient({ lastName: 'García', birthDate: '1984-03-12' }))
-      const handler = new CreatePatientHandler(repository)
+      const repository = new InMemoryPatientRepository();
+      await repository.save(makePatient({ lastName: 'García', birthDate: '1984-03-12' }));
+      const handler = new CreatePatientHandler(repository);
       const command = makeCreatePatientCommand({
-        lastName:  'García',
+        lastName: 'García',
         birthDate: '1984-03-12',
         confirmDuplicate: false,
-      })
+      });
 
       // Act & Assert
-      await expect(handler.execute(command))
-        .rejects.toThrow(DuplicatePatientError)
-    })
-  })
-})
+      await expect(handler.execute(command)).rejects.toThrow(DuplicatePatientError);
+    });
+  });
+});
 ```
 
 ### Reglas de nombrado de tests
@@ -311,63 +311,62 @@ describe('Patient (entidad de dominio)', () => {
 // src/application/patient/commands/create-patient.handler.spec.ts
 
 describe('CreatePatientHandler', () => {
-
   describe('generación de NHC', () => {
     it('debería generar NHC secuencial si no se proporciona uno externo', async () => {
-      const { handler, repository } = makeTestContext()
-      await handler.execute(makeCreatePatientCommand({ nhc: undefined }))
-      await handler.execute(makeCreatePatientCommand({ nhc: undefined }))
+      const { handler, repository } = makeTestContext();
+      await handler.execute(makeCreatePatientCommand({ nhc: undefined }));
+      await handler.execute(makeCreatePatientCommand({ nhc: undefined }));
 
-      const patients = repository.findAll()
-      expect(patients[0].nhc).toBe('2026-00001')
-      expect(patients[1].nhc).toBe('2026-00002')
-    })
+      const patients = repository.findAll();
+      expect(patients[0].nhc).toBe('2026-00001');
+      expect(patients[1].nhc).toBe('2026-00002');
+    });
 
     it('debería aceptar NHC externo si no existe en la organización', async () => {
-      const { handler } = makeTestContext()
-      const result = await handler.execute(makeCreatePatientCommand({ nhc: 'EXT-2024-001' }))
-      expect(result.nhc).toBe('EXT-2024-001')
-    })
+      const { handler } = makeTestContext();
+      const result = await handler.execute(makeCreatePatientCommand({ nhc: 'EXT-2024-001' }));
+      expect(result.nhc).toBe('EXT-2024-001');
+    });
 
     it('debería rechazar NHC externo si ya existe en la organización', async () => {
-      const { handler, repository } = makeTestContext()
-      await repository.save(makePatient({ nhc: 'EXT-2024-001' }))
+      const { handler, repository } = makeTestContext();
+      await repository.save(makePatient({ nhc: 'EXT-2024-001' }));
 
       await expect(
-        handler.execute(makeCreatePatientCommand({ nhc: 'EXT-2024-001' }))
-      ).rejects.toThrow(DuplicateNhcError)
-    })
-  })
+        handler.execute(makeCreatePatientCommand({ nhc: 'EXT-2024-001' })),
+      ).rejects.toThrow(DuplicateNhcError);
+    });
+  });
 
   describe('detección de duplicados', () => {
     it('debería lanzar DuplicatePatientError si coinciden apellido + fecha nacimiento', async () => {
-      const { handler, repository } = makeTestContext()
-      await repository.save(makePatient({ lastName: 'García López', birthDate: '1984-03-12' }))
+      const { handler, repository } = makeTestContext();
+      await repository.save(makePatient({ lastName: 'García López', birthDate: '1984-03-12' }));
 
       const command = makeCreatePatientCommand({
-        lastName:         'García López',
-        birthDate:        '1984-03-12',
+        lastName: 'García López',
+        birthDate: '1984-03-12',
         confirmDuplicate: false,
-      })
+      });
 
-      await expect(handler.execute(command)).rejects.toThrow(DuplicatePatientError)
-    })
+      await expect(handler.execute(command)).rejects.toThrow(DuplicatePatientError);
+    });
 
     it('debería crear el paciente si confirmDuplicate es true aunque haya duplicados', async () => {
-      const { handler, repository } = makeTestContext()
-      await repository.save(makePatient({ lastName: 'García', birthDate: '1984-03-12' }))
+      const { handler, repository } = makeTestContext();
+      await repository.save(makePatient({ lastName: 'García', birthDate: '1984-03-12' }));
 
       const command = makeCreatePatientCommand({
-        lastName:         'García',
-        birthDate:        '1984-03-12',
+        lastName: 'García',
+        birthDate: '1984-03-12',
         confirmDuplicate: true,
-      })
+      });
 
-      await expect(handler.execute(command)).resolves.toBeDefined()
-      expect(repository.findAll()).toHaveLength(2)
-    })
-  })
-})
+      await expect(handler.execute(command)).resolves.toBeDefined();
+      expect(repository.findAll()).toHaveLength(2);
+    });
+  });
+});
 ```
 
 ### 5.3 Casos de uso — Medications (reglas de alergia)
@@ -376,72 +375,79 @@ describe('CreatePatientHandler', () => {
 // src/application/medication/commands/create-prescription.handler.spec.ts
 
 describe('CreatePrescriptionHandler', () => {
-
   describe('alertas de alergia (BR-MED-001)', () => {
     it('debería bloquear la prescripción si el paciente tiene alergia ANAPHYLAXIS activa al principio activo', async () => {
       const { handler } = makeTestContextWithPatient({
-        allergies: [makeAllergy({ substance: 'Amoxicilina', severity: 'ANAPHYLAXIS', status: 'ACTIVE' })]
-      })
+        allergies: [
+          makeAllergy({ substance: 'Amoxicilina', severity: 'ANAPHYLAXIS', status: 'ACTIVE' }),
+        ],
+      });
 
       await expect(
-        handler.execute(makeCreatePrescriptionCommand({ activeIngredient: 'Amoxicilina' }))
-      ).rejects.toThrow(CriticalAllergyConflictError)
-    })
+        handler.execute(makeCreatePrescriptionCommand({ activeIngredient: 'Amoxicilina' })),
+      ).rejects.toThrow(CriticalAllergyConflictError);
+    });
 
     it('debería permitir la prescripción con override explícito a pesar de alergia ANAPHYLAXIS', async () => {
       const { handler, auditRepository } = makeTestContextWithPatient({
-        allergies: [makeAllergy({ substance: 'Amoxicilina', severity: 'ANAPHYLAXIS', status: 'ACTIVE' })]
-      })
+        allergies: [
+          makeAllergy({ substance: 'Amoxicilina', severity: 'ANAPHYLAXIS', status: 'ACTIVE' }),
+        ],
+      });
 
       const command = makeCreatePrescriptionCommand({
-        activeIngredient:        'Amoxicilina',
+        activeIngredient: 'Amoxicilina',
         overrideCriticalAllergy: true,
-      })
+      });
 
-      await expect(handler.execute(command)).resolves.toBeDefined()
+      await expect(handler.execute(command)).resolves.toBeDefined();
 
       // El override debe quedar auditado
-      const auditEntry = auditRepository.findLast()
-      expect(auditEntry.action).toBe('CRITICAL_ALLERGY_OVERRIDE')
-    })
+      const auditEntry = auditRepository.findLast();
+      expect(auditEntry.action).toBe('CRITICAL_ALLERGY_OVERRIDE');
+    });
 
     it('debería emitir advertencia pero permitir prescripción si la alergia es MODERATE', async () => {
       const { handler } = makeTestContextWithPatient({
-        allergies: [makeAllergy({ substance: 'Ibuprofeno', severity: 'MODERATE', status: 'ACTIVE' })]
-      })
+        allergies: [
+          makeAllergy({ substance: 'Ibuprofeno', severity: 'MODERATE', status: 'ACTIVE' }),
+        ],
+      });
 
       const result = await handler.execute(
-        makeCreatePrescriptionCommand({ activeIngredient: 'Ibuprofeno' })
-      )
+        makeCreatePrescriptionCommand({ activeIngredient: 'Ibuprofeno' }),
+      );
 
-      expect(result.warnings).toContain('ALLERGY_CONFLICT_WARNING')
-    })
+      expect(result.warnings).toContain('ALLERGY_CONFLICT_WARNING');
+    });
 
     it('no debería alertar si la alergia está inactiva', async () => {
       const { handler } = makeTestContextWithPatient({
-        allergies: [makeAllergy({ substance: 'Penicilina', severity: 'ANAPHYLAXIS', status: 'INACTIVE' })]
-      })
+        allergies: [
+          makeAllergy({ substance: 'Penicilina', severity: 'ANAPHYLAXIS', status: 'INACTIVE' }),
+        ],
+      });
 
       await expect(
-        handler.execute(makeCreatePrescriptionCommand({ activeIngredient: 'Amoxicilina' }))
-      ).resolves.toBeDefined()
-    })
-  })
+        handler.execute(makeCreatePrescriptionCommand({ activeIngredient: 'Amoxicilina' })),
+      ).resolves.toBeDefined();
+    });
+  });
 
   describe('duplicación de medicación (BR-MED-002)', () => {
     it('debería incluir advertencia si ya existe prescripción activa del mismo principio activo', async () => {
       const { handler } = makeTestContextWithPatient({
-        activeMedications: [makeMedication({ activeIngredient: 'Ibuprofeno', status: 'ACTIVE' })]
-      })
+        activeMedications: [makeMedication({ activeIngredient: 'Ibuprofeno', status: 'ACTIVE' })],
+      });
 
       const result = await handler.execute(
-        makeCreatePrescriptionCommand({ activeIngredient: 'Ibuprofeno' })
-      )
+        makeCreatePrescriptionCommand({ activeIngredient: 'Ibuprofeno' }),
+      );
 
-      expect(result.warnings).toContain('DUPLICATE_MEDICATION')
-    })
-  })
-})
+      expect(result.warnings).toContain('DUPLICATE_MEDICATION');
+    });
+  });
+});
 ```
 
 ### 5.4 Casos de uso — Reports (ciclo de vida)
@@ -450,42 +456,41 @@ describe('CreatePrescriptionHandler', () => {
 // src/application/report/commands/sign-report.handler.spec.ts
 
 describe('SignReportHandler', () => {
-
   it('debería firmar el informe y registrar signedAt y signedBy', async () => {
-    const { handler, repository } = makeTestContext()
-    const report = makeReport({ status: 'REVIEWED' })
-    await repository.save(report)
+    const { handler, repository } = makeTestContext();
+    const report = makeReport({ status: 'REVIEWED' });
+    await repository.save(report);
 
-    const result = await handler.execute({ reportId: report.id, userId: 'physician-uuid' })
+    const result = await handler.execute({ reportId: report.id, userId: 'physician-uuid' });
 
-    expect(result.status).toBe('SIGNED')
-    expect(result.signedAt).toBeDefined()
-    expect(result.signedBy).toBe('physician-uuid')
-  })
+    expect(result.status).toBe('SIGNED');
+    expect(result.signedAt).toBeDefined();
+    expect(result.signedBy).toBe('physician-uuid');
+  });
 
   it('debería rechazar la firma si el informe está en estado DRAFT', async () => {
-    const { handler, repository } = makeTestContext()
-    const report = makeReport({ status: 'DRAFT' })
-    await repository.save(report)
+    const { handler, repository } = makeTestContext();
+    const report = makeReport({ status: 'DRAFT' });
+    await repository.save(report);
 
     await expect(
-      handler.execute({ reportId: report.id, userId: 'physician-uuid' })
-    ).rejects.toThrow(ReportNotReviewedError)
-  })
+      handler.execute({ reportId: report.id, userId: 'physician-uuid' }),
+    ).rejects.toThrow(ReportNotReviewedError);
+  });
 
   it('no debería permitir modificar un informe SIGNED (BR-REP-004)', async () => {
-    const { handler, repository } = makeTestContext()
-    const report = makeReport({ status: 'SIGNED' })
-    await repository.save(report)
+    const { handler, repository } = makeTestContext();
+    const report = makeReport({ status: 'SIGNED' });
+    await repository.save(report);
 
     await expect(
       new UpdateReportHandler(repository).execute({
         reportId: report.id,
-        content:  'Contenido modificado'
-      })
-    ).rejects.toThrow(ReportImmutableError)
-  })
-})
+        content: 'Contenido modificado',
+      }),
+    ).rejects.toThrow(ReportImmutableError);
+  });
+});
 ```
 
 ### 5.5 Tests de RBAC
@@ -536,33 +541,34 @@ describe('RBACGuard', () => {
 // src/application/scale/commands/create-scale.handler.spec.ts
 
 describe('CreateClinicalScaleHandler', () => {
-
   describe('cálculo de total (BR-SCA-002)', () => {
     it('debería calcular el total SNOT-22 sumando los 22 ítems', async () => {
-      const { handler } = makeTestContext()
-      const scores = Object.fromEntries(
-        Array.from({ length: 22 }, (_, i) => [`q${i + 1}`, 3])
-      ) // 22 ítems × 3 = 66
+      const { handler } = makeTestContext();
+      const scores = Object.fromEntries(Array.from({ length: 22 }, (_, i) => [`q${i + 1}`, 3])); // 22 ítems × 3 = 66
 
-      const result = await handler.execute(makeCreateScaleCommand({
-        scaleType: 'SNOT_22',
-        scores,
-      }))
+      const result = await handler.execute(
+        makeCreateScaleCommand({
+          scaleType: 'SNOT_22',
+          scores,
+        }),
+      );
 
-      expect(result.scores.total).toBe(66)
-    })
+      expect(result.scores.total).toBe(66);
+    });
 
     it('debería ignorar el total enviado por el cliente y recalcularlo', async () => {
-      const { handler } = makeTestContext()
-      const result = await handler.execute(makeCreateScaleCommand({
-        scaleType: 'SNOT_22',
-        scores: { ...validSnot22Scores, total: 999 },  // total manipulado
-      }))
+      const { handler } = makeTestContext();
+      const result = await handler.execute(
+        makeCreateScaleCommand({
+          scaleType: 'SNOT_22',
+          scores: { ...validSnot22Scores, total: 999 }, // total manipulado
+        }),
+      );
 
-      expect(result.scores.total).not.toBe(999)
-    })
-  })
-})
+      expect(result.scores.total).not.toBe(999);
+    });
+  });
+});
 ```
 
 ---
@@ -575,103 +581,113 @@ Los tests de integración usan la base de datos de test real (PostgreSQL) y el s
 // src/api/patients/patients.controller.integration.spec.ts
 
 describe('PatientsController (integración)', () => {
-  let app: INestApplication
-  let db:  PrismaService
-  let org: Organization
-  let token: string  // JWT de test para el médico de test
+  let app: INestApplication;
+  let db: PrismaService;
+  let org: Organization;
+  let token: string; // JWT de test para el médico de test
 
   beforeAll(async () => {
-    app   = await createTestApp()
-    db    = app.get(PrismaService)
-    org   = await db.organization.create({ data: makeOrganization() })
-    token = makeTestJWT({ organizationId: org.id, role: 'PHYSICIAN' })
-  })
+    app = await createTestApp();
+    db = app.get(PrismaService);
+    org = await db.organization.create({ data: makeOrganization() });
+    token = makeTestJWT({ organizationId: org.id, role: 'PHYSICIAN' });
+  });
 
   afterEach(async () => {
-    await db.patient.deleteMany({ where: { organizationId: org.id } })
-  })
+    await db.patient.deleteMany({ where: { organizationId: org.id } });
+  });
 
   afterAll(async () => {
-    await app.close()
-  })
+    await app.close();
+  });
 
   describe('POST /v1/patients', () => {
-
     it('debería crear un paciente y devolver 201 con el NHC generado', async () => {
       const response = await request(app.getHttpServer())
         .post('/v1/patients')
         .set('Cookie', `medicore-session=${token}`)
         .send(makeCreatePatientDto())
-        .expect(201)
+        .expect(201);
 
-      expect(response.body.data.nhc).toMatch(/^\d{4}-\d{5}$/)
-      expect(response.body.data.id).toBeDefined()
-    })
+      expect(response.body.data.nhc).toMatch(/^\d{4}-\d{5}$/);
+      expect(response.body.data.id).toBeDefined();
+    });
 
     it('debería devolver 409 con candidatos duplicados si coinciden datos', async () => {
-      await db.patient.create({ data: makePatientRow({ organizationId: org.id, lastName: 'García', birthDate: new Date('1984-03-12') }) })
+      await db.patient.create({
+        data: makePatientRow({
+          organizationId: org.id,
+          lastName: 'García',
+          birthDate: new Date('1984-03-12'),
+        }),
+      });
 
       const response = await request(app.getHttpServer())
         .post('/v1/patients')
         .set('Cookie', `medicore-session=${token}`)
         .send(makeCreatePatientDto({ lastName: 'García', birthDate: '1984-03-12' }))
-        .expect(409)
+        .expect(409);
 
-      expect(response.body.error).toBe('DUPLICATE_PATIENT')
-      expect(response.body.details.similarPatients).toHaveLength(1)
-    })
+      expect(response.body.error).toBe('DUPLICATE_PATIENT');
+      expect(response.body.details.similarPatients).toHaveLength(1);
+    });
 
     it('debería crear el paciente con X-Confirm-Duplicate aunque haya duplicados', async () => {
-      await db.patient.create({ data: makePatientRow({ organizationId: org.id, lastName: 'García', birthDate: new Date('1984-03-12') }) })
+      await db.patient.create({
+        data: makePatientRow({
+          organizationId: org.id,
+          lastName: 'García',
+          birthDate: new Date('1984-03-12'),
+        }),
+      });
 
       await request(app.getHttpServer())
         .post('/v1/patients')
         .set('Cookie', `medicore-session=${token}`)
         .set('X-Confirm-Duplicate', 'true')
         .send(makeCreatePatientDto({ lastName: 'García', birthDate: '1984-03-12' }))
-        .expect(201)
-    })
+        .expect(201);
+    });
 
     it('debería devolver 401 sin token de sesión', async () => {
       await request(app.getHttpServer())
         .post('/v1/patients')
         .send(makeCreatePatientDto())
-        .expect(401)
-    })
+        .expect(401);
+    });
 
     it('debería devolver 403 si el rol es VIEWER', async () => {
-      const viewerToken = makeTestJWT({ organizationId: org.id, role: 'VIEWER' })
+      const viewerToken = makeTestJWT({ organizationId: org.id, role: 'VIEWER' });
 
       await request(app.getHttpServer())
         .post('/v1/patients')
         .set('Cookie', `medicore-session=${viewerToken}`)
         .send(makeCreatePatientDto())
-        .expect(403)
-    })
-  })
+        .expect(403);
+    });
+  });
 
   describe('GET /v1/patients', () => {
-
     it('debería devolver solo los pacientes de la organización del JWT', async () => {
-      const otherOrg = await db.organization.create({ data: makeOrganization() })
+      const otherOrg = await db.organization.create({ data: makeOrganization() });
       await db.patient.createMany({
         data: [
           makePatientRow({ organizationId: org.id }),
           makePatientRow({ organizationId: org.id }),
-          makePatientRow({ organizationId: otherOrg.id }),  // de otra org
-        ]
-      })
+          makePatientRow({ organizationId: otherOrg.id }), // de otra org
+        ],
+      });
 
       const response = await request(app.getHttpServer())
         .get('/v1/patients')
         .set('Cookie', `medicore-session=${token}`)
-        .expect(200)
+        .expect(200);
 
       // Solo devuelve los 2 de la org del médico — nunca el de otra org
-      expect(response.body.data).toHaveLength(2)
-    })
-  })
-})
+      expect(response.body.data).toHaveLength(2);
+    });
+  });
+});
 ```
 
 ### 6.1 Tests de repositorios Prisma
@@ -680,29 +696,30 @@ describe('PatientsController (integración)', () => {
 // src/infrastructure/database/repositories/prisma-patient.repository.integration.spec.ts
 
 describe('PrismaPatientRepository (integración)', () => {
-
   it('debería aplicar el filtro organizationId en findById', async () => {
-    const orgA = await db.organization.create({ data: makeOrganization() })
-    const orgB = await db.organization.create({ data: makeOrganization() })
-    const patient = await db.patient.create({ data: makePatientRow({ organizationId: orgA.id }) })
+    const orgA = await db.organization.create({ data: makeOrganization() });
+    const orgB = await db.organization.create({ data: makeOrganization() });
+    const patient = await db.patient.create({ data: makePatientRow({ organizationId: orgA.id }) });
 
-    const repository = new PrismaPatientRepository(db)
+    const repository = new PrismaPatientRepository(db);
 
     // Buscar el paciente de orgA con el contexto de orgB debe devolver null
-    const result = await repository.findById(patient.id, orgB.id)
-    expect(result).toBeNull()
-  })
+    const result = await repository.findById(patient.id, orgB.id);
+    expect(result).toBeNull();
+  });
 
   it('no debería devolver pacientes con deletedAt', async () => {
-    const org = await db.organization.create({ data: makeOrganization() })
-    await db.patient.create({ data: makePatientRow({ organizationId: org.id, deletedAt: new Date() }) })
+    const org = await db.organization.create({ data: makeOrganization() });
+    await db.patient.create({
+      data: makePatientRow({ organizationId: org.id, deletedAt: new Date() }),
+    });
 
-    const repository = new PrismaPatientRepository(db)
-    const results    = await repository.findAll(org.id)
+    const repository = new PrismaPatientRepository(db);
+    const results = await repository.findAll(org.id);
 
-    expect(results).toHaveLength(0)
-  })
-})
+    expect(results).toHaveLength(0);
+  });
+});
 ```
 
 ---
@@ -715,106 +732,107 @@ Los tests E2E usan Playwright contra la aplicación completa. Solo cubren los fl
 // e2e/patient-creation.e2e.ts
 
 test.describe('Alta de nuevo paciente', () => {
-
   test.beforeEach(async ({ page }) => {
-    await loginAsTestPhysician(page)
-  })
+    await loginAsTestPhysician(page);
+  });
 
   test('debería completar el alta de un paciente con datos mínimos', async ({ page }) => {
-    await page.goto('/patients/new')
+    await page.goto('/patients/new');
 
-    await page.fill('[name="firstName"]', 'Ana')
-    await page.fill('[name="lastName"]',  'García López')
-    await page.fill('[name="birthDate"]', '12/03/1984')
-    await page.selectOption('[name="sex"]', 'FEMALE')
+    await page.fill('[name="firstName"]', 'Ana');
+    await page.fill('[name="lastName"]', 'García López');
+    await page.fill('[name="birthDate"]', '12/03/1984');
+    await page.selectOption('[name="sex"]', 'FEMALE');
 
-    await page.click('button:has-text("Guardar paciente")')
+    await page.click('button:has-text("Guardar paciente")');
 
     // Debe navegar a la ficha del paciente nuevo
-    await expect(page).toHaveURL(/\/patients\/[\w-]+$/)
-    await expect(page.locator('h1')).toContainText('García López, Ana')
-    await expect(page.locator('[data-testid="nhc"]')).toContainText('2026-')
-  })
+    await expect(page).toHaveURL(/\/patients\/[\w-]+$/);
+    await expect(page.locator('h1')).toContainText('García López, Ana');
+    await expect(page.locator('[data-testid="nhc"]')).toContainText('2026-');
+  });
 
   test('debería mostrar el modal de duplicados y permitir confirmar', async ({ page }) => {
     // Seed: paciente existente con mismos datos
-    await seedPatient({ lastName: 'García', birthDate: '1984-03-12' })
+    await seedPatient({ lastName: 'García', birthDate: '1984-03-12' });
 
-    await page.goto('/patients/new')
-    await fillPatientForm(page, { lastName: 'García', birthDate: '12/03/1984' })
-    await page.click('button:has-text("Guardar paciente")')
+    await page.goto('/patients/new');
+    await fillPatientForm(page, { lastName: 'García', birthDate: '12/03/1984' });
+    await page.click('button:has-text("Guardar paciente")');
 
     // Debe aparecer el modal de duplicados
-    await expect(page.locator('[data-testid="duplicate-modal"]')).toBeVisible()
-    await expect(page.locator('[data-testid="duplicate-modal"]')).toContainText('García')
+    await expect(page.locator('[data-testid="duplicate-modal"]')).toBeVisible();
+    await expect(page.locator('[data-testid="duplicate-modal"]')).toContainText('García');
 
     // Confirmar que es un paciente nuevo
-    await page.click('button:has-text("Crear de todas formas")')
-    await expect(page).toHaveURL(/\/patients\/[\w-]+$/)
-  })
-})
+    await page.click('button:has-text("Crear de todas formas")');
+    await expect(page).toHaveURL(/\/patients\/[\w-]+$/);
+  });
+});
 ```
 
 ```typescript
 // e2e/report-lifecycle.e2e.ts
 
 test.describe('Ciclo de vida de un informe clínico', () => {
-
   test('debería generar, revisar y firmar un informe', async ({ page }) => {
-    const { patientId, consultationId } = await seedConsultationWithDiagnosis()
+    const { patientId, consultationId } = await seedConsultationWithDiagnosis();
 
-    await page.goto(`/patients/${patientId}/consultations/${consultationId}`)
-    await page.click('button:has-text("Generar informe")')
+    await page.goto(`/patients/${patientId}/consultations/${consultationId}`);
+    await page.click('button:has-text("Generar informe")');
 
     // Espera a que el informe se genere (polling)
-    await expect(page.locator('[data-testid="report-status"]'))
-      .toHaveText('BORRADOR', { timeout: 15_000 })
+    await expect(page.locator('[data-testid="report-status"]')).toHaveText('BORRADOR', {
+      timeout: 15_000,
+    });
 
     // El médico edita el informe
-    await page.click('[data-testid="report-content"]')
-    await page.keyboard.press('Control+A')
-    await page.keyboard.type('Contenido revisado por el médico')
+    await page.click('[data-testid="report-content"]');
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type('Contenido revisado por el médico');
 
     // Cambia a revisado
-    await page.click('button:has-text("Marcar como revisado")')
-    await expect(page.locator('[data-testid="report-status"]')).toHaveText('REVISADO')
+    await page.click('button:has-text("Marcar como revisado")');
+    await expect(page.locator('[data-testid="report-status"]')).toHaveText('REVISADO');
 
     // Firma el informe
-    await page.click('button:has-text("Firmar informe")')
-    await expect(page.locator('[data-testid="disclaimer-modal"]')).toBeVisible()
-    await page.click('button:has-text("Confirmar firma")')
+    await page.click('button:has-text("Firmar informe")');
+    await expect(page.locator('[data-testid="disclaimer-modal"]')).toBeVisible();
+    await page.click('button:has-text("Confirmar firma")');
 
-    await expect(page.locator('[data-testid="report-status"]')).toHaveText('FIRMADO')
+    await expect(page.locator('[data-testid="report-status"]')).toHaveText('FIRMADO');
 
     // El botón de editar ya no debe estar disponible
-    await expect(page.locator('button:has-text("Editar")')).not.toBeVisible()
-  })
-})
+    await expect(page.locator('button:has-text("Editar")')).not.toBeVisible();
+  });
+});
 ```
 
 ```typescript
 // e2e/allergy-alert.e2e.ts
 
 test.describe('Alerta de alergia crítica', () => {
-
-  test('debería mostrar banner de alergia ANAPHYLAXIS en todas las vistas del paciente', async ({ page }) => {
+  test('debería mostrar banner de alergia ANAPHYLAXIS en todas las vistas del paciente', async ({
+    page,
+  }) => {
     const { patientId } = await seedPatientWithCriticalAllergy({
-      substance: 'Penicilina', severity: 'ANAPHYLAXIS'
-    })
+      substance: 'Penicilina',
+      severity: 'ANAPHYLAXIS',
+    });
 
     // El banner aparece en la ficha del paciente
-    await page.goto(`/patients/${patientId}`)
-    await expect(page.locator('[data-testid="critical-allergy-banner"]')).toBeVisible()
+    await page.goto(`/patients/${patientId}`);
+    await expect(page.locator('[data-testid="critical-allergy-banner"]')).toBeVisible();
 
     // El banner aparece en la vista de consultas
-    await page.click('[data-testid="tab-consultations"]')
-    await expect(page.locator('[data-testid="critical-allergy-banner"]')).toBeVisible()
+    await page.click('[data-testid="tab-consultations"]');
+    await expect(page.locator('[data-testid="critical-allergy-banner"]')).toBeVisible();
 
     // El banner aparece en la vista de medicación
-    await page.click('[data-testid="tab-medication"]')
-    await expect(page.locator('[data-testid="critical-allergy-banner"]')).toBeVisible()
-  })
-})
+    await page.click('[data-testid="tab-medication"]');
+    await expect(page.locator('[data-testid="critical-allergy-banner"]')).toBeVisible();
+  });
+});
 ```
 
 ---
@@ -827,61 +845,66 @@ Los schemas Zod del paquete `@medicore/contracts` son la fuente de verdad de los
 // packages/contracts/src/patient.schema.contract.spec.ts
 
 describe('CreatePatientSchema (contrato)', () => {
-
   it('debería aceptar los campos mínimos obligatorios', () => {
     const result = CreatePatientSchema.safeParse({
       firstName: 'Ana',
-      lastName:  'García',
+      lastName: 'García',
       birthDate: '1984-03-12',
-      sex:       'FEMALE',
-    })
-    expect(result.success).toBe(true)
-  })
+      sex: 'FEMALE',
+    });
+    expect(result.success).toBe(true);
+  });
 
   it('debería rechazar birthDate en el futuro', () => {
     const result = CreatePatientSchema.safeParse({
-      firstName: 'Ana', lastName: 'García', sex: 'FEMALE',
+      firstName: 'Ana',
+      lastName: 'García',
+      sex: 'FEMALE',
       birthDate: '2030-01-01',
-    })
-    expect(result.success).toBe(false)
-    expect(result.error?.issues[0].path).toContain('birthDate')
-  })
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].path).toContain('birthDate');
+  });
 
   it('debería rechazar sex con valor fuera del enum', () => {
     const result = CreatePatientSchema.safeParse({
-      firstName: 'Ana', lastName: 'García', birthDate: '1984-03-12',
+      firstName: 'Ana',
+      lastName: 'García',
+      birthDate: '1984-03-12',
       sex: 'UNKNOWN_VALUE',
-    })
-    expect(result.success).toBe(false)
-  })
-})
+    });
+    expect(result.success).toBe(false);
+  });
+});
 
 // packages/contracts/src/consultation.schema.contract.spec.ts
 
 describe('CreateConsultationSchema (contrato)', () => {
-
   it('debería rechazar más de un diagnóstico primary', () => {
     const result = CreateConsultationSchema.safeParse({
       ...validConsultationBase,
       diagnosisCodes: [
         { system: 'ICD10', code: 'J32.9', description: '...', type: 'primary' },
         { system: 'ICD10', code: 'J34.2', description: '...', type: 'primary' },
-      ]
-    })
-    expect(result.success).toBe(false)
-    expect(result.error?.issues[0].message).toMatch(/un único diagnóstico primary/)
-  })
+      ],
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toMatch(/un único diagnóstico primary/);
+  });
 
   it('debería rechazar más de 10 códigos diagnósticos en total', () => {
     const result = CreateConsultationSchema.safeParse({
       ...validConsultationBase,
       diagnosisCodes: Array.from({ length: 11 }, (_, i) => ({
-        system: 'ICD10', code: `J${i}`, description: '...', type: 'secondary'
-      }))
-    })
-    expect(result.success).toBe(false)
-  })
-})
+        system: 'ICD10',
+        code: `J${i}`,
+        description: '...',
+        type: 'secondary',
+      })),
+    });
+    expect(result.success).toBe(false);
+  });
+});
 ```
 
 ---
@@ -894,68 +917,70 @@ El aislamiento de datos entre organizaciones es el control de seguridad más cr�
 // src/api/security/tenant-isolation.spec.ts
 
 describe('Tenant Isolation (seguridad crítica)', () => {
-
-  let orgA: Organization, orgB: Organization
-  let tokenA: string, tokenB: string
-  let patientInOrgA: Patient
+  let orgA: Organization, orgB: Organization;
+  let tokenA: string, tokenB: string;
+  let patientInOrgA: Patient;
 
   beforeAll(async () => {
-    orgA        = await createOrg()
-    orgB        = await createOrg()
-    tokenA      = makeTestJWT({ organizationId: orgA.id, role: 'PHYSICIAN' })
-    tokenB      = makeTestJWT({ organizationId: orgB.id, role: 'PHYSICIAN' })
-    patientInOrgA = await createPatient({ organizationId: orgA.id })
-  })
+    orgA = await createOrg();
+    orgB = await createOrg();
+    tokenA = makeTestJWT({ organizationId: orgA.id, role: 'PHYSICIAN' });
+    tokenB = makeTestJWT({ organizationId: orgB.id, role: 'PHYSICIAN' });
+    patientInOrgA = await createPatient({ organizationId: orgA.id });
+  });
 
   it('debería devolver 404 al intentar acceder a un paciente de otra organización', async () => {
     // El médico de orgB intenta acceder al paciente de orgA
     await request(app.getHttpServer())
       .get(`/v1/patients/${patientInOrgA.id}`)
       .set('Cookie', `medicore-session=${tokenB}`)
-      .expect(404)  // No 403 — no se revela que el recurso existe
-  })
+      .expect(404); // No 403 — no se revela que el recurso existe
+  });
 
   it('no debería listar pacientes de otra organización en GET /patients', async () => {
     const response = await request(app.getHttpServer())
       .get('/v1/patients')
       .set('Cookie', `medicore-session=${tokenB}`)
-      .expect(200)
+      .expect(200);
 
-    const ids = response.body.data.map((p: any) => p.id)
-    expect(ids).not.toContain(patientInOrgA.id)
-  })
+    const ids = response.body.data.map((p: any) => p.id);
+    expect(ids).not.toContain(patientInOrgA.id);
+  });
 
   it('debería devolver 404 al intentar crear una consulta en un paciente de otra org', async () => {
     await request(app.getHttpServer())
       .post(`/v1/patients/${patientInOrgA.id}/consultations`)
       .set('Cookie', `medicore-session=${tokenB}`)
       .send(makeCreateConsultationDto())
-      .expect(404)
-  })
+      .expect(404);
+  });
 
   it('debería devolver 404 al intentar acceder a una imagen de otra organización', async () => {
-    const study = await createImagingStudy({ organizationId: orgA.id, patientId: patientInOrgA.id })
+    const study = await createImagingStudy({
+      organizationId: orgA.id,
+      patientId: patientInOrgA.id,
+    });
 
     await request(app.getHttpServer())
       .get(`/v1/patients/${patientInOrgA.id}/imaging/${study.id}`)
       .set('Cookie', `medicore-session=${tokenB}`)
-      .expect(404)
-  })
+      .expect(404);
+  });
 
   it('no debería incluir datos de contacto del paciente para rol VIEWER', async () => {
-    const viewerToken = makeTestJWT({ organizationId: orgA.id, role: 'VIEWER' })
+    const viewerToken = makeTestJWT({ organizationId: orgA.id, role: 'VIEWER' });
 
     const response = await request(app.getHttpServer())
       .get(`/v1/patients/${patientInOrgA.id}`)
       .set('Cookie', `medicore-session=${viewerToken}`)
-      .expect(200)
+      .expect(200);
 
-    expect(response.body.data.phone).toBeUndefined()
-    expect(response.body.data.email).toBeUndefined()
-    expect(response.body.data.address).toBeUndefined()
-    expect(response.body.data.idDocument).toBeUndefined()
-  })
-})
+    expect(response.body.data.phone).toBeUndefined();
+    expect(response.body.data.email).toBeUndefined();
+    expect(response.body.data.address).toBeUndefined();
+    expect(response.body.data.idDocument).toBeUndefined();
+  });
+});
 ```
 
 ---
@@ -967,63 +992,107 @@ Las factories generan datos de test realistas del dominio ORL. Usan `@faker-js/f
 ```typescript
 // apps/api/test/factories/patient.factory.ts
 
-import { faker } from '@faker-js/faker'
+import { faker } from '@faker-js/faker';
 
-faker.seed(42)  // Semilla fija para reproducibilidad en CI
+faker.seed(42); // Semilla fija para reproducibilidad en CI
 
 export function makePatient(overrides: Partial<Patient> = {}): Patient {
   return {
-    id:             faker.string.uuid(),
+    id: faker.string.uuid(),
     organizationId: faker.string.uuid(),
-    nhc:            `2026-${faker.number.int({ min: 1, max: 99999 }).toString().padStart(5, '0')}`,
-    firstName:      faker.person.firstName(),
-    lastName:       faker.person.lastName(),
-    birthDate:      faker.date.birthdate({ min: 18, max: 85, mode: 'age' }),
-    sex:            faker.helpers.arrayElement(['MALE', 'FEMALE']),
-    bloodType:      'UNKNOWN',
-    createdBy:      faker.string.uuid(),
-    createdAt:      new Date(),
-    updatedAt:      new Date(),
-    deletedAt:      null,
+    nhc: `2026-${faker.number.int({ min: 1, max: 99999 }).toString().padStart(5, '0')}`,
+    firstName: faker.person.firstName(),
+    lastName: faker.person.lastName(),
+    birthDate: faker.date.birthdate({ min: 18, max: 85, mode: 'age' }),
+    sex: faker.helpers.arrayElement(['MALE', 'FEMALE']),
+    bloodType: 'UNKNOWN',
+    createdBy: faker.string.uuid(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
     ...overrides,
-  }
+  };
 }
 
 // Fixtures de patologías ORL frecuentes (datos 100% ficticios)
 
 export const ORL_FIXTURES = {
   rinosinusitis_cronica: {
-    patient:      makePatient({ firstName: 'Carmen', lastName: 'Rodríguez Vega' }),
+    patient: makePatient({ firstName: 'Carmen', lastName: 'Rodríguez Vega' }),
     consultation: makeConsultation({
       chiefComplaint: 'Obstrucción nasal bilateral y cefalea frontal de 6 meses de evolución',
-      diagnosisCodes: [{ system: 'ICD10', code: 'J32.9', description: 'Rinosinusitis crónica', type: 'primary' }],
+      diagnosisCodes: [
+        { system: 'ICD10', code: 'J32.9', description: 'Rinosinusitis crónica', type: 'primary' },
+      ],
     }),
     scale: makeClinicalScale({
       scaleType: 'SNOT_22',
-      scores: { q1:4, q2:3, q3:5, q4:2, q5:3, q6:4, q7:2, q8:1, q9:3, q10:2, q11:3, q12:2, q13:1, q14:2, q15:3, q16:2, q17:1, q18:2, q19:1, q20:2, q21:1, q22:2, total: 51 }
+      scores: {
+        q1: 4,
+        q2: 3,
+        q3: 5,
+        q4: 2,
+        q5: 3,
+        q6: 4,
+        q7: 2,
+        q8: 1,
+        q9: 3,
+        q10: 2,
+        q11: 3,
+        q12: 2,
+        q13: 1,
+        q14: 2,
+        q15: 3,
+        q16: 2,
+        q17: 1,
+        q18: 2,
+        q19: 1,
+        q20: 2,
+        q21: 1,
+        q22: 2,
+        total: 51,
+      },
     }),
   },
 
   vertigo_vppb: {
-    patient:      makePatient({ firstName: 'Luis', lastName: 'Fernández Soto' }),
+    patient: makePatient({ firstName: 'Luis', lastName: 'Fernández Soto' }),
     consultation: makeConsultation({
       chiefComplaint: 'Vértigo posicional de inicio brusco hace 3 días',
-      diagnosisCodes: [{ system: 'ICD10', code: 'H81.1', description: 'Vértigo posicional paroxístico benigno', type: 'primary' }],
+      diagnosisCodes: [
+        {
+          system: 'ICD10',
+          code: 'H81.1',
+          description: 'Vértigo posicional paroxístico benigno',
+          type: 'primary',
+        },
+      ],
     }),
     scale: makeClinicalScale({
       scaleType: 'DHI',
-      scores: { physical: 20, functional: 18, emotional: 14, total: 52 }
+      scores: { physical: 20, functional: 18, emotional: 14, total: 52 },
     }),
   },
 
   hipoacusia_neurosensorial: {
-    patient:      makePatient({ firstName: 'Marta', lastName: 'García Blanco', birthDate: new Date('1955-07-22') }),
+    patient: makePatient({
+      firstName: 'Marta',
+      lastName: 'García Blanco',
+      birthDate: new Date('1955-07-22'),
+    }),
     consultation: makeConsultation({
       chiefComplaint: 'Hipoacusia bilateral progresiva de 2 años de evolución y acúfeno continuo',
-      diagnosisCodes: [{ system: 'ICD10', code: 'H90.3', description: 'Hipoacusia neurosensorial bilateral', type: 'primary' }],
+      diagnosisCodes: [
+        {
+          system: 'ICD10',
+          code: 'H90.3',
+          description: 'Hipoacusia neurosensorial bilateral',
+          type: 'primary',
+        },
+      ],
     }),
   },
-}
+};
 ```
 
 ---
@@ -1040,16 +1109,16 @@ Los servicios externos se mockean siempre en tests unitarios e integración. Nun
 export const mockAnthropicService = {
   generateReport: jest.fn().mockResolvedValue({
     content: 'INFORME CLÍNICO GENERADO POR MOCK\n\nPaciente: Test...',
-    model:   'claude-sonnet-4-20250514',
-    inputTokens:  1200,
+    model: 'claude-sonnet-4-20250514',
+    inputTokens: 1200,
     outputTokens: 450,
   }),
 
   // Simulación de timeout para tests de BR-REP-008
-  generateReportWithTimeout: jest.fn().mockRejectedValue(
-    new Error('Anthropic API timeout after 60s')
-  ),
-}
+  generateReportWithTimeout: jest
+    .fn()
+    .mockRejectedValue(new Error('Anthropic API timeout after 60s')),
+};
 
 // Uso en tests:
 // jest.spyOn(anthropicService, 'generateReport').mockResolvedValue(mockResponse)
@@ -1067,12 +1136,12 @@ export const mockR2StorageService = {
   }),
 
   getPresignedUrl: jest.fn().mockResolvedValue({
-    url:       'https://r2.test/presigned/test-file.dcm?expires=900',
+    url: 'https://r2.test/presigned/test-file.dcm?expires=900',
     expiresAt: new Date(Date.now() + 15 * 60 * 1000),
   }),
 
   delete: jest.fn().mockResolvedValue({ deleted: true }),
-}
+};
 ```
 
 ### Mock de BullMQ
@@ -1087,11 +1156,11 @@ export const mockQueueService = {
   add: jest.fn().mockImplementation(async (jobName, data) => {
     // Simula la ejecución síncrona del job para tests
     if (jobName === 'generate-report') {
-      await executeGenerateReportJob(data)
+      await executeGenerateReportJob(data);
     }
-    return { id: 'mock-job-id' }
+    return { id: 'mock-job-id' };
   }),
-}
+};
 ```
 
 ---
@@ -1189,7 +1258,7 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: integration-tests
-    if: github.base_ref == 'main'  # Solo en PRs a main
+    if: github.base_ref == 'main' # Solo en PRs a main
     steps:
       - run: pnpm build
       - run: pnpm test:e2e
@@ -1273,6 +1342,7 @@ PASO 4 — Escribir los demás tests de la regla
 ### Regla del Pull Request
 
 Un PR no puede añadir lógica de negocio sin el test correspondiente. El reviewer verifica:
+
 1. El test describe el comportamiento en lenguaje del dominio
 2. El test fallaría si la implementación fuera incorrecta
 3. La cobertura de la nueva feature es ≥ 85%
@@ -1315,4 +1385,4 @@ Un PR que modifica lógica de negocio sin actualizar la especificación o los te
 
 ---
 
-*Siguiente documento sugerido: `07-security-compliance.md` — Modelo de amenazas STRIDE, controles RGPD/ENS, gestión de consentimientos y política de backups.*
+_Siguiente documento sugerido: `07-security-compliance.md` — Modelo de amenazas STRIDE, controles RGPD/ENS, gestión de consentimientos y política de backups._

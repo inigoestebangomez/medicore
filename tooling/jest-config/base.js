@@ -29,4 +29,4 @@ module.exports = {
   setupFilesAfterEach: [],
   globalSetup: undefined,
   globalTeardown: undefined,
-}
+};

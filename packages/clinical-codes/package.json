@@ -1,0 +1,23 @@
+{
+  "name": "@medicore/clinical-codes",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "build": "tsc --build"
+  },
+  "devDependencies": {
+    "@medicore/eslint-config": "workspace:*",
+    "@medicore/tsconfig": "workspace:*",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

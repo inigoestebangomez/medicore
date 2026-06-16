@@ -1,4 +1,5 @@
 # 02-data-schema.md
+
 ## MediCore — Modelo de Datos
 
 > **Versión:** 1.0 | **Estado:** Aprobado | **Fecha:** 2026-06
@@ -364,7 +365,7 @@ model Patient {
   id             String         @id @default(uuid())
   organizationId String
   nhc            String         // Nº Historia Clínica — único por organización
-  
+
   // Datos demográficos
   firstName      String
   lastName       String
@@ -372,17 +373,17 @@ model Patient {
   sex            Sex
   idDocument     String?        // Número del documento de identidad
   idDocType      IdDocumentType @default(DNI)
-  
+
   // Contacto
   phone          String?
   email          String?
   address        Json?          // { street, city, province, postalCode, country }
   emergencyContact Json?        // { name, relationship, phone }
-  
+
   // Clínico
   bloodType      BloodType      @default(UNKNOWN)
   notes          String?        // Notas libres del médico sobre el paciente
-  
+
   // Metadata
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -413,7 +414,7 @@ model Allergy {
   id             String          @id @default(uuid())
   organizationId String
   patientId      String
-  
+
   substance      String          // Nombre del alérgeno (ej: "Amoxicilina", "Látex")
   substanceCode  String?         // Código SNOMED CT del alérgeno si disponible
   reaction       String?         // Descripción de la reacción
@@ -421,7 +422,7 @@ model Allergy {
   status         AllergyStatus   @default(ACTIVE)
   onsetDate      DateTime?
   notes          String?
-  
+
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   deletedAt      DateTime?
@@ -437,33 +438,33 @@ model Consultation {
   id             String           @id @default(uuid())
   organizationId String
   patientId      String
-  
+
   date           DateTime
   type           ConsultationType @default(FIRST_VISIT)
   physicianId    String           // userId del médico que realiza la consulta
-  
+
   // Contenido clínico
   chiefComplaint String           // Motivo de consulta
   currentIllness String?          // Enfermedad actual / anamnesis
-  
+
   // Exploración física ORL (JSONB flexible)
   // Estructura esperada: { rhinoscopy, otoscopy, oropharynx, neck, laryngoscopy, ... }
   physicalExam   Json?
-  
+
   // Escalas clínicas vinculadas: se gestionan en ClinicalScale
-  
+
   // Diagnóstico
   assessment     String?          // Impresión diagnóstica en texto libre
   diagnosisCodes Json?            // [{ system: "ICD10"|"SNOMED", code, description, type: "primary"|"secondary" }]
-  
+
   // Plan
   plan           String?          // Plan de tratamiento en texto libre
   procedureCodes Json?            // [{ system: "ICD10PCS"|"SNOMED", code, description }]
-  
+
   // Follow-up
   followUpDate   DateTime?
   followUpNotes  String?
-  
+
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   deletedAt      DateTime?
@@ -486,10 +487,10 @@ model ClinicalScale {
   organizationId String
   patientId      String
   consultationId String?          // Opcional: puede existir sin consulta asociada
-  
+
   scaleType      ClinicalScaleType
   date           DateTime         @default(now())
-  
+
   // Puntuaciones específicas de la escala (JSONB)
   // SNOT-22: { q1: 0-5, q2: 0-5, ..., q22: 0-5, total: 0-110 }
   // DHI: { physical: 0-28, functional: 0-28, emotional: 0-28, total: 0-100 }
@@ -513,34 +514,34 @@ model Surgery {
   organizationId String
   patientId      String
   physicianId    String           // userId del cirujano principal
-  
+
   // Datos del procedimiento
   date           DateTime
   status         SurgeryStatus    @default(SCHEDULED)
   procedureType  String           // Nombre del procedimiento (ej: "Septoplastia + CENS bilateral")
   procedureCodes Json?            // [{ system: "ICD10PCS"|"SNOMED", code, description }]
-  
+
   // Clasificación anestésica
   asa            AsaClassification?
   anesthesiaType String?          // "General" | "Local" | "Sedación" | "Regional"
-  
+
   // Pre-operatorio
   preOpNotes     String?
   preOpChecklist Json?            // { bloodwork: bool, consent: bool, fasting: bool, ... }
-  
+
   // Intraoperatorio
   duration       Int?             // Duración en minutos
   technique      Json?            // Notas de técnica quirúrgica (JSONB flexible por tipo de cirugía)
   findings       String?          // Hallazgos intraoperatorios
   complications  String?
-  
+
   // Post-operatorio
   postOpNotes    String?
   postOpProtocol Json?            // Protocolo de revisiones postoperatorias
-  
+
   // Outcome
   outcome        String?
-  
+
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   deletedAt      DateTime?
@@ -564,19 +565,19 @@ model ImagingStudy {
   patientId      String
   surgeryId      String?          // Opcional: puede vincularse a una cirugía
   consultationId String?          // Opcional: puede vincularse a una consulta
-  
+
   type           ImagingStudyType
   date           DateTime
   description    String?
-  
+
   // Anotaciones clínicas sobre el estudio
   findings       String?
   labels         Json?            // [{ label: string, coordinates?: {...} }]
-  
+
   // Archivo(s) almacenados en R2
   // Cada file: { key: string (R2 key), name: string, mimeType: string, sizeBytes: number }
   files          Json             @default("[]")
-  
+
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   deletedAt      DateTime?
@@ -596,7 +597,7 @@ model MedicationPrescription {
   patientId      String
   consultationId String?          // Consulta en la que se prescribió
   physicianId    String
-  
+
   drugName       String           // Nombre del medicamento
   drugCode       String?          // Código ATC o CN (Código Nacional)
   activeIngredient String?        // Principio activo
@@ -604,15 +605,15 @@ model MedicationPrescription {
   frequency      String           // Ej: "cada 8 horas"
   route          String?          // Ej: "oral", "tópico nasal", "IV"
   form           String?          // Ej: "comprimidos", "spray nasal"
-  
+
   startDate      DateTime
   endDate        DateTime?        // null = tratamiento crónico
   duration       String?          // Descripción textual: "10 días", "3 meses"
-  
+
   status         MedicationStatus @default(ACTIVE)
   instructions   String?          // Instrucciones especiales para el paciente
   reason         String?          // Indicación / diagnóstico que motiva la prescripción
-  
+
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   deletedAt      DateTime?
@@ -630,35 +631,35 @@ model Report {
   organizationId String
   patientId      String
   physicianId    String
-  
+
   type           ReportType
   status         ReportStatus @default(DRAFT)
-  
+
   // Fuente del informe (polimórfico)
   sourceType     String?      // "consultation" | "surgery" | "manual"
   sourceId       String?      // ID de la consulta o cirugía origen
-  
+
   // Contenido
   title          String
   content        String       // Texto del informe (Markdown o texto plano)
-  
+
   // Codificación clínica incluida en el informe
   diagnosisCodes Json?        // [{ system, code, description, type }]
   procedureCodes Json?        // [{ system, code, description }]
-  
+
   // Generación IA
   aiGenerated    Boolean      @default(false)
   aiModel        String?      // "claude-sonnet-4-20250514"
   aiPromptHash   String?      // Hash del prompt usado (para reproducibilidad y auditoría)
-  
+
   // PDF generado
   pdfUrl         String?      // URL firmada del PDF en R2
   pdfGeneratedAt DateTime?
-  
+
   // Firma
   signedAt       DateTime?
   signedBy       String?      // userId
-  
+
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   deletedAt      DateTime?
@@ -683,20 +684,20 @@ model AuditLog {
   id             String   @id @default(uuid())
   organizationId String
   userId         String
-  
+
   action         String   // "CREATE" | "UPDATE" | "DELETE" | "VIEW" | "EXPORT" | "LOGIN"
   entityType     String   // "Patient" | "Consultation" | "Surgery" | etc.
   entityId       String?  // ID del registro afectado
-  
+
   // Cambios realizados (para UPDATE)
   // { before: {...}, after: {...} } — solo campos modificados
   changes        Json?
-  
+
   // Contexto de la petición
   ipAddress      String?
   userAgent      String?
   requestId      String?  // Para correlación de logs
-  
+
   timestamp      DateTime @default(now())
 
   organization   Organization @relation(fields: [organizationId], references: [id])
@@ -713,18 +714,18 @@ model ConsentRecord {
   id             String      @id @default(uuid())
   organizationId String
   patientId      String
-  
+
   consentType    ConsentType
   grantedAt      DateTime    @default(now())
   revokedAt      DateTime?   // null = consentimiento activo
-  
+
   // Documento firmado (almacenado en R2)
   documentUrl    String?
   signatureData  Json?       // { method: "digital"|"ink", hash: string, ip: string }
-  
+
   // Quién recogió el consentimiento
   collectedBy    String      // userId
-  
+
   notes          String?
 
   organization   Organization @relation(fields: [organizationId], references: [id])
@@ -879,20 +880,20 @@ El límite de 0.5GB se alcanza aproximadamente con 5.000 pacientes. En ese punto
 // packages/contracts/src/clinical-codes.schema.ts
 
 const DiagnosisCodeSchema = z.object({
-  system:       z.enum(['ICD10', 'SNOMED']),
-  code:         z.string(),
-  description:  z.string(),
-  type:         z.enum(['primary', 'secondary', 'differential']),
-  notes:        z.string().optional(),
-})
+  system: z.enum(['ICD10', 'SNOMED']),
+  code: z.string(),
+  description: z.string(),
+  type: z.enum(['primary', 'secondary', 'differential']),
+  notes: z.string().optional(),
+});
 
 const ProcedureCodeSchema = z.object({
-  system:       z.enum(['ICD10PCS', 'SNOMED', 'CPT']),
-  code:         z.string(),
-  description:  z.string(),
-  laterality:   z.enum(['left', 'right', 'bilateral', 'na']).optional(),
-  notes:        z.string().optional(),
-})
+  system: z.enum(['ICD10PCS', 'SNOMED', 'CPT']),
+  code: z.string(),
+  description: z.string(),
+  laterality: z.enum(['left', 'right', 'bilateral', 'na']).optional(),
+  notes: z.string().optional(),
+});
 
 // Ejemplo de diagnosisCodes en una consulta ORL
 const example = [
@@ -914,7 +915,7 @@ const example = [
     description: 'Nasal septum deviation (disorder)',
     type: 'primary',
   },
-]
+];
 ```
 
 ### Catálogo CIE-10 (paquete `@MediCore/clinical-codes`)
@@ -1033,15 +1034,15 @@ const PhysicalExamSchemaV1 = z.object({
   otoscopy: OtoscopySchema.optional(),
   rhinoscopy: RhinoscopySchema.optional(),
   // ...
-})
+});
 
 // v2 — cuando se añade nuevo campo
 const PhysicalExamSchemaV2 = PhysicalExamSchemaV1.extend({
-  vestibularExam: VestibularExamSchema.optional(),  // nuevo en v2
-})
+  vestibularExam: VestibularExamSchema.optional(), // nuevo en v2
+});
 
 // El parser siempre acepta ambas versiones (backwards compatible)
-const PhysicalExamSchema = z.union([PhysicalExamSchemaV2, PhysicalExamSchemaV1])
+const PhysicalExamSchema = z.union([PhysicalExamSchemaV2, PhysicalExamSchemaV1]);
 ```
 
 ---
@@ -1058,14 +1059,14 @@ const demoOrg = {
   name: 'Clínica ORL Dr. Martínez',
   slug: 'clinica-orl-martinez',
   type: 'CLINIC',
-}
+};
 
 // Médico de demo
 const demoPhysician = {
   email: 'physician@demo.MediCore.com',
   name: 'Dr. Carlos Martínez Ruiz',
   role: 'OWNER',
-}
+};
 
 // Pacientes de demo (10 pacientes con historias clínicas completas)
 // Incluyen: consultas, cirugías, imágenes, medicaciones, escalas e informes

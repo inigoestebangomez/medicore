@@ -1,0 +1,104 @@
+// apps/api/src/domain/shared/rbac-permissions.ts
+// Role-based access control permission matrix
+import { MemberRoleSchema } from '@medicore/contracts';
+import type { MemberRole } from '@medicore/contracts';
+
+export enum Action {
+  // Patient
+  CREATE_PATIENT = 'CREATE_PATIENT',
+  READ_PATIENT = 'READ_PATIENT',
+  UPDATE_PATIENT = 'UPDATE_PATIENT',
+  DELETE_PATIENT = 'DELETE_PATIENT',
+  EXPORT_PATIENT = 'EXPORT_PATIENT',
+
+  // Consultation
+  CREATE_CONSULTATION = 'CREATE_CONSULTATION',
+  READ_CONSULTATION = 'READ_CONSULTATION',
+  UPDATE_CONSULTATION_OWN = 'UPDATE_CONSULTATION_OWN',
+  UPDATE_CONSULTATION_ANY = 'UPDATE_CONSULTATION_ANY',
+  DELETE_CONSULTATION = 'DELETE_CONSULTATION',
+
+  // Surgery
+  CREATE_SURGERY = 'CREATE_SURGERY',
+  READ_SURGERY = 'READ_SURGERY',
+  UPDATE_SURGERY_OWN = 'UPDATE_SURGERY_OWN',
+  UPDATE_SURGERY_ANY = 'UPDATE_SURGERY_ANY',
+  DELETE_SURGERY = 'DELETE_SURGERY',
+
+  // Organization
+  VIEW_ORGANIZATION = 'VIEW_ORGANIZATION',
+  UPDATE_ORGANIZATION = 'UPDATE_ORGANIZATION',
+  DELETE_ORGANIZATION = 'DELETE_ORGANIZATION',
+
+  // Members
+  MANAGE_MEMBERS = 'MANAGE_MEMBERS',
+  VIEW_MEMBERS = 'VIEW_MEMBERS',
+
+  // Invitations
+  CREATE_INVITATION = 'CREATE_INVITATION',
+  ACCEPT_INVITATION = 'ACCEPT_INVITATION',
+
+  // Reports
+  CREATE_REPORT = 'CREATE_REPORT',
+  READ_REPORT = 'READ_REPORT',
+  SIGN_REPORT = 'SIGN_REPORT',
+
+  // Audit
+  VIEW_AUDIT_LOG = 'VIEW_AUDIT_LOG',
+}
+
+const { OWNER, PHYSICIAN, VIEWER, ADMIN } = MemberRoleSchema.Enum;
+
+/**
+ * Permission matrix: each role maps to a set of actions it CAN perform.
+ * Omitted actions are implicitly denied.
+ */
+export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
+  [OWNER]: new Set<Action>([
+    Action.CREATE_PATIENT, Action.READ_PATIENT, Action.UPDATE_PATIENT,
+    Action.DELETE_PATIENT, Action.EXPORT_PATIENT,
+    Action.CREATE_CONSULTATION, Action.READ_CONSULTATION,
+    Action.UPDATE_CONSULTATION_OWN, Action.UPDATE_CONSULTATION_ANY,
+    Action.DELETE_CONSULTATION,
+    Action.CREATE_SURGERY, Action.READ_SURGERY,
+    Action.UPDATE_SURGERY_OWN, Action.UPDATE_SURGERY_ANY,
+    Action.DELETE_SURGERY,
+    Action.VIEW_ORGANIZATION, Action.UPDATE_ORGANIZATION, Action.DELETE_ORGANIZATION,
+    Action.MANAGE_MEMBERS, Action.VIEW_MEMBERS,
+    Action.CREATE_INVITATION, Action.ACCEPT_INVITATION,
+    Action.CREATE_REPORT, Action.READ_REPORT, Action.SIGN_REPORT,
+    Action.VIEW_AUDIT_LOG,
+  ]),
+
+  [PHYSICIAN]: new Set<Action>([
+    Action.CREATE_PATIENT, Action.READ_PATIENT, Action.UPDATE_PATIENT,
+    Action.DELETE_PATIENT, Action.EXPORT_PATIENT,
+    Action.CREATE_CONSULTATION, Action.READ_CONSULTATION,
+    Action.UPDATE_CONSULTATION_OWN,
+    Action.DELETE_CONSULTATION,
+    Action.CREATE_SURGERY, Action.READ_SURGERY,
+    Action.UPDATE_SURGERY_OWN,
+    Action.DELETE_SURGERY,
+    Action.VIEW_ORGANIZATION, Action.VIEW_MEMBERS,
+    Action.ACCEPT_INVITATION,
+    Action.CREATE_REPORT, Action.READ_REPORT, Action.SIGN_REPORT,
+  ]),
+
+  [VIEWER]: new Set<Action>([
+    Action.READ_PATIENT, Action.READ_CONSULTATION, Action.READ_SURGERY,
+    Action.VIEW_ORGANIZATION, Action.VIEW_MEMBERS,
+    Action.READ_REPORT,
+  ]),
+
+  [ADMIN]: new Set<Action>([
+    Action.VIEW_ORGANIZATION, Action.UPDATE_ORGANIZATION,
+    Action.MANAGE_MEMBERS, Action.VIEW_MEMBERS,
+    Action.CREATE_INVITATION, Action.ACCEPT_INVITATION,
+    Action.VIEW_AUDIT_LOG,
+    Action.READ_PATIENT,
+  ]),
+};
+
+export function hasPermission(role: MemberRole, action: Action): boolean {
+  return PERMISSIONS[role]?.has(action) ?? false;
+}

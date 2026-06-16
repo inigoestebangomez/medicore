@@ -1,0 +1,23 @@
+{
+  "name": "@medicore/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "build": "tsc --build"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@medicore/eslint-config": "workspace:*",
+    "@medicore/tsconfig": "workspace:*",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

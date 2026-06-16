@@ -1,4 +1,5 @@
 # 01-architecture.md
+
 ## MediCore — Arquitectura del Sistema
 
 > **Versión:** 1.0 | **Estado:** Aprobado | **Fecha:** 2026-06
@@ -160,11 +161,13 @@ Cada ADR documenta una decisión relevante con su contexto, alternativas conside
 **Decisión:** Usar NestJS con TypeScript en el backend.
 
 **Alternativas consideradas:**
+
 - Fastify + estructura propia: más velocidad inicial, menos estructura garantizada
 - Express: demasiado permisivo para un dominio complejo
 - Hono: excelente rendimiento, pero ecosistema más joven y menos tooling para DI y testing
 
 **Consecuencias:**
+
 - (+) Arquitectura modular forzada por el framework
 - (+) Inyección de dependencias nativa — facilita enormemente el testing (mocks)
 - (+) Decoradores para guards, interceptores y pipes reducen boilerplate de seguridad
@@ -183,11 +186,13 @@ Cada ADR documenta una decisión relevante con su contexto, alternativas conside
 **Decisión:** Implementar Clean Architecture en 4 capas (Domain → Application → Infrastructure → API) con CQRS simplificado en la capa de aplicación (Commands para escritura, Queries para lectura), sin event bus complejo en el MVP.
 
 **Alternativas consideradas:**
+
 - Arquitectura en capas tradicional (MVC): más simple, pero mezcla responsabilidades
 - CQRS + Event Sourcing completo: excesivo para el MVP, añade complejidad operacional sin beneficio claro aún
 - Arquitectura hexagonal pura: equivalente en concepto, terminología diferente
 
 **Consecuencias:**
+
 - (+) Use cases son clases JavaScript puras — testeables con Jest sin ningún mock de framework
 - (+) Cambiar Prisma por otro ORM no afecta al dominio ni a la aplicación
 - (+) Cambiar NestJS tampoco afecta al dominio
@@ -205,11 +210,13 @@ Cada ADR documenta una decisión relevante con su contexto, alternativas conside
 **Decisión:** Todas las entidades de dominio clínico incluyen `organizationId` desde el día 1. En el MVP solo existe una organización por despliegue. El middleware de autorización filtra TODAS las queries por `organizationId` del usuario autenticado.
 
 **Alternativas consideradas:**
+
 - Schema separado por tenant (schema-per-tenant): mejor aislamiento, mucho más complejo de operar
 - Base de datos separada por tenant: máximo aislamiento, inviable en MVP de coste 0
 - Sin multi-tenancy (añadir después): genera deuda técnica de migración costosa
 
 **Consecuencias:**
+
 - (+) Zero re-arquitectura cuando se añadan nuevos tenants
 - (+) Cumplimiento RGPD de aislamiento de datos desde el inicio
 - (+) Un médico puede pertenecer a varias organizaciones (liberal + hospital)
@@ -225,6 +232,7 @@ Cada ADR documenta una decisión relevante con su contexto, alternativas conside
 **Contexto:** Coste operacional 0€ en MVP. La solución debe ser mantenible sin DevOps dedicado, con capacidad de migración cuando crezca.
 
 **Decisión:**
+
 - Frontend: Vercel (gratis, SSR nativo para Next.js)
 - Backend API: Railway (free tier, $5/mes de créditos)
 - Base de datos: Neon.tech (PostgreSQL serverless, Frankfurt, gratis hasta 0.5GB)
@@ -232,11 +240,13 @@ Cada ADR documenta una decisión relevante con su contexto, alternativas conside
 - Cache/Queue: Upstash Redis (gratis hasta 10k req/día)
 
 **Plan de migración cuando escale:**
+
 - Fase 1 (primeros usuarios): mantener stack actual, solo escalar Neon y Railway
 - Fase 2 (>100 organizaciones): migrar DB a Hetzner VPS con PostgreSQL gestionado
 - Fase 3 (>1000 organizaciones): Kubernetes en Hetzner o equivalente europeo
 
 **Consecuencias:**
+
 - (+) 0€ hasta tener usuarios reales
 - (+) Todo en Europa (Neon Frankfurt, Cloudflare EU) — RGPD compliant desde el inicio
 - (-) Railway puede tener cold starts en el free tier
@@ -253,11 +263,13 @@ Cada ADR documenta una decisión relevante con su contexto, alternativas conside
 **Decisión:** Auth.js v5 (NextAuth) con proveedores OAuth 2.0 (Google Workspace, Microsoft Entra ID). El token de sesión se almacena en una cookie HttpOnly firmada. El backend valida el JWT en cada petición.
 
 **Alternativas consideradas:**
+
 - Clerk: excelente DX, pero SaaS externo con datos de identidad fuera de nuestro control
 - Supabase Auth: buena opción, pero introduce acoplamiento a Supabase
 - Auth0: costoso a escala, y los datos de identidad salen de la UE
 
 **Consecuencias:**
+
 - (+) Las credenciales nunca pasan por nuestro sistema
 - (+) MFA delegado al proveedor OAuth (Google/Microsoft ya lo gestionan)
 - (+) Open source — sin lock-in ni coste
@@ -275,6 +287,7 @@ Cada ADR documenta una decisión relevante con su contexto, alternativas conside
 **Decisión:** Los schemas Zod viven en el paquete `@MediCore/contracts` del monorepo. El frontend los usa para validar formularios (React Hook Form + Zod). El backend los usa como pipes de validación de NestJS. Los tipos TypeScript se infieren de los schemas (`z.infer<typeof PatientSchema>`).
 
 **Consecuencias:**
+
 - (+) Una sola definición de la forma de los datos para cliente y servidor
 - (+) Los tests de contrato son triviales — mismo schema en ambos lados
 - (+) Errores de validación consistentes en cliente y servidor
@@ -305,9 +318,9 @@ Cada entidad de dominio tiene una interfaz de repositorio en la capa de dominio 
 ```typescript
 // Domain layer — solo interfaz, sin Prisma
 interface IPatientRepository {
-  findById(id: string, organizationId: string): Promise<Patient | null>
-  save(patient: Patient): Promise<void>
-  delete(id: string, organizationId: string): Promise<void>
+  findById(id: string, organizationId: string): Promise<Patient | null>;
+  save(patient: Patient): Promise<void>;
+  delete(id: string, organizationId: string): Promise<void>;
 }
 
 // Infrastructure layer — implementación Prisma
@@ -317,7 +330,7 @@ class PrismaPatientRepository implements IPatientRepository {
 
 // Test — implementación en memoria, sin DB
 class InMemoryPatientRepository implements IPatientRepository {
-  private patients: Map<string, Patient> = new Map()
+  private patients: Map<string, Patient> = new Map();
   // ...
 }
 ```
@@ -595,12 +608,12 @@ Browser
 
 ### Entornos
 
-| Entorno | Frontend | Backend | Base de datos | Propósito |
-|---|---|---|---|---|
-| `development` | localhost:3000 | localhost:3001 | Neon (branch `dev`) | Desarrollo local |
-| `preview` | Vercel preview | Railway PR env | Neon (branch dinámica) | Review de PRs |
-| `staging` | Vercel staging | Railway staging | Neon (branch `staging`) | QA pre-producción |
-| `production` | Vercel prod | Railway prod | Neon (branch `main`) | Usuarios reales |
+| Entorno       | Frontend       | Backend         | Base de datos           | Propósito         |
+| ------------- | -------------- | --------------- | ----------------------- | ----------------- |
+| `development` | localhost:3000 | localhost:3001  | Neon (branch `dev`)     | Desarrollo local  |
+| `preview`     | Vercel preview | Railway PR env  | Neon (branch dinámica)  | Review de PRs     |
+| `staging`     | Vercel staging | Railway staging | Neon (branch `staging`) | QA pre-producción |
+| `production`  | Vercel prod    | Railway prod    | Neon (branch `main`)    | Usuarios reales   |
 
 ### Variables de entorno por capa
 
@@ -650,12 +663,12 @@ Capa 7 — Storage:       R2 con URLs firmadas (pre-signed, TTL corto). Sin acce
 
 ### Roles iniciales (RBAC)
 
-| Rol | Descripción | Permisos |
-|---|---|---|
-| `owner` | Propietario del workspace | Todo, incluida gestión de facturación y miembros |
-| `physician` | Médico con acceso clínico completo | CRUD sobre todos los módulos clínicos |
-| `viewer` | Solo lectura (p.ej. residente supervisado) | GET sobre módulos clínicos |
-| `admin` | Gestión administrativa del workspace | Gestión de miembros y configuración, sin datos clínicos |
+| Rol         | Descripción                                | Permisos                                                |
+| ----------- | ------------------------------------------ | ------------------------------------------------------- |
+| `owner`     | Propietario del workspace                  | Todo, incluida gestión de facturación y miembros        |
+| `physician` | Médico con acceso clínico completo         | CRUD sobre todos los módulos clínicos                   |
+| `viewer`    | Solo lectura (p.ej. residente supervisado) | GET sobre módulos clínicos                              |
+| `admin`     | Gestión administrativa del workspace       | Gestión de miembros y configuración, sin datos clínicos |
 
 ---
 
@@ -700,16 +713,16 @@ Un médico autónomo crea su workspace de tipo `solo_practice`. Es el único mie
 
 Estas decisiones NO se toman en el MVP para evitar sobreingeniería. Se documentan aquí para que sean explícitas y no se implementen por inercia.
 
-| Decisión | Motivo del aplazamiento | Trigger para revisar |
-|---|---|---|
-| Event Sourcing | Complejidad operacional sin beneficio claro en MVP | >10k eventos/día o necesidad de replay de eventos |
-| PACS / HL7 FHIR | Requiere acuerdos institucionales, meses de trabajo | Primer hospital interesado |
-| GraphQL | REST es suficiente; GraphQL añade complejidad sin beneficio aún | >5 clients diferentes con necesidades divergentes |
-| Schema-per-tenant | Máximo aislamiento RGPD pero inviable a coste 0 | Requisito contractual de aislamiento total |
-| Microservicios | Monolito modular escala bien hasta millones de usuarios | >50 desarrolladores o equipos completamente independientes |
-| CDN para imágenes médicas | Cloudflare R2 es suficiente para MVP | Latencia de carga de imágenes >3s en producción |
-| Búsqueda full-text avanzada | PostgreSQL FTS es suficiente | >500k registros o necesidad de búsqueda semántica |
+| Decisión                    | Motivo del aplazamiento                                         | Trigger para revisar                                       |
+| --------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------- |
+| Event Sourcing              | Complejidad operacional sin beneficio claro en MVP              | >10k eventos/día o necesidad de replay de eventos          |
+| PACS / HL7 FHIR             | Requiere acuerdos institucionales, meses de trabajo             | Primer hospital interesado                                 |
+| GraphQL                     | REST es suficiente; GraphQL añade complejidad sin beneficio aún | >5 clients diferentes con necesidades divergentes          |
+| Schema-per-tenant           | Máximo aislamiento RGPD pero inviable a coste 0                 | Requisito contractual de aislamiento total                 |
+| Microservicios              | Monolito modular escala bien hasta millones de usuarios         | >50 desarrolladores o equipos completamente independientes |
+| CDN para imágenes médicas   | Cloudflare R2 es suficiente para MVP                            | Latencia de carga de imágenes >3s en producción            |
+| Búsqueda full-text avanzada | PostgreSQL FTS es suficiente                                    | >500k registros o necesidad de búsqueda semántica          |
 
 ---
 
-*Siguiente documento: `02-data-schema.md` — Modelo de datos completo, schema Prisma, índices, políticas de retención RGPD.*
+_Siguiente documento: `02-data-schema.md` — Modelo de datos completo, schema Prisma, índices, políticas de retención RGPD._

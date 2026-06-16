@@ -1,4 +1,5 @@
 # 05-api-spec.md
+
 ## MediCore — Especificación de API REST
 
 > **Versión:** 1.0 | **Estado:** Aprobado | **Fecha:** 2026-06
@@ -33,6 +34,7 @@
 ## 1. Principios Generales
 
 **Base URL:**
+
 ```
 Production:  https://api.medicore.app/v1
 Staging:     https://api-staging.medicore.app/v1
@@ -46,6 +48,7 @@ Development: http://localhost:3001/v1
 **Idempotencia:** Los endpoints `PUT` y `DELETE` son idempotentes. Los `POST` no lo son, salvo los indicados explícitamente con el header `Idempotency-Key`.
 
 **Diseño REST estricto:**
+
 - `GET` — lectura, nunca modifica estado
 - `POST` — creación de nuevo recurso
 - `PUT` — sustitución completa del recurso (se envía el objeto completo)
@@ -91,13 +94,13 @@ El JWT no se envía como `Authorization: Bearer` — solo via cookie HttpOnly pa
 
 ```json
 {
-  "sub":            "user-uuid-here",
-  "email":          "medico@clinica.com",
-  "name":           "Dr. Carlos Martínez",
+  "sub": "user-uuid-here",
+  "email": "medico@clinica.com",
+  "name": "Dr. Carlos Martínez",
   "organizationId": "org-uuid-here",
-  "role":           "PHYSICIAN",
-  "iat":            1718000000,
-  "exp":            1718000900
+  "role": "PHYSICIAN",
+  "iat": 1718000000,
+  "exp": 1718000900
 }
 ```
 
@@ -144,6 +147,7 @@ Todos los endpoints protegidos llevan los tres guards en orden. No existe un end
 ### Campos de fecha
 
 Todas las fechas se transmiten en formato ISO 8601 UTC:
+
 ```
 "2026-06-09T10:30:00.000Z"
 ```
@@ -167,11 +171,11 @@ Los campos de datos de contacto del paciente (`phone`, `email`, `address`, `idDo
 ```json
 {
   "statusCode": 422,
-  "error":      "VALIDATION_ERROR",
-  "message":    "El campo birthDate es obligatorio",
+  "error": "VALIDATION_ERROR",
+  "message": "El campo birthDate es obligatorio",
   "details": [
     {
-      "field":   "birthDate",
+      "field": "birthDate",
       "message": "Required"
     }
   ],
@@ -232,6 +236,7 @@ to          ISO date  Filtro de fecha fin
 ```
 
 Ejemplo:
+
 ```http
 GET /v1/patients?search=garcia&page=1&pageSize=20&sortBy=lastName&sortOrder=asc
 GET /v1/consultations?patientId=uuid&from=2026-01-01&to=2026-06-30
@@ -256,6 +261,7 @@ GET  /analytics/*             30 req          1 minuto
 ```
 
 Al superar el límite, la API responde con:
+
 ```http
 HTTP/1.1 429 Too Many Requests
 Retry-After: 47
@@ -275,11 +281,13 @@ Cambia la organización activa en la sesión. Rota el JWT con el nuevo `organiza
 **Auth:** Requiere JWT válido (cualquier rol)
 
 **Request:**
+
 ```json
 { "organizationId": "org-uuid-here" }
 ```
 
 **Response `200`:**
+
 ```json
 {
   "data": {
@@ -291,6 +299,7 @@ Cambia la organización activa en la sesión. Rota el JWT con el nuevo `organiza
 ```
 
 **Errores:**
+
 - `403 FORBIDDEN` — el usuario no es miembro de la organización solicitada
 
 ---
@@ -312,20 +321,21 @@ Devuelve los datos del usuario autenticado y sus membresías en organizaciones.
 **Auth:** Requiere JWT válido
 
 **Response `200`:**
+
 ```json
 {
   "data": {
-    "id":        "user-uuid",
-    "email":     "medico@clinica.com",
-    "name":      "Dr. Carlos Martínez",
+    "id": "user-uuid",
+    "email": "medico@clinica.com",
+    "name": "Dr. Carlos Martínez",
     "avatarUrl": "https://...",
     "memberships": [
       {
-        "organizationId":   "org-uuid-1",
+        "organizationId": "org-uuid-1",
         "organizationName": "Clínica ORL Dr. Martínez",
         "organizationSlug": "clinica-orl-martinez",
-        "role":             "OWNER",
-        "isActive":         true
+        "role": "OWNER",
+        "isActive": true
       }
     ]
   }
@@ -343,28 +353,31 @@ Crea una nueva organización. El usuario autenticado se convierte en `OWNER`.
 **Auth:** Requiere JWT válido
 
 **Request:**
+
 ```json
 {
-  "name":    "Clínica ORL Martínez",
-  "type":    "CLINIC",
+  "name": "Clínica ORL Martínez",
+  "type": "CLINIC",
   "logoUrl": "https://..."
 }
 ```
 
 **Validaciones Zod:**
+
 - `name`: string, min 2, max 100, requerido
 - `type`: enum `CLINIC | SOLO_PRACTICE | HOSPITAL_DEPT`, requerido
 - `logoUrl`: url válida, opcional
 
 **Response `201`:**
+
 ```json
 {
   "data": {
-    "id":        "org-uuid",
-    "name":      "Clínica ORL Martínez",
-    "slug":      "clinica-orl-martinez",
-    "type":      "CLINIC",
-    "plan":      "FREE",
+    "id": "org-uuid",
+    "name": "Clínica ORL Martínez",
+    "slug": "clinica-orl-martinez",
+    "type": "CLINIC",
+    "plan": "FREE",
     "createdAt": "2026-06-09T10:00:00.000Z"
   }
 }
@@ -379,16 +392,17 @@ Devuelve los datos de la organización activa.
 **Auth:** `OWNER` | `ADMIN`
 
 **Response `200`:**
+
 ```json
 {
   "data": {
-    "id":        "org-uuid",
-    "name":      "Clínica ORL Martínez",
-    "slug":      "clinica-orl-martinez",
-    "type":      "CLINIC",
-    "plan":      "FREE",
-    "settings":  { "formTemplates": [], "defaultScale": "SNOT_22" },
-    "logoUrl":   null,
+    "id": "org-uuid",
+    "name": "Clínica ORL Martínez",
+    "slug": "clinica-orl-martinez",
+    "type": "CLINIC",
+    "plan": "FREE",
+    "settings": { "formTemplates": [], "defaultScale": "SNOT_22" },
+    "logoUrl": null,
     "createdAt": "2026-06-09T10:00:00.000Z",
     "memberCount": 3
   }
@@ -404,14 +418,15 @@ Lista los miembros de la organización.
 **Auth:** `OWNER` | `ADMIN`
 
 **Response `200`:**
+
 ```json
 {
   "data": [
     {
-      "userId":   "user-uuid",
-      "name":     "Dr. Carlos Martínez",
-      "email":    "carlos@clinica.com",
-      "role":     "OWNER",
+      "userId": "user-uuid",
+      "name": "Dr. Carlos Martínez",
+      "email": "carlos@clinica.com",
+      "role": "OWNER",
       "joinedAt": "2026-01-15T00:00:00.000Z"
     }
   ],
@@ -428,21 +443,23 @@ Invita a un nuevo miembro. Envía email con token de invitación (TTL 72h).
 **Auth:** `OWNER` | `ADMIN`
 
 **Request:**
+
 ```json
 {
   "email": "residente@clinica.com",
-  "role":  "VIEWER"
+  "role": "VIEWER"
 }
 ```
 
 **Response `201`:**
+
 ```json
 {
   "data": {
     "invitationId": "inv-uuid",
-    "email":        "residente@clinica.com",
-    "role":         "VIEWER",
-    "expiresAt":    "2026-06-12T10:00:00.000Z"
+    "email": "residente@clinica.com",
+    "role": "VIEWER",
+    "expiresAt": "2026-06-12T10:00:00.000Z"
   }
 }
 ```
@@ -456,11 +473,13 @@ Modifica el rol de un miembro.
 **Auth:** `OWNER`
 
 **Request:**
+
 ```json
 { "role": "PHYSICIAN" }
 ```
 
 **Errores:**
+
 - `409 LAST_OWNER_REMOVAL` — intento de degradar al último OWNER (BR-ORG-003)
 
 ---
@@ -472,6 +491,7 @@ Elimina a un miembro de la organización.
 **Auth:** `OWNER` | `ADMIN`
 
 **Errores:**
+
 - `409 LAST_OWNER_REMOVAL` — si el miembro es el único OWNER
 
 **Response `204 No Content`**
@@ -487,6 +507,7 @@ Lista los pacientes de la organización activa.
 **Auth:** `OWNER` | `PHYSICIAN` | `VIEWER`
 
 **Query params:**
+
 ```
 search      string    Búsqueda en lastName, firstName, nhc, idDocument
 page        integer
@@ -496,6 +517,7 @@ sortOrder   "asc" | "desc"                      default: "asc"
 ```
 
 **Response `200`:**
+
 ```json
 {
   "data": [
@@ -516,7 +538,7 @@ sortOrder   "asc" | "desc"                      default: "asc"
 }
 ```
 
-*Nota: `phone`, `email`, `address`, `idDocument` no se incluyen en el listado — solo en el detalle.*
+_Nota: `phone`, `email`, `address`, `idDocument` no se incluyen en el listado — solo en el detalle._
 
 ---
 
@@ -527,22 +549,24 @@ Crea un nuevo paciente.
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:**
+
 ```json
 {
   "firstName": "Ana",
-  "lastName":  "García López",
+  "lastName": "García López",
   "birthDate": "1984-03-12",
-  "sex":       "FEMALE",
+  "sex": "FEMALE",
   "idDocument": "12345678X",
-  "idDocType":  "DNI",
-  "phone":      "+34 612 345 678",
-  "email":      "ana.garcia@email.com",
-  "bloodType":  "O_POS",
-  "nhc":        "EXT-2024-001"
+  "idDocType": "DNI",
+  "phone": "+34 612 345 678",
+  "email": "ana.garcia@email.com",
+  "bloodType": "O_POS",
+  "nhc": "EXT-2024-001"
 }
 ```
 
 **Validaciones Zod:**
+
 - `firstName`: string min 1, max 100, requerido
 - `lastName`: string min 1, max 150, requerido
 - `birthDate`: fecha ISO, no futura, requerido
@@ -552,23 +576,26 @@ Crea un nuevo paciente.
 - `nhc`: string opcional — si se omite, el servidor genera uno automático (BR-PAT-001)
 
 **Response `201`:**
+
 ```json
 {
   "data": {
-    "id":        "patient-uuid",
-    "nhc":       "2026-00035",
+    "id": "patient-uuid",
+    "nhc": "2026-00035",
     "firstName": "Ana",
-    "lastName":  "García López",
+    "lastName": "García López",
     "birthDate": "1984-03-12",
-    "sex":       "FEMALE",
-    "age":       42,
+    "sex": "FEMALE",
+    "age": 42,
     "createdAt": "2026-06-09T10:30:00.000Z"
   }
 }
 ```
 
 **Errores:**
+
 - `409 DUPLICATE_PATIENT` — posibles duplicados detectados. El body incluye los pacientes similares:
+
 ```json
 {
   "statusCode": 409,
@@ -576,7 +603,12 @@ Crea un nuevo paciente.
   "message": "Se encontraron pacientes con datos similares",
   "details": {
     "similarPatients": [
-      { "id": "uuid", "nhc": "2026-00010", "fullName": "Ana García López", "birthDate": "1984-03-12" }
+      {
+        "id": "uuid",
+        "nhc": "2026-00010",
+        "fullName": "Ana García López",
+        "birthDate": "1984-03-12"
+      }
     ],
     "confirmationRequired": true
   }
@@ -584,6 +616,7 @@ Crea un nuevo paciente.
 ```
 
 Para confirmar que es un paciente nuevo a pesar de los duplicados, reenviar la petición con el header:
+
 ```http
 X-Confirm-Duplicate: true
 ```
@@ -597,41 +630,42 @@ Devuelve el detalle completo de un paciente, incluyendo datos de contacto.
 **Auth:** `OWNER` | `PHYSICIAN` | `VIEWER` (VIEWER recibe respuesta sin datos de contacto)
 
 **Response `200`:**
+
 ```json
 {
   "data": {
-    "id":              "patient-uuid",
-    "nhc":             "2026-00034",
-    "firstName":       "Ana",
-    "lastName":        "García López",
-    "birthDate":       "1984-03-12",
-    "sex":             "FEMALE",
-    "age":             42,
-    "idDocument":      "12345678X",
-    "idDocType":       "DNI",
-    "phone":           "+34 612 345 678",
-    "email":           "ana.garcia@email.com",
-    "bloodType":       "O_POS",
+    "id": "patient-uuid",
+    "nhc": "2026-00034",
+    "firstName": "Ana",
+    "lastName": "García López",
+    "birthDate": "1984-03-12",
+    "sex": "FEMALE",
+    "age": 42,
+    "idDocument": "12345678X",
+    "idDocType": "DNI",
+    "phone": "+34 612 345 678",
+    "email": "ana.garcia@email.com",
+    "bloodType": "O_POS",
     "address": {
-      "street":     "Calle Mayor 1",
-      "city":       "Madrid",
-      "province":   "Madrid",
+      "street": "Calle Mayor 1",
+      "city": "Madrid",
+      "province": "Madrid",
       "postalCode": "28001",
-      "country":    "ES"
+      "country": "ES"
     },
     "emergencyContact": {
-      "name":         "Pedro García",
+      "name": "Pedro García",
       "relationship": "Cónyuge",
-      "phone":        "+34 612 999 888"
+      "phone": "+34 612 999 888"
     },
-    "notes":    null,
+    "notes": null,
     "allergies": [
       {
-        "id":          "allergy-uuid",
-        "substance":   "Penicilina",
-        "reaction":    "Anafilaxia",
-        "severity":    "ANAPHYLAXIS",
-        "status":      "ACTIVE"
+        "id": "allergy-uuid",
+        "substance": "Penicilina",
+        "reaction": "Anafilaxia",
+        "severity": "ANAPHYLAXIS",
+        "status": "ACTIVE"
       }
     ],
     "createdAt": "2026-01-15T09:00:00.000Z",
@@ -661,6 +695,7 @@ Soft delete del paciente.
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Errores:**
+
 - `409 CONFLICT` — el paciente tiene cirugías en estado `SCHEDULED` (BR-PAT-005)
 
 **Response `204 No Content`**
@@ -674,14 +709,15 @@ Añade una alergia al paciente.
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:**
+
 ```json
 {
-  "substance":     "Ibuprofeno",
+  "substance": "Ibuprofeno",
   "substanceCode": "387207008",
-  "reaction":      "Urticaria generalizada",
-  "severity":      "MODERATE",
-  "status":        "ACTIVE",
-  "onsetDate":     "2022-05-10"
+  "reaction": "Urticaria generalizada",
+  "severity": "MODERATE",
+  "status": "ACTIVE",
+  "onsetDate": "2022-05-10"
 }
 ```
 
@@ -700,6 +736,7 @@ Lista las consultas de un paciente ordenadas por fecha descendente.
 **Query params:** `page`, `pageSize`, `from`, `to`, `type`
 
 **Response `200`:**
+
 ```json
 {
   "data": [
@@ -730,10 +767,11 @@ Crea una nueva consulta.
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:**
+
 ```json
 {
-  "date":           "2026-06-09T10:00:00.000Z",
-  "type":           "FOLLOW_UP",
+  "date": "2026-06-09T10:00:00.000Z",
+  "type": "FOLLOW_UP",
   "chiefComplaint": "Paciente refiere mejoría de la obstrucción nasal bilateral.",
   "currentIllness": "Intervenida de septoplastia hace 3 meses...",
   "physicalExam": {
@@ -741,17 +779,23 @@ Crea una nueva consulta.
     "otoscopy_right_membrane": "intact",
     "otoscopy_left_membrane": "intact"
   },
-  "assessment":     "Buena evolución post-septoplastia. Discreta hipertrofia de cornetes.",
+  "assessment": "Buena evolución post-septoplastia. Discreta hipertrofia de cornetes.",
   "diagnosisCodes": [
-    { "system": "ICD10", "code": "J32.9", "description": "Rinosinusitis crónica, no especificada", "type": "primary" }
+    {
+      "system": "ICD10",
+      "code": "J32.9",
+      "description": "Rinosinusitis crónica, no especificada",
+      "type": "primary"
+    }
   ],
-  "plan":           "Continuar lavados nasales. Alta provisional.",
-  "followUpDate":   "2026-09-15",
+  "plan": "Continuar lavados nasales. Alta provisional.",
+  "followUpDate": "2026-09-15",
   "generateReport": true
 }
 ```
 
 **Validaciones Zod:**
+
 - `date`: ISO date, no más de 24h en el futuro (BR-CON-002)
 - `chiefComplaint`: string requerido, min 3, max 2000
 - `diagnosisCodes`: array, si presente cada item debe tener `system`, `code`, `description`, `type` (BR-CON-006)
@@ -759,14 +803,15 @@ Crea una nueva consulta.
 - `generateReport`: boolean opcional, default false
 
 **Response `201`:**
+
 ```json
 {
   "data": {
-    "id":        "consultation-uuid",
-    "date":      "2026-06-09T10:00:00.000Z",
-    "type":      "FOLLOW_UP",
+    "id": "consultation-uuid",
+    "date": "2026-06-09T10:00:00.000Z",
+    "type": "FOLLOW_UP",
     "patientId": "patient-uuid",
-    "reportId":  "report-uuid",
+    "reportId": "report-uuid",
     "reportStatus": "DRAFT",
     "createdAt": "2026-06-09T10:05:00.000Z"
   }
@@ -822,31 +867,33 @@ Soft delete de una consulta.
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:**
+
 ```json
 {
-  "date":           "2026-03-20T08:30:00.000Z",
-  "status":         "COMPLETED",
-  "procedureType":  "Septoplastia + CENS bilateral",
+  "date": "2026-03-20T08:30:00.000Z",
+  "status": "COMPLETED",
+  "procedureType": "Septoplastia + CENS bilateral",
   "procedureCodes": [
     { "system": "ICD10PCS", "code": "09UM0ZZ", "description": "Repair Nasal Septum, Open Approach" }
   ],
-  "asa":            "ASA_I",
+  "asa": "ASA_I",
   "anesthesiaType": "General",
-  "duration":       95,
+  "duration": 95,
   "technique": {
-    "approach":       "endonasal",
-    "turbinoplasty":  true,
+    "approach": "endonasal",
+    "turbinoplasty": true,
     "turbinoplastyType": "submucosal",
-    "hemostasis":     "bipolar",
-    "packing":        "bilateral_merocel"
+    "hemostasis": "bipolar",
+    "packing": "bilateral_merocel"
   },
-  "findings":       "Desviación septal caudal con componente óseo. Cornetes inferiores hipertróficos.",
-  "complications":  null,
-  "postOpNotes":    "Buena hemostasia. Paciente extubada sin incidencias."
+  "findings": "Desviación septal caudal con componente óseo. Cornetes inferiores hipertróficos.",
+  "complications": null,
+  "postOpNotes": "Buena hemostasia. Paciente extubada sin incidencias."
 }
 ```
 
 **Validaciones:**
+
 - `asa`: requerido si `status = COMPLETED` (BR-SUR-002)
 - `status`: solo transiciones permitidas (BR-SUR-003)
 - `date`: si `status = COMPLETED`, no puede ser futura (BR-SUR-004)
@@ -860,6 +907,7 @@ Soft delete de una consulta.
 Actualización parcial. Si se modifica una cirugía `COMPLETED`, requiere el campo `editReason` (BR-SUR-005).
 
 **Request con `editReason`:**
+
 ```json
 {
   "duration": 105,
@@ -878,14 +926,16 @@ Endpoint dedicado para cambios de estado (transición explícita).
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:**
+
 ```json
 {
-  "status":        "CANCELLED",
-  "statusReason":  "Paciente solicita aplazamiento por motivos personales"
+  "status": "CANCELLED",
+  "statusReason": "Paciente solicita aplazamiento por motivos personales"
 }
 ```
 
 **Errores:**
+
 - `422 SURGERY_INVALID_TRANSITION` — transición no permitida (BR-SUR-003)
 
 ---
@@ -907,12 +957,13 @@ Crea un registro de estudio de imagen con metadatos. Los archivos se suben por s
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:**
+
 ```json
 {
-  "type":           "CT_SCAN",
-  "date":           "2025-11-15",
-  "description":    "TAC senos paranasales con contraste",
-  "surgeryId":      null,
+  "type": "CT_SCAN",
+  "date": "2025-11-15",
+  "description": "TAC senos paranasales con contraste",
+  "surgeryId": null,
   "consultationId": "consultation-uuid"
 }
 ```
@@ -928,17 +979,20 @@ Sube uno o más archivos a un estudio existente. Endpoint `multipart/form-data`.
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:** `Content-Type: multipart/form-data`
+
 ```
 files[]:   File   (uno o más archivos — BR-IMG-001, BR-IMG-002)
 ```
 
 **Proceso:**
+
 1. Backend valida tipo MIME y tamaño
 2. Genera clave R2: `{orgId}/{patientId}/imaging/{studyId}/{timestamp}-{filename}`
 3. Sube a Cloudflare R2
 4. Actualiza `ImagingStudy.files` añadiendo los metadatos de cada archivo
 
 **Response `200`:**
+
 ```json
 {
   "data": {
@@ -946,9 +1000,9 @@ files[]:   File   (uno o más archivos — BR-IMG-001, BR-IMG-002)
     "filesAdded": 3,
     "files": [
       {
-        "key":       "org-uuid/patient-uuid/imaging/study-uuid/1718000000-scan_001.dcm",
-        "name":      "scan_001.dcm",
-        "mimeType":  "application/dicom",
+        "key": "org-uuid/patient-uuid/imaging/study-uuid/1718000000-scan_001.dcm",
+        "name": "scan_001.dcm",
+        "mimeType": "application/dicom",
         "sizeBytes": 4521234
       }
     ]
@@ -965,10 +1019,11 @@ Genera una URL pre-firmada para acceder a un archivo (TTL 15 minutos).
 **Auth:** `OWNER` | `PHYSICIAN` | `VIEWER`
 
 **Response `200`:**
+
 ```json
 {
   "data": {
-    "url":       "https://r2.medicore.app/org-uuid/...?X-Amz-Expires=900&...",
+    "url": "https://r2.medicore.app/org-uuid/...?X-Amz-Expires=900&...",
     "expiresAt": "2026-06-09T11:00:00.000Z"
   }
 }
@@ -993,43 +1048,47 @@ Genera una URL pre-firmada para acceder a un archivo (TTL 15 minutos).
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:**
+
 ```json
 {
-  "drugName":       "Amoxicilina",
+  "drugName": "Amoxicilina",
   "activeIngredient": "Amoxicilina",
-  "dosage":         "500mg",
-  "frequency":      "cada 8 horas",
-  "route":          "oral",
-  "form":           "comprimidos",
-  "startDate":      "2026-06-09",
-  "endDate":        "2026-06-19",
-  "duration":       "10 días",
-  "reason":         "Sinusitis bacteriana aguda",
-  "instructions":   "Tomar con alimentos"
+  "dosage": "500mg",
+  "frequency": "cada 8 horas",
+  "route": "oral",
+  "form": "comprimidos",
+  "startDate": "2026-06-09",
+  "endDate": "2026-06-19",
+  "duration": "10 días",
+  "reason": "Sinusitis bacteriana aguda",
+  "instructions": "Tomar con alimentos"
 }
 ```
 
 **Lógica de alerta de alergia (BR-MED-001):**
 
 Si hay conflicto con `severity = ANAPHYLAXIS`, responde `422`:
+
 ```json
 {
   "statusCode": 422,
-  "error":      "ALLERGY_CONFLICT_CRITICAL",
-  "message":    "El paciente tiene alergia anafiláctica registrada a Amoxicilina (Penicilinas)",
+  "error": "ALLERGY_CONFLICT_CRITICAL",
+  "message": "El paciente tiene alergia anafiláctica registrada a Amoxicilina (Penicilinas)",
   "details": {
-    "allergyId":  "allergy-uuid",
-    "substance":  "Penicilina",
-    "reaction":   "Anafilaxia",
+    "allergyId": "allergy-uuid",
+    "substance": "Penicilina",
+    "reaction": "Anafilaxia",
     "canOverride": true
   }
 }
 ```
 
 Para prescribir bajo responsabilidad explícita del médico:
+
 ```http
 X-Override-Critical-Allergy: confirmed
 ```
+
 Esto persiste la prescripción y genera registro de auditoría con el override.
 
 ---
@@ -1039,6 +1098,7 @@ Esto persiste la prescripción y genera registro de auditoría con el override.
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:**
+
 ```json
 {
   "discontinuationReason": "Completado el ciclo de tratamiento"
@@ -1068,17 +1128,35 @@ Esto persiste la prescripción y genera registro de auditoría con el override.
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:**
+
 ```json
 {
-  "scaleType":      "SNOT_22",
+  "scaleType": "SNOT_22",
   "consultationId": "consultation-uuid",
-  "date":           "2026-06-09",
+  "date": "2026-06-09",
   "scores": {
-    "q1": 3, "q2": 2, "q3": 4, "q4": 1, "q5": 2,
-    "q6": 3, "q7": 1, "q8": 0, "q9": 2, "q10": 1,
-    "q11": 2, "q12": 1, "q13": 0, "q14": 1, "q15": 2,
-    "q16": 1, "q17": 0, "q18": 1, "q19": 0, "q20": 1,
-    "q21": 0, "q22": 1
+    "q1": 3,
+    "q2": 2,
+    "q3": 4,
+    "q4": 1,
+    "q5": 2,
+    "q6": 3,
+    "q7": 1,
+    "q8": 0,
+    "q9": 2,
+    "q10": 1,
+    "q11": 2,
+    "q12": 1,
+    "q13": 0,
+    "q14": 1,
+    "q15": 2,
+    "q16": 1,
+    "q17": 0,
+    "q18": 1,
+    "q19": 0,
+    "q20": 1,
+    "q21": 0,
+    "q22": 1
   },
   "notes": "Mejoría significativa respecto a evaluación pre-quirúrgica"
 }
@@ -1109,16 +1187,18 @@ Genera un informe clínico con IA de forma asíncrona.
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:**
+
 ```json
 {
-  "type":       "FOLLOW_UP_REPORT",
+  "type": "FOLLOW_UP_REPORT",
   "sourceType": "consultation",
-  "sourceId":   "consultation-uuid",
-  "title":      "Informe de revisión — Rinosinusitis crónica"
+  "sourceId": "consultation-uuid",
+  "title": "Informe de revisión — Rinosinusitis crónica"
 }
 ```
 
 **Proceso:**
+
 1. Valida contexto mínimo (BR-REP-001)
 2. Verifica límite de generación del plan (BR-REP-009)
 3. Crea `Report` en estado `DRAFT` con `content: ""`
@@ -1126,17 +1206,19 @@ Genera un informe clínico con IA de forma asíncrona.
 5. Responde inmediatamente con el `reportId`
 
 **Response `202 Accepted`:**
+
 ```json
 {
   "data": {
-    "reportId":  "report-uuid",
-    "status":    "DRAFT",
-    "message":   "Generando informe. Consulta el estado en GET /v1/reports/report-uuid"
+    "reportId": "report-uuid",
+    "status": "DRAFT",
+    "message": "Generando informe. Consulta el estado en GET /v1/reports/report-uuid"
   }
 }
 ```
 
 **Errores:**
+
 - `422 AI_LIMIT_EXCEEDED` — límite mensual alcanzado (BR-REP-009)
 - `422 VALIDATION_ERROR` — contexto clínico insuficiente (BR-REP-001)
 
@@ -1149,6 +1231,7 @@ Crea un informe manualmente (sin IA).
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:**
+
 ```json
 {
   "type":           "MEDICAL_CERTIFICATE",
@@ -1170,6 +1253,7 @@ Devuelve el detalle completo del informe incluyendo el `content`.
 **Auth:** `OWNER` | `PHYSICIAN` | `VIEWER`
 
 **Response `200`:**
+
 ```json
 {
   "data": {
@@ -1199,6 +1283,7 @@ Edita el contenido de un informe en estado `DRAFT` o `REVIEWED`.
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:**
+
 ```json
 {
   "content":        "INFORME DE REVISIÓN\n\n[contenido editado por el médico]",
@@ -1208,6 +1293,7 @@ Edita el contenido de un informe en estado `DRAFT` o `REVIEWED`.
 ```
 
 **Errores:**
+
 - `422 REPORT_IMMUTABLE` — intento de editar un informe `SIGNED` (BR-REP-004)
 
 ---
@@ -1219,6 +1305,7 @@ Firma el informe. Transición `REVIEWED → SIGNED` y encola generación del PDF
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:**
+
 ```json
 {
   "confirmDisclaimer": true
@@ -1228,14 +1315,15 @@ Firma el informe. Transición `REVIEWED → SIGNED` y encola generación del PDF
 `confirmDisclaimer` requerido y debe ser `true` — confirma que el médico ha leído el disclaimer de responsabilidad (BR-REP-005).
 
 **Response `200`:**
+
 ```json
 {
   "data": {
-    "reportId":  "report-uuid",
-    "status":    "SIGNED",
-    "signedAt":  "2026-06-09T11:00:00.000Z",
-    "signedBy":  "user-uuid",
-    "message":   "PDF generándose. Disponible en breve en Report.pdfUrl"
+    "reportId": "report-uuid",
+    "status": "SIGNED",
+    "signedAt": "2026-06-09T11:00:00.000Z",
+    "signedBy": "user-uuid",
+    "message": "PDF generándose. Disponible en breve en Report.pdfUrl"
   }
 }
 ```
@@ -1249,13 +1337,15 @@ Genera y devuelve una URL pre-firmada para descargar el PDF del informe firmado.
 **Auth:** `OWNER` | `PHYSICIAN` | `VIEWER`
 
 **Errores:**
+
 - `404` — el informe no está en estado `SIGNED` o el PDF aún no se ha generado
 
 **Response `200`:**
+
 ```json
 {
   "data": {
-    "url":       "https://r2.medicore.app/...",
+    "url": "https://r2.medicore.app/...",
     "expiresAt": "2026-06-09T11:15:00.000Z"
   }
 }
@@ -1274,16 +1364,17 @@ KPIs generales del dashboard principal.
 **Query params:** `from`, `to` (default: últimos 12 meses)
 
 **Response `200`:**
+
 ```json
 {
   "data": {
-    "totalPatients":       247,
-    "newPatients":         38,
-    "totalConsultations":  612,
-    "totalSurgeries":      38,
+    "totalPatients": 247,
+    "newPatients": 38,
+    "totalConsultations": 612,
+    "totalSurgeries": 38,
     "avgConsultationsPerPatient": 4.2,
-    "reportsGenerated":    189,
-    "aiReportsGenerated":  145,
+    "reportsGenerated": 189,
+    "aiReportsGenerated": 145,
     "period": { "from": "2025-06-01", "to": "2026-06-01" }
   }
 }
@@ -1300,14 +1391,15 @@ Distribución de diagnósticos por código CIE-10 o SNOMED.
 **Query params:** `from`, `to`, `system` (`ICD10 | SNOMED`, default: `ICD10`), `limit` (default: 10)
 
 **Response `200`:**
+
 ```json
 {
   "data": [
     {
-      "code":        "J32.9",
+      "code": "J32.9",
       "description": "Rinosinusitis crónica, no especificada",
-      "count":       62,
-      "percentage":  25.1
+      "count": 62,
+      "percentage": 25.1
     }
   ]
 }
@@ -1324,17 +1416,18 @@ Evolución y estadísticas de una escala clínica a nivel de cohorte.
 **Query params:** `from`, `to`, `diagnosisCode` (filtrar cohorte por diagnóstico)
 
 **Response `200`:**
+
 ```json
 {
   "data": {
-    "scaleType":    "SNOT_22",
-    "sampleSize":   45,
-    "avgScore":     42.3,
-    "medianScore":  38.0,
+    "scaleType": "SNOT_22",
+    "sampleSize": 45,
+    "avgScore": 42.3,
+    "medianScore": 38.0,
     "distribution": {
-      "mild":     8,
+      "mild": 8,
       "moderate": 22,
-      "severe":   15
+      "severe": 15
     },
     "trend": [
       { "month": "2025-11", "avgScore": 58.2, "sampleSize": 12 },
@@ -1359,22 +1452,24 @@ Exporta la historia clínica completa de un paciente.
 **Auth:** `OWNER` | `PHYSICIAN`
 
 **Request:**
+
 ```json
 {
-  "format":      "pdf",
+  "format": "pdf",
   "includeDeleted": false,
-  "sections":    ["consultations", "surgeries", "imaging", "medications", "reports"]
+  "sections": ["consultations", "surgeries", "imaging", "medications", "reports"]
 }
 ```
 
 **Proceso asíncrono:** devuelve `202` con un `jobId`. El PDF/JSON se genera en background y se notifica al médico cuando está listo.
 
 **Response `202`:**
+
 ```json
 {
   "data": {
-    "jobId":     "job-uuid",
-    "message":   "Exportación en proceso. Recibirás una notificación cuando esté lista."
+    "jobId": "job-uuid",
+    "message": "Exportación en proceso. Recibirás una notificación cuando esté lista."
   }
 }
 ```
@@ -1386,12 +1481,13 @@ Exporta la historia clínica completa de un paciente.
 Consulta el estado de un job de exportación.
 
 **Response `200`:**
+
 ```json
 {
   "data": {
-    "jobId":   "job-uuid",
-    "status":  "COMPLETED",
-    "url":     "https://r2.medicore.app/exports/...",
+    "jobId": "job-uuid",
+    "status": "COMPLETED",
+    "url": "https://r2.medicore.app/exports/...",
     "expiresAt": "2026-06-10T10:00:00.000Z"
   }
 }
@@ -1424,6 +1520,7 @@ purge-expired-records     CRON diario 02:00               Borra físicamente reg
 ```
 
 Todos los jobs tienen:
+
 - Reintentos automáticos: 3 intentos con backoff exponencial
 - TTL máximo: 60 segundos para generación IA (BR-REP-008)
 - Dead letter queue para jobs fallidos con alerta a Sentry
