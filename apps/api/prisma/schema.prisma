@@ -348,6 +348,7 @@ model Consultation {
   patient        Patient          @relation(fields: [patientId], references: [id])
   scales         ClinicalScale[]
   reports        Report[]
+  imagingStudies ImagingStudy[]
 
   @@index([organizationId])
   @@index([organizationId, patientId])
@@ -368,16 +369,21 @@ model ClinicalScale {
   // Puntuaciones específicas de la escala (JSONB)
   scores         Json
 
-  notes          String?
-  createdAt      DateTime         @default(now())
-  createdBy      String
+notes          String?
+   total          Int               // Server-calculated total (BR-SCA-002: never trust client-sent total)
+   createdAt      DateTime         @default(now())
+   updatedAt      DateTime         @updatedAt
+   createdBy      String
+   updatedBy      String?          // userId who last modified the scale
+   auditLog       Json?
+   deletedAt      DateTime?        // Soft delete
 
-  patient        Patient          @relation(fields: [patientId], references: [id])
-  consultation   Consultation?    @relation(fields: [consultationId], references: [id])
+   patient        Patient          @relation(fields: [patientId], references: [id])
+   consultation   Consultation?    @relation(fields: [consultationId], references: [id])
 
-  @@index([organizationId, patientId])
-  @@index([organizationId, patientId, scaleType])
-  @@map("clinical_scales")
+   @@index([organizationId, patientId])
+   @@index([organizationId, patientId, scaleType])
+   @@map("clinical_scales")
 }
 
 model Surgery {
@@ -459,10 +465,28 @@ model ImagingStudy {
 
   patient        Patient          @relation(fields: [patientId], references: [id])
   surgery        Surgery?         @relation(fields: [surgeryId], references: [id])
+  consultation   Consultation?   @relation(fields: [consultationId], references: [id])
 
   @@index([organizationId, patientId])
   @@index([organizationId, type])
   @@map("imaging_studies")
+}
+
+model PendingDeletion {
+  id             String    @id @default(uuid())
+  organizationId String
+  entityType     String    // "ImagingStudy" — polymorphic
+  entityId       String    // ID of the ImagingStudy
+  fileKey        String    // R2 key of the file to delete
+  scheduledAt    DateTime  @default(now())  // now() + retention period (10 years)
+  processedAt    DateTime? // Set when physical deletion completes
+
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId])
+  @@index([scheduledAt])
+  @@index([entityId])
+  @@map("pending_deletions")
 }
 
 model MedicationPrescription {
@@ -484,14 +508,17 @@ model MedicationPrescription {
   endDate        DateTime?        // null = tratamiento crónico
   duration       String?          // Descripción textual: "10 días", "3 meses"
 
-  status         MedicationStatus @default(ACTIVE)
-  instructions   String?          // Instrucciones especiales para el paciente
-  reason         String?          // Indicación / diagnóstico que motiva la prescripción
+status              MedicationStatus @default(ACTIVE)
+   instructions        String?          // Instrucciones especiales para el paciente
+   reason              String?          // Indicación / diagnóstico que motiva la prescripción
+   discontinuationReason String?       // BR-MED-003: Required when transitioning to DISCONTINUED
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  deletedAt      DateTime?
-  createdBy      String
+   createdAt      DateTime         @default(now())
+   updatedAt      DateTime         @updatedAt
+   deletedAt      DateTime?
+   createdBy      String
+   updatedBy      String?          // userId who last modified the prescription
+   auditLog       Json?
 
   patient        Patient          @relation(fields: [patientId], references: [id])
 

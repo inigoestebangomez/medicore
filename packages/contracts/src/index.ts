@@ -158,3 +158,70 @@ export type {
   SurgeryResponse,
   ListSurgeriesQuery,
 } from './surgery.schema';
+
+// Imaging
+export {
+  ImagingStudyTypeSchema,
+  CreateImagingStudySchema,
+  UpdateImagingStudySchema,
+  ListImagingStudiesQuerySchema,
+  FileMetadataSchema,
+  UploadFilesResponseSchema,
+  PresignedUrlResponseSchema,
+  PendingDeletionSchema,
+} from './imaging.schema';
+
+export type {
+  ImagingStudyType,
+  CreateImagingStudyInput,
+  UpdateImagingStudyInput,
+  ListImagingStudiesQuery,
+  UploadFilesResponse,
+  PresignedUrlResponse,
+  PendingDeletionResponse,
+} from './imaging.schema';
+
+// Medication
+export {
+  MedicationStatusSchema,
+  CreatePrescriptionSchema,
+  DiscontinuePrescriptionSchema,
+  ListMedicationsQuerySchema,
+  MedicationResponseSchema,
+  MEDICATION_ALLOWED_TRANSITIONS,
+} from './medication.schema';
+
+export type {
+  MedicationStatus,
+  CreatePrescriptionInput,
+  DiscontinuePrescriptionInput,
+  ListMedicationsQuery,
+  MedicationResponse,
+} from './medication.schema';
+
+// Clinical Scale
+export {
+  ClinicalScaleTypeSchema,
+  CreateScaleSchema,
+  UpdateScaleSchema,
+  ListScalesQuerySchema,
+  ScaleResponseSchema,
+  Snot22ScoresSchema,
+  VasTinnitusScoresSchema,
+  DhiScoresSchema,
+  VhiScoresSchema,
+  RsiScoresSchema,
+  OsaEpworthScoresSchema,
+  StopbangScoresSchema,
+  NoseScoresSchema,
+  CustomScoresSchema,
+  ScaleTypeValidationMap,
+} from './scale.schema';
+
+export type {
+  ClinicalScaleType,
+  CreateScaleInput,
+  UpdateScaleInput,
+  ListScalesQuery,
+  ScaleResponse,
+} from './scale.schema';
