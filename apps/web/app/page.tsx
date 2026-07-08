@@ -1,10 +1,12 @@
-export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <h1 className="text-4xl font-bold">MediCore</h1>
-      <p className="mt-4 text-lg text-gray-600">
-        Sistema de Gestión Clínica
-      </p>
-    </main>
-  );
+import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
+
+export default async function Home() {
+  const session = await auth();
+
+  if (session?.user) {
+    redirect('/dashboard');
+  }
+
+  redirect('/login');
 }

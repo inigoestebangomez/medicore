@@ -2,6 +2,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Param,
   Body,
@@ -12,10 +13,11 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@/api/shared/guards/auth.guard';
 import { CurrentUser } from '@/api/shared/decorators/current-user.decorator';
+import { SkipSubscriptionCheck } from '@/api/shared/decorators/skip-subscription.decorator';
 import type { JwtPayload } from '@medicore/contracts';
 import type { IOrganizationRepository } from '@/domain/organization/organization.repository.interface';
 import type { IOrganizationMemberRepository } from '@/domain/organization-member/organization-member.repository.interface';
-import { UpdateOrganizationSchema } from '@medicore/contracts';
+import { UpdateOrganizationSchema, CreateOrganizationSchema } from '@medicore/contracts';
 import { ZodValidationPipe } from '@/api/shared/pipes/zod-validation.pipe';
 
 @Controller('organizations')
@@ -25,6 +27,44 @@ export class OrganizationController {
     @Inject('IOrganizationRepository') private readonly orgRepo: IOrganizationRepository,
     @Inject('IOrganizationMemberRepository') private readonly orgMemberRepo: IOrganizationMemberRepository,
   ) {}
+
+  @Post()
+  @SkipSubscriptionCheck()
+  @UseGuards(AuthGuard)
+  async create(
+    @Body(new ZodValidationPipe(CreateOrganizationSchema))
+    body: { name: string; type: string; logoUrl?: string },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const slug = this.generateSlug(body.name);
+    const uniqueSlug = await this.ensureUniqueSlug(slug);
+
+    const org = await this.orgRepo.create({
+      name: body.name,
+      slug: uniqueSlug,
+      type: body.type,
+      logoUrl: body.logoUrl,
+    });
+
+    await this.orgMemberRepo.create({
+      organizationId: org.id,
+      userId: user.sub,
+      role: 'OWNER',
+      invitedBy: null,
+    });
+
+    return {
+      id: org.id,
+      name: org.name,
+      slug: org.slug,
+      type: org.type,
+      plan: org.plan,
+      settings: org.settings,
+      logoUrl: org.logoUrl,
+      createdAt: org.createdAt,
+      updatedAt: org.updatedAt,
+    };
+  }
 
   @Get(':id')
   async getById(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
@@ -99,5 +139,27 @@ export class OrganizationController {
       role: m.role,
       joinedAt: m.joinedAt,
     }));
+  }
+
+  private generateSlug(name: string): string {
+    return name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .substring(0, 50);
+  }
+
+  private async ensureUniqueSlug(baseSlug: string): Promise<string> {
+    let slug = baseSlug;
+    let suffix = 1;
+    while (await this.orgRepo.findBySlug(slug)) {
+      suffix++;
+      slug = `${baseSlug}-${suffix}`;
+    }
+    return slug;
   }
 }

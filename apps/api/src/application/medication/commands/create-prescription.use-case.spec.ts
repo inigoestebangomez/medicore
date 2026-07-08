@@ -207,7 +207,7 @@ describe('CreatePrescriptionUseCase', () => {
     it('inactive (soft-deleted / non-ACTIVE) allergies are ignored', async () => {
       const inactive = makeAllergy('a-1', 'Amoxicillin', 'ANAPHYLAXIS');
       const softDeleted = new Allergy({ ...inactive, deletedAt: new Date() });
-      const inactiveStatus = new Allergy({ ...inactive, id: 'a-2', status: 'RESOLVED' });
+      const inactiveStatus = new Allergy({ ...inactive, id: 'a-2', status: 'INACTIVE' });
       allergyRepo.seed([softDeleted, inactiveStatus]);
 
       const result = await useCase.execute(makeCommand({ drugName: 'Amoxicillin' }));

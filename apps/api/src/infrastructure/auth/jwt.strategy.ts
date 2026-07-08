@@ -6,12 +6,19 @@ import type { Request } from 'express';
 import type { JwtPayload } from '@medicore/contracts';
 
 /**
- * Custom extractor that reads the JWT from the 'medicore-session' cookie.
- * passport-jwt does not ship with fromCookie — we implement it manually.
+ * Try multiple sources for the JWT:
+ * 1. medicore-session cookie (browser requests)
+ * 2. Authorization: Bearer header (server-to-server calls)
  */
-const extractJwtFromCookie = (req: Request): string | null => {
+const extractJwtFromRequest = (req: Request): string | null => {
+  // Cookie
   if (req?.cookies?.['medicore-session']) {
     return req.cookies['medicore-session'];
+  }
+  // Bearer token
+  const authHeader = req?.headers?.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    return authHeader.slice(7);
   }
   return null;
 };
@@ -20,7 +27,7 @@ const extractJwtFromCookie = (req: Request): string | null => {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
     super({
-      jwtFromRequest: extractJwtFromCookie,
+      jwtFromRequest: extractJwtFromRequest,
       ignoreExpiration: false,
       secretOrKey: process.env.JWT_SECRET ?? 'dev-secret-change-me',
     });
@@ -32,4 +39,4 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 }
 
 // Export for testing
-export { extractJwtFromCookie };
+export { extractJwtFromRequest as extractJwtFromCookie };

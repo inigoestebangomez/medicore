@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@/api/shared/guards/auth.guard';
 import { CurrentUser } from '@/api/shared/decorators/current-user.decorator';
+import { SkipSubscriptionCheck } from '@/api/shared/decorators/skip-subscription.decorator';
 import type { JwtPayload } from '@medicore/contracts';
 import { SwitchOrganizationSchema, AuthProfileSchema } from '@medicore/contracts';
 import { ZodValidationPipe } from '@/api/shared/pipes/zod-validation.pipe';
@@ -21,6 +22,7 @@ import type { IOrganizationMemberRepository } from '@/domain/organization-member
 import type { IOrganizationRepository } from '@/domain/organization/organization.repository.interface';
 import { JwtService } from '@nestjs/jwt';
 
+@SkipSubscriptionCheck()
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -37,8 +39,8 @@ export class AuthController {
   }
 
   @Post('sync')
-  @UseGuards(AuthGuard)
   async sync(@Body(new ZodValidationPipe(AuthProfileSchema)) body: any, @Res({ passthrough: true }) res: any) {
+    try {
     // 1. Sync user from OAuth profile
     const syncUseCase = new SyncOAuthUserUseCase(this.userRepo);
     const { user, isNewUser } = await syncUseCase.execute({
@@ -72,14 +74,12 @@ export class AuthController {
     const org = await this.orgRepo.findById(primaryMembership.organizationId);
 
     // 4. Issue new JWT with up-to-date claims
-    const payload: JwtPayload = {
+    const payload = {
       sub: user.id,
       email: user.email,
       name: user.name,
       organizationId: primaryMembership.organizationId,
-      role: primaryMembership.role as any,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60, // 7 days
+      role: primaryMembership.role,
     };
 
     const token = this.jwtService.sign(payload);
@@ -102,7 +102,12 @@ export class AuthController {
       organizationName: org?.name ?? '',
       role: primaryMembership.role,
       isNewUser,
+      token,
     };
+    } catch (error) {
+      console.error('[AuthController.sync] Error:', error);
+      throw error;
+    }
   }
 
   @Post('switch-organization')
@@ -124,14 +129,12 @@ export class AuthController {
     }
 
     // 2. Issue new JWT with updated organizationId and role
-    const payload: JwtPayload = {
+    const payload = {
       sub: user.sub,
       email: user.email,
       name: user.name,
       organizationId: body.organizationId,
-      role: membership.role as any,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+      role: membership.role,
     };
 
     const token = this.jwtService.sign(payload);

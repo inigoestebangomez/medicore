@@ -12,3 +12,11 @@ export enum PlanType {
   PRO = 'PRO',
   ENTERPRISE = 'ENTERPRISE',
 }
+
+export enum SubscriptionStatus {
+  TRIALING = 'TRIALING',
+  ACTIVE = 'ACTIVE',
+  PAST_DUE = 'PAST_DUE',
+  CANCELED = 'CANCELED',
+  EXPIRED = 'EXPIRED',
+}

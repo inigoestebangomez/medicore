@@ -2,6 +2,8 @@
 // Patient overview — entry point for the patient detail view.
 
 import Link from 'next/link';
+import { PatientActions } from './patient-actions';
+import { ClinicalTimeline } from '@/features/patients/components/clinical-timeline';
 
 interface PageProps {
   params: { patientId: string };
@@ -34,6 +36,13 @@ export default function PatientOverviewPage({ params }: PageProps) {
           <p className="mt-1 text-base font-semibold text-gray-900">View score evolution →</p>
           <p className="mt-1 text-xs text-gray-400">SNOT-22, DHI, VHI and custom scales</p>
         </Link>
+      </div>
+
+      <PatientActions patientId={params.patientId} />
+
+      <div>
+        <h3 className="mb-4 text-base font-semibold text-gray-900">Clinical Timeline</h3>
+        <ClinicalTimeline patientId={params.patientId} />
       </div>
     </div>
   );

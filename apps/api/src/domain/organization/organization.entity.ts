@@ -1,5 +1,5 @@
 // apps/api/src/domain/organization/organization.entity.ts
-import { OrganizationType, PlanType } from './organization.types';
+import { OrganizationType, PlanType, SubscriptionStatus } from './organization.types';
 
 export class Organization {
   readonly id: string;
@@ -7,6 +7,10 @@ export class Organization {
   readonly slug: string;
   readonly type: OrganizationType;
   readonly plan: PlanType;
+  readonly subscriptionStatus: SubscriptionStatus;
+  readonly subscriptionExpiresAt: Date | null;
+  readonly stripeCustomerId: string | null;
+  readonly stripeSubscriptionId: string | null;
   readonly settings: Record<string, unknown>;
   readonly logoUrl: string | null;
   readonly createdAt: Date;
@@ -19,6 +23,10 @@ export class Organization {
     slug: string;
     type?: OrganizationType;
     plan?: PlanType;
+    subscriptionStatus?: SubscriptionStatus;
+    subscriptionExpiresAt?: Date | null;
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
     settings?: Record<string, unknown>;
     logoUrl?: string | null;
     createdAt?: Date;
@@ -30,6 +38,10 @@ export class Organization {
     this.slug = props.slug;
     this.type = props.type ?? OrganizationType.SOLO_PRACTICE;
     this.plan = props.plan ?? PlanType.FREE;
+    this.subscriptionStatus = props.subscriptionStatus ?? SubscriptionStatus.ACTIVE;
+    this.subscriptionExpiresAt = props.subscriptionExpiresAt ?? null;
+    this.stripeCustomerId = props.stripeCustomerId ?? null;
+    this.stripeSubscriptionId = props.stripeSubscriptionId ?? null;
     this.settings = props.settings ?? {};
     this.logoUrl = props.logoUrl ?? null;
     this.createdAt = props.createdAt ?? new Date();

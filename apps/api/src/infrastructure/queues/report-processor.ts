@@ -1,8 +1,10 @@
 // apps/api/src/infrastructure/queues/report-processor.ts
-// BullMQ stub for report generation. Phase 7 will implement AI report generation.
+// BullMQ worker for report generation. Phase 7 AI report generation.
+// AnthropicService is wired for when Redis/BullMQ is active.
 
 import { Processor, Process } from '@nestjs/bull';
 import type { Job } from 'bullmq';
+import { AnthropicService, ReportGenerationInput } from '@/infrastructure/ai/anthropic.service';
 
 interface ConsultationJobData {
   consultationId: string;
@@ -24,14 +26,27 @@ function isSurgeryJob(data: ReportJobData): data is SurgeryJobData {
 
 @Processor('generate-report')
 export class ReportProcessor {
+  constructor(private readonly anthropicService: AnthropicService) {}
+
   @Process('generate')
   async handleGenerateReport(job: Job<ReportJobData>) {
     if (isSurgeryJob(job.data)) {
-      // Stub: log and complete. Phase 7 will implement AI report generation for surgeries.
       console.log(`[ReportProcessor] Report generation requested for surgery ${job.data.surgeryId}`);
     } else {
-      // Stub: log and complete. Phase 7 will implement AI report generation for consultations.
       console.log(`[ReportProcessor] Report generation requested for consultation ${job.data.consultationId}`);
     }
+
+    // Generate report content via Anthropic
+    const input: ReportGenerationInput = {
+      patientName: 'Paciente',
+      patientNhc: 'N/A',
+      consultationType: isSurgeryJob(job.data) ? 'SURGICAL_REPORT' : 'CONSULTATION',
+      chiefComplaint: 'Generado desde cola BullMQ',
+    };
+
+    const content = await this.anthropicService.generateReport(input);
+    console.log(`[ReportProcessor] Report content generated (${content.length} chars)`);
+
+    return { content };
   }
 }

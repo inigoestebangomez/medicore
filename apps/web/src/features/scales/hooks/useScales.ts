@@ -3,6 +3,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ClinicalScaleType } from '@medicore/contracts';
+import { apiFetch } from '@/lib/api-fetch';
 
 const API_BASE = '/v1/patients';
 
@@ -58,22 +59,6 @@ const scaleKeys = {
   detail: (patientId: string, scaleId: string) =>
     [...scaleKeys.all(patientId), 'detail', scaleId] as const,
 };
-
-// ─────────────────────────────────────────────
-// Fetch Helpers
-// ─────────────────────────────────────────────
-
-async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-    ...init,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message ?? `Request failed: ${res.status}`);
-  }
-  return res.json();
-}
 
 // ─────────────────────────────────────────────
 // Hooks

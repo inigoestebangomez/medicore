@@ -10,6 +10,7 @@ export enum Action {
   UPDATE_PATIENT = 'UPDATE_PATIENT',
   DELETE_PATIENT = 'DELETE_PATIENT',
   EXPORT_PATIENT = 'EXPORT_PATIENT',
+  ANONYMIZE_PATIENT = 'ANONYMIZE_PATIENT',
 
   // Consultation
   CREATE_CONSULTATION = 'CREATE_CONSULTATION',
@@ -58,6 +59,9 @@ export enum Action {
   READ_REPORT = 'READ_REPORT',
   SIGN_REPORT = 'SIGN_REPORT',
 
+  // Analytics
+  READ_ANALYTICS = 'READ_ANALYTICS',
+
   // Audit
   VIEW_AUDIT_LOG = 'VIEW_AUDIT_LOG',
 }
@@ -71,7 +75,7 @@ const { OWNER, PHYSICIAN, VIEWER, ADMIN } = MemberRoleSchema.Enum;
 export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
   [OWNER]: new Set<Action>([
     Action.CREATE_PATIENT, Action.READ_PATIENT, Action.UPDATE_PATIENT,
-    Action.DELETE_PATIENT, Action.EXPORT_PATIENT,
+    Action.DELETE_PATIENT, Action.EXPORT_PATIENT, Action.ANONYMIZE_PATIENT,
     Action.CREATE_CONSULTATION, Action.READ_CONSULTATION,
     Action.UPDATE_CONSULTATION_OWN, Action.UPDATE_CONSULTATION_ANY,
     Action.DELETE_CONSULTATION,
@@ -87,6 +91,7 @@ export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
     Action.MANAGE_MEMBERS, Action.VIEW_MEMBERS,
     Action.CREATE_INVITATION, Action.ACCEPT_INVITATION,
     Action.CREATE_REPORT, Action.READ_REPORT, Action.SIGN_REPORT,
+    Action.READ_ANALYTICS,
     Action.VIEW_AUDIT_LOG,
   ]),
 
@@ -106,6 +111,7 @@ export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
     Action.CREATE_SCALE, Action.READ_SCALE,
     Action.VIEW_ORGANIZATION, Action.VIEW_MEMBERS,
     Action.ACCEPT_INVITATION,
+    Action.READ_ANALYTICS,
     Action.CREATE_REPORT, Action.READ_REPORT, Action.SIGN_REPORT,
   ]),
 
@@ -114,6 +120,7 @@ export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
     Action.READ_IMAGING,
     Action.READ_MEDICATION, Action.READ_SCALE,
     Action.VIEW_ORGANIZATION, Action.VIEW_MEMBERS,
+    Action.READ_ANALYTICS,
     Action.READ_REPORT,
   ]),
 
@@ -121,6 +128,7 @@ export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
     Action.VIEW_ORGANIZATION, Action.UPDATE_ORGANIZATION,
     Action.MANAGE_MEMBERS, Action.VIEW_MEMBERS,
     Action.CREATE_INVITATION, Action.ACCEPT_INVITATION,
+    Action.READ_ANALYTICS,
     Action.VIEW_AUDIT_LOG,
     Action.READ_PATIENT,
   ]),

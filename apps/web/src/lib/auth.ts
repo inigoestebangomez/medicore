@@ -26,9 +26,15 @@ const nextAuth = NextAuth({
       }
 
       if (account?.provider === 'google' && account?.access_token) {
+        // Store OAuth data in token so we can re-sync if needed
+        token.oauthProvider = account.provider;
+        token.oauthSub = account.providerAccountId;
+        token.userEmail = user?.email ?? token.email;
+        token.userName = user?.name ?? token.name;
+
         try {
           const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
-          const response = await fetch(`${apiBaseUrl}/auth/sync`, {
+          const response = await fetch(`${apiBaseUrl}/v1/auth/sync`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -53,6 +59,11 @@ const nextAuth = NextAuth({
               if (match) {
                 token.backendToken = match[1];
               }
+            }
+
+            // Fallback: also capture token from response body
+            if (!token.backendToken && data.token) {
+              token.backendToken = data.token;
             }
 
             token.userId = data.id;
@@ -83,6 +94,14 @@ const nextAuth = NextAuth({
       if (token.backendToken) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (session as any).backendToken = token.backendToken;
+      }
+      if (token.oauthProvider) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (session as any).oauthProvider = token.oauthProvider;
+      }
+      if (token.oauthSub) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (session as any).oauthSub = token.oauthSub;
       }
       return session;
     },

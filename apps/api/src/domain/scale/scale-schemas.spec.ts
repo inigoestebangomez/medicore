@@ -107,7 +107,7 @@ describe('SCA-001 — Per-scale Zod schema validation', () => {
     it('has a schema for every ClinicalScaleType', () => {
       const types = ClinicalScaleTypeSchema.options;
       for (const t of types) {
-        expect(ScaleTypeValidationMap[t as string]).toBeDefined();
+        expect(ScaleTypeValidationMap[t as keyof typeof ScaleTypeValidationMap]).toBeDefined();
       }
     });
 

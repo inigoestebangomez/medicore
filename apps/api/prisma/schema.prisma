@@ -38,6 +38,10 @@ model Organization {
   slug        String           @unique  // para URLs amigables: app.medicore.com/[slug]
   type        OrganizationType @default(SOLO_PRACTICE)
   plan        PlanType         @default(FREE)
+  subscriptionStatus      SubscriptionStatus @default(ACTIVE)
+  subscriptionExpiresAt   DateTime?
+  stripeCustomerId        String?
+  stripeSubscriptionId    String?
   settings    Json             @default("{}")  // configuración del workspace
   logoUrl     String?
   createdAt   DateTime         @default(now())
@@ -86,6 +90,14 @@ enum PlanType {
   FREE
   PRO
   ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
 }
 
 enum MemberRole {

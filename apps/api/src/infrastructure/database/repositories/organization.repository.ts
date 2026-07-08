@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Organization } from '@/domain/organization/organization.entity';
 import { IOrganizationRepository } from '@/domain/organization/organization.repository.interface';
-import { OrganizationType, PlanType } from '@/domain/organization/organization.types';
+import { OrganizationType, PlanType, SubscriptionStatus } from '@/domain/organization/organization.types';
 
 @Injectable()
 export class PrismaOrganizationRepository implements IOrganizationRepository {
@@ -67,6 +67,10 @@ export class PrismaOrganizationRepository implements IOrganizationRepository {
     slug: string;
     type: string;
     plan: string;
+    subscriptionStatus?: string;
+    subscriptionExpiresAt?: Date | null;
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
     settings: any;
     logoUrl: string | null;
     createdAt: Date;
@@ -79,6 +83,10 @@ export class PrismaOrganizationRepository implements IOrganizationRepository {
       slug: record.slug,
       type: record.type as OrganizationType,
       plan: record.plan as PlanType,
+      subscriptionStatus: record.subscriptionStatus as SubscriptionStatus,
+      subscriptionExpiresAt: record.subscriptionExpiresAt ?? null,
+      stripeCustomerId: record.stripeCustomerId ?? null,
+      stripeSubscriptionId: record.stripeSubscriptionId ?? null,
       settings: record.settings as Record<string, unknown>,
       logoUrl: record.logoUrl,
       createdAt: record.createdAt,

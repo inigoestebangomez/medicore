@@ -1,5 +1,10 @@
 {
   "extends": "@medicore/tsconfig/base.json",
-  "compilerOptions": { "outDir": "dist", "composite": true },
+  "compilerOptions": {
+    "outDir": "dist",
+    "composite": true,
+    "module": "CommonJS",
+    "moduleResolution": "node"
+  },
   "include": ["src/**/*"]
 }

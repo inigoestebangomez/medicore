@@ -32,8 +32,23 @@ function buildTabs(patientId: string): TabDef[] {
       match: (pathname, href) => pathname === href || pathname.startsWith(`${href}/`),
     },
     {
+      href: `${base}/consultations`,
+      label: 'Consultations',
+      match: (pathname, href) => pathname === href || pathname.startsWith(`${href}/`),
+    },
+    {
       href: `${base}/scales`,
       label: 'Clinical Scales',
+      match: (pathname, href) => pathname === href || pathname.startsWith(`${href}/`),
+    },
+    {
+      href: `${base}/surgeries`,
+      label: 'Surgeries',
+      match: (pathname, href) => pathname === href || pathname.startsWith(`${href}/`),
+    },
+    {
+      href: `${base}/reports`,
+      label: 'Reports',
       match: (pathname, href) => pathname === href || pathname.startsWith(`${href}/`),
     },
   ];

@@ -1,6 +1,8 @@
 // apps/web/app/(dashboard)/layout.tsx
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { AuthSync } from '@/components/auth-sync';
 
 export default async function DashboardLayout({
   children,
@@ -13,11 +15,25 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const organizationId = (session as any)?.organizationId as string | undefined;
+
+  if (!organizationId) {
+    redirect('/onboarding');
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <AuthSync>
+      <div className="min-h-screen bg-gray-50">
       <nav className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
           <div className="text-lg font-semibold text-gray-900">MediCore</div>
+          <div className="flex items-center gap-6">
+            <Link href="/dashboard" className="text-sm text-gray-600 hover:text-gray-900">Dashboard</Link>
+            <Link href="/patients" className="text-sm text-gray-600 hover:text-gray-900">Patients</Link>
+            <Link href="/analytics" className="text-sm text-gray-600 hover:text-gray-900">Analytics</Link>
+            <Link href="/settings" className="text-sm text-gray-600 hover:text-gray-900">Settings</Link>
+          </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">{session.user.email}</span>
             <form
@@ -39,5 +55,6 @@ export default async function DashboardLayout({
       </nav>
       <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
     </div>
+    </AuthSync>
   );
 }

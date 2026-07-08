@@ -1,4 +1,5 @@
 // apps/web/app/(dashboard)/patients/[patientId]/scales/page.tsx
+'use client';
 import { ScaleInputForm } from '@/features/scales/components/scale-input-form';
 import { ScoreEvolutionChart } from '@/features/scales/components/score-evolution-chart';
 import { useState } from 'react';

@@ -3,12 +3,16 @@ import { ReportProcessor } from './report-processor';
 
 describe('ReportProcessor', () => {
   let processor: ReportProcessor;
+  let mockAnthropic: { generateReport: jest.Mock };
 
   beforeEach(() => {
-    processor = new ReportProcessor();
+    mockAnthropic = {
+      generateReport: jest.fn().mockResolvedValue('Generated report content'),
+    };
+    processor = new ReportProcessor(mockAnthropic as any);
   });
 
-  it('should handle generate report job without throwing', async () => {
+  it('should handle generate report job and call anthropic service', async () => {
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
     const job = {
@@ -19,11 +23,13 @@ describe('ReportProcessor', () => {
       },
     } as any;
 
-    await expect(processor.handleGenerateReport(job)).resolves.toBeUndefined();
+    const result = await processor.handleGenerateReport(job);
 
     expect(consoleSpy).toHaveBeenCalledWith(
       '[ReportProcessor] Report generation requested for consultation cons-1',
     );
+    expect(mockAnthropic.generateReport).toHaveBeenCalled();
+    expect(result).toEqual({ content: 'Generated report content' });
 
     consoleSpy.mockRestore();
   });
