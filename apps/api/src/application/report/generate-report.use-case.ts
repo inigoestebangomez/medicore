@@ -5,7 +5,8 @@ import type { IReportRepository } from '@/domain/report/report.repository.interf
 import type { IConsultationRepository } from '@/domain/consultation/consultation.repository.interface';
 import type { ISurgeryRepository } from '@/domain/surgery/surgery.repository.interface';
 import type { IPatientRepository } from '@/domain/patient/patient.repository.interface';
-import { AnthropicService, ReportGenerationInput } from '@/infrastructure/ai/anthropic.service';
+import type { ReportGenerationInput } from '@/infrastructure/ai/anthropic.service';
+import type { AiProvider } from '@/infrastructure/billing/ai-provider/ai-provider.interface';
 import { AuditLogService } from '@/infrastructure/audit/audit-log.service';
 import { ReportNotFoundError } from '@/domain/report/errors/report-not-found.error';
 
@@ -26,12 +27,14 @@ export class GenerateReportUseCase {
     private readonly consultationRepo: IConsultationRepository,
     private readonly surgeryRepo: ISurgeryRepository,
     private readonly patientRepo: IPatientRepository,
-    private readonly anthropicService: AnthropicService,
+    private readonly aiProvider: AiProvider,
     private readonly auditLog: AuditLogService,
   ) {}
 
   async execute(command: GenerateReportCommand): Promise<Report> {
-    const model = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-20250514';
+    // Model name is sourced from the active AiProvider strategy so audit logs
+    // reflect whichever provider is configured (Claude / Ollama / open-code-go).
+    const model = this.aiProvider.modelName;
 
     const title = command.title ?? this.defaultTitle(command.reportType, command.sourceType);
 
@@ -54,7 +57,7 @@ export class GenerateReportUseCase {
     try {
       const input = await this.buildGenerationInput(command);
       const promptHash = crypto.createHash('sha256').update(JSON.stringify(input)).digest('hex');
-      const content = await this.anthropicService.generateReport(input);
+      const content = await this.aiProvider.generateReport(input);
 
       const updatedReport = report
         .updateContent(content);

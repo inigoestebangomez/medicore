@@ -19,7 +19,8 @@ import type { IReportRepository } from '@/domain/report/report.repository.interf
 import type { IConsultationRepository } from '@/domain/consultation/consultation.repository.interface';
 import type { ISurgeryRepository } from '@/domain/surgery/surgery.repository.interface';
 import type { IPatientRepository } from '@/domain/patient/patient.repository.interface';
-import { AnthropicService } from '@/infrastructure/ai/anthropic.service';
+import { AI_PROVIDER, type AiProvider } from '@/infrastructure/billing/ai-provider/ai-provider.interface';
+import { AiUsageGuard } from '@/api/shared/guards/ai-usage.guard';
 import { AuditLogService } from '@/infrastructure/audit/audit-log.service';
 import { Action } from '@/domain/shared/rbac-permissions';
 import { GenerateReportUseCase } from '@/application/report/generate-report.use-case';
@@ -43,11 +44,11 @@ export class ReportsController {
     @Inject('IConsultationRepository') consultationRepo: IConsultationRepository,
     @Inject('ISurgeryRepository') surgeryRepo: ISurgeryRepository,
     @Inject('IPatientRepository') patientRepo: IPatientRepository,
-    anthropicService: AnthropicService,
+    @Inject(AI_PROVIDER) aiProvider: AiProvider,
     auditLog: AuditLogService,
   ) {
     this.generateReportUseCase = new GenerateReportUseCase(
-      reportRepo, consultationRepo, surgeryRepo, patientRepo, anthropicService, auditLog,
+      reportRepo, consultationRepo, surgeryRepo, patientRepo, aiProvider, auditLog,
     );
     this.signReportUseCase = new SignReportUseCase(reportRepo, auditLog);
     this.createManualReportUseCase = new CreateManualReportUseCase(reportRepo, auditLog);
@@ -65,6 +66,7 @@ export class ReportsController {
   }
 
   @Post('generate')
+  @UseGuards(AiUsageGuard)
   @Reflect.metadata(REQUIRED_ACTION_KEY, Action.CREATE_REPORT)
   async generate(
     @Param('patientId') patientId: string,

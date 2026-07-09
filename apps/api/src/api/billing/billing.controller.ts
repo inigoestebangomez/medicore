@@ -20,13 +20,13 @@ import { CreateCheckoutSchema } from '@medicore/contracts';
 import type { JwtPayload } from '@medicore/contracts';
 import type { IOrganizationRepository } from '@/domain/organization/organization.repository.interface';
 import type { IProcessedStripeEventRepository } from '@/domain/billing/stripe-event.repository.interface';
+import type { IAiReportUsageRepository } from '@/domain/billing/ai-report-usage.repository.interface';
 import { StripeService } from '@/infrastructure/billing/stripe.service';
 import { CreateCheckoutUseCase } from '@/application/billing/commands/create-checkout.use-case';
 import { CreatePortalUseCase } from '@/application/billing/commands/create-portal.use-case';
 import { HandleStripeWebhookUseCase } from '@/application/billing/commands/handle-stripe-webhook.use-case';
-import { BillingInterval, PlanType } from '@/domain/organization/organization.types';
-import { getLimit } from '@/domain/billing/plan.config';
-import { getCurrentYearMonth } from '@/domain/billing/year-month';
+import { GetCurrentUsageUseCase } from '@/application/billing/queries/get-current-usage.use-case';
+import { BillingInterval } from '@/domain/organization/organization.types';
 import { SubscriptionAlreadyActiveError } from '@/domain/billing/errors/subscription-already-active.error';
 import { StripeCustomerMissingError } from '@/domain/billing/errors/stripe-customer-missing.error';
 import { StripeSignatureInvalidError } from '@/domain/billing/errors/stripe-signature-invalid.error';
@@ -36,15 +36,18 @@ export class BillingController {
   private readonly checkoutUseCase: CreateCheckoutUseCase;
   private readonly portalUseCase: CreatePortalUseCase;
   private readonly webhookUseCase: HandleStripeWebhookUseCase;
+  private readonly usageUseCase: GetCurrentUsageUseCase;
 
   constructor(
-    @Inject('IOrganizationRepository') private readonly orgRepo: IOrganizationRepository,
+    @Inject('IOrganizationRepository') orgRepo: IOrganizationRepository,
     @Inject('IProcessedStripeEventRepository') eventRepo: IProcessedStripeEventRepository,
-    private readonly stripeService: StripeService,
+    @Inject('IAiReportUsageRepository') usageRepo: IAiReportUsageRepository,
+    private readonly stripeService: StripeService, // value import — reflect-metadata token
   ) {
     this.checkoutUseCase = new CreateCheckoutUseCase(orgRepo, stripeService);
     this.portalUseCase = new CreatePortalUseCase(orgRepo, stripeService);
     this.webhookUseCase = new HandleStripeWebhookUseCase(eventRepo, orgRepo);
+    this.usageUseCase = new GetCurrentUsageUseCase(orgRepo, usageRepo);
   }
 
   @Post('checkout')
@@ -125,18 +128,10 @@ export class BillingController {
   @Get('usage')
   @UseGuards(AuthGuard)
   async getUsage(@CurrentUser() user: JwtPayload) {
-    // Phase 2 stub: returns current plan limit and a 0 usage count. The real
-    // AiReportUsage count is wired in Phase 3 (GetCurrentUsageUseCase).
-    const org = await this.orgRepo.findById(user.organizationId);
-    const plan: PlanType = org?.plan ?? PlanType.FREE;
-    return {
-      data: {
-        aiReportsGenerated: 0,
-        planLimit: getLimit(plan),
-        yearMonth: getCurrentYearMonth(),
-        plan,
-      },
-    };
+    const usage = await this.usageUseCase.execute({
+      organizationId: user.organizationId,
+    });
+    return { data: usage };
   }
 
   private mapCheckoutError(error: unknown): never {

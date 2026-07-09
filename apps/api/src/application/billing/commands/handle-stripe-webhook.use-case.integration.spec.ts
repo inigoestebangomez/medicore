@@ -14,7 +14,9 @@ import {
 import type { IOrganizationRepository, UpdateSubscriptionData } from '@/domain/organization/organization.repository.interface';
 import type { IProcessedStripeEventRepository } from '@/domain/billing/stripe-event.repository.interface';
 
-const stripe = new Stripe('sk_test_placeholder');
+// Used only to construct realistic Stripe.Event objects; the SDK client is never
+// instantiated in tests (no network). Keeping the import as a value keeps the
+// Stripe types resolvable at runtime for `as Stripe.Event` casts.
 
 class MockEventRepo implements IProcessedStripeEventRepository {
   public inserted: { id: string; type: string }[] = [];
