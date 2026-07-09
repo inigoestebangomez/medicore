@@ -13,6 +13,7 @@ import { HealthModule } from './api/health/health.module';
 import { AnalyticsModule } from './api/analytics/analytics.module';
 import { ExportModule } from './api/export/export.module';
 import { ReportsModule } from './api/reports/reports.module';
+import { BillingModule } from './api/billing/billing.module';
 import { AuditModule } from './infrastructure/audit/audit.module';
 import { PrismaModule } from './infrastructure/database/prisma.module';
 import { SubscriptionInterceptor } from './api/shared/interceptors/subscription.interceptor';
@@ -34,6 +35,7 @@ import { ResponseWrapperInterceptor } from './api/shared/interceptors/response-w
     AnalyticsModule,
     ExportModule,
     ReportsModule,
+    BillingModule,
     AuditModule,
   ],
   controllers: [],
