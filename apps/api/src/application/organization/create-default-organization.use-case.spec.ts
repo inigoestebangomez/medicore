@@ -36,6 +36,9 @@ class InMemoryOrganizationRepository implements IOrganizationRepository {
     this.orgs.set(id, deleted);
     return deleted;
   }
+  async updateSubscription(id: string, data: any): Promise<Organization> {
+    return this.update(id, data);
+  }
 }
 
 class InMemoryOrgMemberRepository implements IOrganizationMemberRepository {

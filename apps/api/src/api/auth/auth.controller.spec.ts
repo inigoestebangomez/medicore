@@ -114,6 +114,10 @@ class MockOrgRepository implements IOrganizationRepository {
   async softDelete(_id: string): Promise<Organization> {
     throw new Error('Not implemented in mock');
   }
+
+  async updateSubscription(_id: string, _data: any): Promise<Organization> {
+    throw new Error('Not implemented in mock');
+  }
 }
 
 class MockOrgMemberRepository implements IOrganizationMemberRepository {

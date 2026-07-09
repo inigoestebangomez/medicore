@@ -225,3 +225,26 @@ export type {
   ListScalesQuery,
   ScaleResponse,
 } from './scale.schema';
+
+// Billing
+export {
+  PlanTypeSchema,
+  BillingIntervalSchema,
+  CreateCheckoutSchema,
+  CreatePortalSchema,
+  UsageResponseSchema,
+  CheckoutResponseSchema,
+  PortalResponseSchema,
+  StripeWebhookEventSchema,
+} from './billing.schema';
+
+export type {
+  PlanType as BillingPlanType,
+  BillingInterval,
+  CreateCheckoutInput,
+  CreatePortalInput,
+  UsageResponse,
+  CheckoutResponse,
+  PortalResponse,
+  StripeWebhookEvent,
+} from './billing.schema';

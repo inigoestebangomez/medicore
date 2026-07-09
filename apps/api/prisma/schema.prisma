@@ -42,6 +42,7 @@ model Organization {
   subscriptionExpiresAt   DateTime?
   stripeCustomerId        String?
   stripeSubscriptionId    String?
+  billingInterval         BillingInterval?  // monthly | yearly; null for FREE orgs
   settings    Json             @default("{}")  // configuración del workspace
   logoUrl     String?
   createdAt   DateTime         @default(now())
@@ -53,6 +54,7 @@ model Organization {
   auditLogs   AuditLog[]
   consents    ConsentRecord[]
   invitations Invitation[]
+  aiReportUsages AiReportUsage[]
 
   @@index([slug])
   @@map("organizations")
@@ -98,6 +100,11 @@ enum SubscriptionStatus {
   PAST_DUE
   CANCELED
   EXPIRED
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
 }
 
 enum MemberRole {
@@ -646,4 +653,35 @@ model ConsentRecord {
   @@index([organizationId, patientId])
   @@index([organizationId, patientId, consentType])
   @@map("consent_records")
+}
+
+// ─────────────────────────────────────────────
+// BILLING & AI USAGE TRACKING
+// ─────────────────────────────────────────────
+
+// Per-organization monthly AI report generation counter (BR-REP-009 enforcement).
+// yearMonth is "YYYY-MM". Unique constraint guarantees one row per org per month.
+model AiReportUsage {
+  id             String   @id @default(uuid())
+  organizationId String
+  yearMonth      String   // "2026-07"
+  count          Int      @default(0)
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, yearMonth])
+  @@index([organizationId])
+  @@map("ai_report_usage")
+}
+
+// Idempotency table for Stripe webhook events. eventId is the Stripe event id (PK).
+// Survives Stripe retries and app restarts: a duplicate event is a no-op.
+model ProcessedStripeEvent {
+  eventId     String   @id
+  eventType   String
+  processedAt DateTime @default(now())
+
+  @@map("processed_stripe_events")
 }
