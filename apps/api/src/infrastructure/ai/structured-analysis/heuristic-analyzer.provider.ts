@@ -6,7 +6,8 @@
 // Spanish hospital column names. Failures fall through to Groq / Claude.
 //
 // Excel date serials count from 1900-01-01 and include the Lotus 1-2-3 leap
-// year bug. We use the standard epoch conversion: serial 46023 = 2026-01-15.
+// year bug. We use the standard epoch conversion:
+// (serial - 25569) * 86400 * 1000 ms. Serial 46023 = 2026-01-01.
 
 import { Injectable } from '@nestjs/common';
 import type {
