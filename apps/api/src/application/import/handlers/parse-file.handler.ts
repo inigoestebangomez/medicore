@@ -8,7 +8,7 @@
 // and only becomes CONFIRMING with a proposal the physician must review.
 
 import { randomUUID } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import type { ColumnMappingProposal, FileSample } from '@medicore/contracts';
 import type { IImportBatchRepository } from '@/domain/import/import-batch.repository.interface';
 import { ImportBatch } from '@/domain/import/import-batch.entity';
@@ -41,8 +41,8 @@ export class ParseFileHandler {
   constructor(
     private readonly parser: FileParserService,
     private readonly analyzer: ImportAnalyzerService,
-    private readonly batchRepo: IImportBatchRepository,
-    private readonly cache: IParsedFileCache,
+    @Inject('IImportBatchRepository') private readonly batchRepo: IImportBatchRepository,
+    @Inject('IParsedFileCache') private readonly cache: IParsedFileCache,
   ) {}
 
   async execute(cmd: ParseFileCommand): Promise<ParseFileResult> {

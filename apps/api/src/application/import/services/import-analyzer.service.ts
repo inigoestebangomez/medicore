@@ -10,7 +10,7 @@
 // heuristic result is returned even if it's below threshold (safe fallback —
 // the physician still gets a mapping to review in the UI).
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import type { ColumnMappingProposal, FileSample } from '@medicore/contracts';
 import type { StructuredAnalysisProvider } from '@/infrastructure/ai/structured-analysis/structured-analysis.provider';
 
@@ -31,9 +31,9 @@ export class ImportAnalyzerService {
   private readonly logger = new Logger(ImportAnalyzerService.name);
 
   constructor(
-    private readonly heuristic: StructuredAnalysisProvider,
-    private readonly groq: StructuredAnalysisProvider,
-    private readonly claude: StructuredAnalysisProvider,
+    @Inject('HEURISTIC_ANALYZER') private readonly heuristic: StructuredAnalysisProvider,
+    @Inject('GROQ_ANALYZER') private readonly groq: StructuredAnalysisProvider,
+    @Inject('CLAUDE_STRUCTURED_ANALYZER') private readonly claude: StructuredAnalysisProvider,
   ) {}
 
   /**

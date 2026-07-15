@@ -15,7 +15,7 @@
 // so most matches fall through to name+birthdate — which is the spec intent:
 // NHC=100 is reserved for the unambiguous case.
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { PatientMatchVO } from '@/domain/import/patient-match.vo';
 import type { Patient } from '@/domain/patient/patient.entity';
 import type { IPatientRepository } from '@/domain/patient/patient.repository.interface';
@@ -38,7 +38,7 @@ const AGE_TOLERANCE_YEARS = 1;
 
 @Injectable()
 export class PatientMatcherService {
-  constructor(private readonly patientRepo: IPatientRepository) {}
+  constructor(@Inject('IPatientRepository') private readonly patientRepo: IPatientRepository) {}
 
   async match(input: MatchInput): Promise<MatchResult> {
     const matches: PatientMatchVO[] = [];

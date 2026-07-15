@@ -7,7 +7,7 @@
 // actual create/enrich happens in the background finalize job (ImportProcessor,
 // WU-11-08) once the physician resolves every match (BR-IMP-001).
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import type { ColumnMapping } from '@medicore/contracts';
 import type { IImportBatchRepository } from '@/domain/import/import-batch.repository.interface';
 import { DataCleanerService } from '../services/data-cleaner.service';
@@ -42,10 +42,10 @@ export interface ConfirmImportResult {
 @Injectable()
 export class ConfirmImportHandler {
   constructor(
-    private readonly batchRepo: IImportBatchRepository,
+    @Inject('IImportBatchRepository') private readonly batchRepo: IImportBatchRepository,
     private readonly cleaner: DataCleanerService,
     private readonly matcher: PatientMatcherService,
-    private readonly cache: IParsedFileCache,
+    @Inject('IParsedFileCache') private readonly cache: IParsedFileCache,
   ) {}
 
   async execute(cmd: ConfirmImportCommand): Promise<ConfirmImportResult> {

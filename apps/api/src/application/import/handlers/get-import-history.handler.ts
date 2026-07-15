@@ -3,7 +3,7 @@
 // by the repository. Returns the domain entities; the API layer maps them to
 // the response DTO.
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import type { ImportBatch } from '@/domain/import/import-batch.entity';
 import type { IImportBatchRepository, ListImportBatchesParams } from '@/domain/import/import-batch.repository.interface';
 
@@ -16,7 +16,7 @@ export interface GetImportHistoryResult {
 
 @Injectable()
 export class GetImportHistoryHandler {
-  constructor(private readonly batchRepo: IImportBatchRepository) {}
+  constructor(@Inject('IImportBatchRepository') private readonly batchRepo: IImportBatchRepository) {}
 
   async execute(params: ListImportBatchesParams): Promise<GetImportHistoryResult> {
     const { items, total } = await this.batchRepo.findByOrg(params);

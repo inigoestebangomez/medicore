@@ -4,7 +4,7 @@
 // does better). Loads the batch, re-analyzes the cached sample, updates the
 // proposal. Does not touch Patient records (BR-IMP-001).
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import type { ColumnMappingProposal } from '@medicore/contracts';
 import type { IImportBatchRepository } from '@/domain/import/import-batch.repository.interface';
 import { ImportAnalyzerService } from '../services/import-analyzer.service';
@@ -27,8 +27,8 @@ export interface AnalyzeColumnsResult {
 export class AnalyzeColumnsHandler {
   constructor(
     private readonly analyzer: ImportAnalyzerService,
-    private readonly batchRepo: IImportBatchRepository,
-    private readonly cache: IParsedFileCache,
+    @Inject('IImportBatchRepository') private readonly batchRepo: IImportBatchRepository,
+    @Inject('IParsedFileCache') private readonly cache: IParsedFileCache,
   ) {}
 
   async execute(cmd: AnalyzeColumnsCommand): Promise<AnalyzeColumnsResult> {

@@ -59,6 +59,11 @@ export enum Action {
   READ_REPORT = 'READ_REPORT',
   SIGN_REPORT = 'SIGN_REPORT',
 
+  // Import (Phase 11)
+  IMPORT_DATA = 'IMPORT_DATA',
+  READ_IMPORT = 'READ_IMPORT',
+  REVERT_IMPORT = 'REVERT_IMPORT',
+
   // Analytics
   READ_ANALYTICS = 'READ_ANALYTICS',
 
@@ -91,6 +96,7 @@ export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
     Action.MANAGE_MEMBERS, Action.VIEW_MEMBERS,
     Action.CREATE_INVITATION, Action.ACCEPT_INVITATION,
     Action.CREATE_REPORT, Action.READ_REPORT, Action.SIGN_REPORT,
+    Action.IMPORT_DATA, Action.READ_IMPORT, Action.REVERT_IMPORT,
     Action.READ_ANALYTICS,
     Action.VIEW_AUDIT_LOG,
   ]),
@@ -113,6 +119,7 @@ export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
     Action.ACCEPT_INVITATION,
     Action.READ_ANALYTICS,
     Action.CREATE_REPORT, Action.READ_REPORT, Action.SIGN_REPORT,
+    Action.IMPORT_DATA, Action.READ_IMPORT, Action.REVERT_IMPORT,
   ]),
 
   [VIEWER]: new Set<Action>([
@@ -122,6 +129,7 @@ export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
     Action.VIEW_ORGANIZATION, Action.VIEW_MEMBERS,
     Action.READ_ANALYTICS,
     Action.READ_REPORT,
+    Action.READ_IMPORT,
   ]),
 
   [ADMIN]: new Set<Action>([

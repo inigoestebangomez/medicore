@@ -4,7 +4,7 @@
 // enriched. Manual standard fields are never touched (precedence: manual >
 // imported, BR-IMP-003). Also purges the parsed-file cache.
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import type { IImportBatchRepository } from '@/domain/import/import-batch.repository.interface';
 import type { IPatientRepository } from '@/domain/patient/patient.repository.interface';
 import type { IParsedFileCache } from '../ports/parsed-file-cache.port';
@@ -26,9 +26,9 @@ export interface RevertImportResult {
 @Injectable()
 export class RevertImportHandler {
   constructor(
-    private readonly batchRepo: IImportBatchRepository,
-    private readonly patientRepo: IPatientRepository,
-    private readonly cache: IParsedFileCache,
+    @Inject('IImportBatchRepository') private readonly batchRepo: IImportBatchRepository,
+    @Inject('IPatientRepository') private readonly patientRepo: IPatientRepository,
+    @Inject('IParsedFileCache') private readonly cache: IParsedFileCache,
   ) {}
 
   async execute(cmd: RevertImportCommand): Promise<RevertImportResult> {
