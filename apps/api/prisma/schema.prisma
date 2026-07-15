@@ -56,6 +56,8 @@ model Organization {
   invitations Invitation[]
   aiReportUsages AiReportUsage[]
   importBatches ImportBatch[]
+  researchQueries ResearchQuery[]
+  patientCollections PatientCollection[]
 
   @@index([slug])
   @@map("organizations")
@@ -312,6 +314,7 @@ model Patient {
   reports        Report[]
   scales         ClinicalScale[]
   consents       ConsentRecord[]
+  collectionMemberships PatientCollectionMember[]
 
   @@unique([organizationId, nhc])         // El NHC es único dentro de la organización
   @@index([organizationId])
@@ -374,6 +377,95 @@ model ImportBatch {
   @@index([organizationId, createdAt])
   @@index([organizationId, status])
   @@map("import_batches")
+}
+
+// ─────────────────────────────────────────────
+// RESEARCH (Phase 12)
+// ─────────────────────────────────────────────
+
+model ResearchQuery {
+  id              String   @id @default(uuid())
+  organizationId  String
+  createdBy       String
+
+  name            String
+  description     String?
+
+  // Source of data
+  dataSource      String   @default("all_patients")   // "all_patients" | "import_batch" | "manual_only" | "imported_only"
+  importBatchIds  String[] @default([])
+
+  // Filters (AND/OR by filterLogic)
+  filters         Json     @default("[]")    // Filter[]
+  filterLogic     String   @default("AND")   // "AND" | "OR"
+
+  // Display config
+  displayFields   String[] @default([])
+  visualizations  String[] @default([])      // "table" | "bar_chart" | "line_chart" | "scatter" | "stats"
+
+  // Privacy (BR-RES-001: private by default)
+  sharedWith      String[] @default([])
+
+  // Last execution
+  lastRunAt       DateTime?
+  lastRunCount    Int?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  collections     PatientCollection[]
+
+  @@index([organizationId])
+  @@index([organizationId, createdBy])
+  @@index([organizationId, createdAt])
+  @@map("research_queries")
+}
+
+model PatientCollection {
+  id              String   @id @default(uuid())
+  organizationId  String
+  createdBy       String
+
+  name            String
+  description     String?
+  queryId         String?
+
+  // BR-RES-003: locked collections are immutable (published study cohort)
+  isLocked        Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  query           ResearchQuery?   @relation(fields: [queryId], references: [id])
+  members         PatientCollectionMember[]
+
+  @@index([organizationId])
+  @@index([organizationId, createdBy])
+  @@map("patient_collections")
+}
+
+// ─────────────────────────────────────────────
+// PATIENT COLLECTION MEMBER (Phase 12)
+// ─────────────────────────────────────────────
+
+model PatientCollectionMember {
+  collectionId  String
+  patientId    String
+  addedAt      DateTime @default(now())
+  addedBy      String
+  notes        String?
+
+  collection    PatientCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  patient       Patient          @relation(fields: [patientId], references: [id])
+
+  @@id([collectionId, patientId])
+  @@index([collectionId])
+  @@index([patientId])
+  @@map("patient_collection_members")
 }
 
 model Allergy {

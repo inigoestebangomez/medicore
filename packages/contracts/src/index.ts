@@ -284,3 +284,47 @@ export type {
   ImportBatchResponse,
   ListImportBatchesQuery,
 } from './import.schema';
+
+// Research (Phase 12)
+export {
+  FieldSourceSchema,
+  FilterOperatorSchema,
+  FilterSchema,
+  FilterValueSchema,
+  FilterLogicSchema,
+  DataSourceSchema,
+  VisualizationTypeSchema,
+  ResearchQueryInputSchema,
+  ResearchQueryResponseSchema,
+  PatientCollectionInputSchema,
+  PatientCollectionResponseSchema,
+  AddToCollectionInputSchema,
+  QueryResultRowSchema,
+  FieldStatsSchema,
+  CategoryDistributionSchema,
+  ExecuteQueryResponseSchema,
+  ExportFormatSchema,
+  ExportRequestSchema,
+  ListResearchQueriesQuerySchema,
+} from './research.schema';
+
+export type {
+  FieldSource,
+  FilterOperator,
+  Filter,
+  FilterLogic,
+  DataSource,
+  VisualizationType,
+  ResearchQueryInput,
+  ResearchQueryResponse,
+  PatientCollectionInput,
+  PatientCollectionResponse,
+  AddToCollectionInput,
+  QueryResultRow,
+  FieldStats,
+  CategoryDistribution,
+  ExecuteQueryResponse,
+  ExportFormat,
+  ExportRequest,
+  ListResearchQueriesQuery,
+} from './research.schema';
