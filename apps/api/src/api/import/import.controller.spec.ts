@@ -9,6 +9,7 @@ import { ImportController } from './import.controller';
 import { ImportBatchNotFoundError } from '@/domain/import/errors/import-batch-not-found.error';
 import { FileEmptyError } from '@/domain/import/errors/file-empty.error';
 import { InvalidImportTransitionError } from '@/domain/import/errors/invalid-import-transition.error';
+import { ImportReminderService } from '@/application/import/services/import-reminder.service';
 import type { JwtPayload } from '@medicore/contracts';
 
 const user: JwtPayload = { sub: 'u-1', organizationId: 'org-1', email: 'a@b.c', role: 'PHYSICIAN' } as any;
@@ -18,7 +19,7 @@ const user: JwtPayload = { sub: 'u-1', organizationId: 'org-1', email: 'a@b.c', 
 // in a pure unit context.
 function buildController(stubs: {
   parse?: any; analyze?: any; confirm?: any; revert?: any; history?: any;
-  batchRepo?: any; queue?: { add: jest.Mock };
+  batchRepo?: any; queue?: { add: jest.Mock }; reminder?: any;
 }) {
   const queue = stubs.queue ?? { add: jest.fn().mockResolvedValue({ id: 'job-1' }) };
   const ctrl = new ImportController(
@@ -28,6 +29,7 @@ function buildController(stubs: {
     stubs.confirm ?? { execute: jest.fn().mockResolvedValue({ batchId: 'b-1', matches: [] }) },
     stubs.revert ?? { execute: jest.fn().mockResolvedValue({ reverted: true, affectedPatients: 0 }) },
     stubs.history ?? { execute: jest.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }) },
+    stubs.reminder ?? { evaluate: jest.fn().mockResolvedValue({ organizationId: 'org-1', showBanner: true }) },
     queue,
   );
   return { ctrl, queue };
@@ -93,4 +95,14 @@ describe('ImportController', () => {
     const { ctrl: ctrl2 } = buildController({ batchRepo: { findById: jest.fn().mockResolvedValue(null) } });
     await expect(ctrl2.getOne('missing', user)).rejects.toThrow();
   });
+
+  it('reminderStatus delegates to ImportReminderService', async () => {
+    const reminder = { evaluate: jest.fn().mockResolvedValue({ organizationId: 'org-1', showBanner: true, daysSinceLastImport: 18, reminderDays: 15 }) };
+    const { ctrl } = buildController({ reminder });
+    const res = await ctrl.reminderStatus(user);
+    expect(reminder.evaluate).toHaveBeenCalledWith('org-1');
+    expect(res.data.showBanner).toBe(true);
+  });
 });
+
+void ImportReminderService;

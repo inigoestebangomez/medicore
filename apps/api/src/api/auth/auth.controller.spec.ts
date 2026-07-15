@@ -100,6 +100,10 @@ class MockOrgRepository implements IOrganizationRepository {
     return this.slugIndex.get(slug) ?? null;
   }
 
+  async findAll(): Promise<Organization[]> {
+    return Array.from(this.orgs.values());
+  }
+
   async create(data: { name: string; slug: string; type?: string; logoUrl?: string | null }): Promise<Organization> {
     const org = createMockOrg({ name: data.name, slug: data.slug, type: data.type });
     this.orgs.set(org.id, org);

@@ -21,6 +21,14 @@ export class PrismaOrganizationRepository implements IOrganizationRepository {
     return this.toEntity(record);
   }
 
+  async findAll(): Promise<Organization[]> {
+    const records = await this.prisma.organization.findMany({
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+    });
+    return records.map((r) => this.toEntity(r));
+  }
+
   async create(data: {
     name: string;
     slug: string;

@@ -33,6 +33,7 @@ import { GetImportHistoryHandler } from '@/application/import/handlers/get-impor
 import { ImportBatchNotFoundError } from '@/domain/import/errors/import-batch-not-found.error';
 import { InvalidImportTransitionError } from '@/domain/import/errors/invalid-import-transition.error';
 import { FileEmptyError } from '@/domain/import/errors/file-empty.error';
+import { ImportReminderService } from '@/application/import/services/import-reminder.service';
 import { IMPORT_QUEUE } from '@/infrastructure/queues/import-processor';
 
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25 MB per spec §2 (hospital Excels)
@@ -53,6 +54,7 @@ export class ImportController {
     confirm: ConfirmImportHandler,
     revert: RevertImportHandler,
     history: GetImportHistoryHandler,
+    private readonly reminder: ImportReminderService,
     @Inject(IMPORT_QUEUE) private readonly importQueue: { add: (name: string, data: unknown) => Promise<unknown> },
   ) {
     this.parseHandler = parser;
@@ -60,6 +62,18 @@ export class ImportController {
     this.confirmHandler = confirm;
     this.revertHandler = revert;
     this.historyHandler = history;
+  }
+
+  /**
+   * Spec §5 dashboard banner state. On-demand: the daily CRON reuses the same
+   * service to enumerate orgs due for a reminder; this endpoint computes the
+   * state for the caller's org so the web client can render the banner.
+   */
+  @Get('reminder')
+  @Reflect.metadata(REQUIRED_ACTION_KEY, Action.READ_IMPORT)
+  async reminderStatus(@CurrentUser() user: JwtPayload) {
+    const status = await this.reminder.evaluate(user.organizationId);
+    return { data: status };
   }
 
   /** Stage 1 — upload + parse + AI analysis. Returns the proposed mapping. */
@@ -179,7 +193,7 @@ export class ImportController {
   async list(
     @Query('page') page: string,
     @Query('pageSize') pageSize: string,
-    @Query('status') status: string,
+    @Query('status') status: string | undefined,
     @CurrentUser() user: JwtPayload,
   ) {
     const result = await this.historyHandler.execute({

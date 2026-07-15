@@ -16,6 +16,9 @@ class InMemoryOrganizationRepository implements IOrganizationRepository {
   async findBySlug(slug: string): Promise<Organization | null> {
     return this.slugIndex.get(slug) ?? null;
   }
+  async findAll(): Promise<Organization[]> {
+    return Array.from(this.orgs.values());
+  }
   async create(data: { name: string; slug: string; type?: string; logoUrl?: string | null }): Promise<Organization> {
     const org = new Organization({ id: `org-${this.nextId++}`, name: data.name, slug: data.slug, type: data.type as any });
     this.orgs.set(org.id, org);

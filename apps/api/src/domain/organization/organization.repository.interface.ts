@@ -14,6 +14,8 @@ export interface UpdateSubscriptionData {
 export interface IOrganizationRepository {
   findById(id: string): Promise<Organization | null>;
   findBySlug(slug: string): Promise<Organization | null>;
+  /** All non-deleted orgs. Used by the daily import-reminder CRON (spec §5). */
+  findAll(): Promise<Organization[]>;
   create(data: {
     name: string;
     slug: string;
