@@ -60,6 +60,16 @@ class InMemoryPatientRepository implements IPatientRepository {
   async countByOrg(_organizationId: string): Promise<number> {
     return this.patients.size;
   }
+
+  async findByNhc(_nhc: string, _organizationId: string): Promise<Patient | null> {
+    return null;
+  }
+  async searchByNameFuzzy(_organizationId: string, _lastName: string, _firstName?: string): Promise<Patient[]> {
+    return [];
+  }
+  async enrich(_id: string, _organizationId: string, _data: any, _updatedBy: string): Promise<Patient> {
+    throw new Error('Not implemented');
+  }
 }
 
 describe('CreateSurgeryUseCase', () => {
