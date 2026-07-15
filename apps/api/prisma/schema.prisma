@@ -55,6 +55,7 @@ model Organization {
   consents    ConsentRecord[]
   invitations Invitation[]
   aiReportUsages AiReportUsage[]
+  importBatches ImportBatch[]
 
   @@index([slug])
   @@map("organizations")
@@ -233,6 +234,14 @@ enum ReportStatus {
   SIGNED        // Firmado (estado final)
 }
 
+enum ImportStatus {
+  PENDING       // análisis en curso
+  CONFIRMING    // esperando confirmación del médico
+  PROCESSING    // importando datos
+  COMPLETED     // importación finalizada
+  FAILED        // error durante la importación
+}
+
 enum ClinicalScaleType {
   SNOT_22           // Sino-Nasal Outcome Test (rinosinusitis)
   VAS_TINNITUS      // Escala visual analógica para acúfenos
@@ -280,6 +289,11 @@ model Patient {
   bloodType      BloodType      @default(UNKNOWN)
   notes          String?        // Notas libres del médico sobre el paciente
 
+  // Datos de importación (Phase 11)
+  importedData   Json?          // { "batch-uuid": { _batchName, _importedAt, ...customFields } }
+  importSource   String?        // "xlsx" | "csv" | "tsv" | "manual" (null = registro manual)
+  importBatchId  String?        // último batch que creó o enriqueció esta ficha
+
   // Metadata
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -290,6 +304,7 @@ model Patient {
   // Relaciones
   organization   Organization   @relation(fields: [organizationId], references: [id])
   allergies      Allergy[]
+  importBatch    ImportBatch?   @relation(fields: [importBatchId], references: [id])
   consultations  Consultation[]
   surgeries      Surgery[]
   imagingStudies ImagingStudy[]
@@ -303,7 +318,62 @@ model Patient {
   @@index([organizationId, lastName, firstName])
   @@index([organizationId, birthDate])
   @@index([organizationId, idDocument])
+  @@index([organizationId, importBatchId])
   @@map("patients")
+}
+
+// ─────────────────────────────────────────────
+// IMPORT (Phase 11)
+// ─────────────────────────────────────────────
+
+model ImportBatch {
+  id              String       @id @default(uuid())
+  organizationId  String
+  createdBy       String       // userId del médico que importó
+
+  // Metadata del archivo original
+  fileName        String
+  fileSize        Int          // bytes
+  fileHash        String       // SHA-256 para auditoría/dedup
+  originalFormat  String       // "xlsx" | "csv" | "tsv"
+
+  // Muestra del archivo y resultado del análisis IA
+  sample          Json         // { columns, rows } primeras 20 filas para UI
+  columnMapping   Json         // { "Nº HISTORIA": "nhc", "Edad": "age", ... }
+  customFieldNames Json        @default("{}") // { "NombreColumnaOriginal": "nombre legible" }
+  junkRowIndices  Int[]        // índices de filas basura detectadas
+  aiConfidence    Float?       // 0.0 - 1.0
+  aiProvider      String?      // "heuristic" | "groq" | "claude"
+  issues          String[]     @default([])
+  notes           String?
+
+  // Resultado del análisis (para la UI)
+  totalRows       Int          @default(0)
+  // Resultado de la importación
+  importedRows    Int          @default(0)
+  enrichedRows    Int          @default(0)
+  createdRows     Int          @default(0)
+  skippedRows     Int          @default(0)
+  pendingRows     Int          @default(0)
+
+  // Snapshot pre-import para revert (BR-IMP-005)
+  snapshot        Json?
+
+  // Estado
+  status          ImportStatus @default(PENDING)
+  errorMessage    String?
+
+  createdAt       DateTime     @default(now())
+  completedAt     DateTime?
+  deletedAt       DateTime?    // soft delete (revert)
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  patients        Patient[]    // pacientes creados o enriquecidos en este batch
+
+  @@index([organizationId])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, status])
+  @@map("import_batches")
 }
 
 model Allergy {

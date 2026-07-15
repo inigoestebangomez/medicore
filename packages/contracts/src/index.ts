@@ -248,3 +248,39 @@ export type {
   PortalResponse,
   StripeWebhookEvent,
 } from './billing.schema';
+
+// Import (Phase 11)
+export {
+  ImportStatusSchema,
+  IMPORT_ALLOWED_TRANSITIONS,
+  StandardFieldSchema,
+  ColumnMappingSchema,
+  ColumnMappingProposalSchema,
+  FileSampleSchema,
+  ParsedFileSchema,
+  MatchDecisionSchema,
+  PatientMatchSchema,
+  ConfirmMappingSchema,
+  FinalizeImportSchema,
+  ImportBatchSummarySchema,
+  ImportBatchResponseSchema,
+  ListImportBatchesQuerySchema,
+  IMPORT_TIER_LIMITS,
+  IMPORT_LIMIT_BYPASS_ENV,
+} from './import.schema';
+
+export type {
+  ImportStatus,
+  StandardField,
+  ColumnMapping,
+  ColumnMappingProposal,
+  FileSample,
+  ParsedFile,
+  MatchDecision,
+  PatientMatch,
+  ConfirmMappingInput,
+  FinalizeImportInput,
+  ImportBatchSummary,
+  ImportBatchResponse,
+  ListImportBatchesQuery,
+} from './import.schema';
