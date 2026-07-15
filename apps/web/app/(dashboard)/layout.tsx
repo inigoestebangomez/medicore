@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { AuthSync } from '@/components/auth-sync';
+import { ImportReminderBanner } from '@/components/import-reminder-banner';
 
 export default async function DashboardLayout({
   children,
@@ -31,6 +32,7 @@ export default async function DashboardLayout({
           <div className="flex items-center gap-6">
             <Link href="/dashboard" className="text-sm text-gray-600 hover:text-gray-900">Dashboard</Link>
             <Link href="/patients" className="text-sm text-gray-600 hover:text-gray-900">Patients</Link>
+            <Link href="/imports" className="text-sm text-gray-600 hover:text-gray-900">Importar</Link>
             <Link href="/analytics" className="text-sm text-gray-600 hover:text-gray-900">Analytics</Link>
             <Link href="/settings" className="text-sm text-gray-600 hover:text-gray-900">Settings</Link>
           </div>
@@ -53,6 +55,7 @@ export default async function DashboardLayout({
           </div>
         </div>
       </nav>
+      <ImportReminderBanner />
       <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
     </div>
     </AuthSync>
