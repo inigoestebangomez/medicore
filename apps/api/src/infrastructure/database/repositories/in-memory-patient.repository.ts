@@ -170,6 +170,24 @@ export class InMemoryPatientRepository implements IPatientRepository {
     return merged;
   }
 
+  async removeImportedBatch(batchId: string, organizationId: string): Promise<number> {
+    let count = 0;
+    for (const [id, p] of this.patients.entries()) {
+      if (p.organizationId !== organizationId || p.importBatchId !== batchId) continue;
+      const imported = (p.importedData as Record<string, unknown> | null) ?? {};
+      if (batchId in imported) delete imported[batchId];
+      const reverted = new PatientEntity({
+        ...p,
+        importedData: imported,
+        importBatchId: null,
+        updatedAt: new Date(),
+      });
+      this.patients.set(id, reverted);
+      count++;
+    }
+    return count;
+  }
+
   async softDelete(id: string, organizationId: string): Promise<Patient> {
     const existing = this.patients.get(id);
     if (!existing || existing.organizationId !== organizationId) {

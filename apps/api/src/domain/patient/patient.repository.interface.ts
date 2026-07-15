@@ -79,4 +79,10 @@ export interface IPatientRepository {
   findByNhc(nhc: string, organizationId: string): Promise<Patient | null>;
   searchByNameFuzzy(organizationId: string, lastName: string, firstName?: string): Promise<Patient[]>;
   enrich(id: string, organizationId: string, data: EnrichPatientInput, updatedBy: string): Promise<Patient>;
+  /**
+   * BR-IMP-005 (revert): strip this batch's importedData block and clear
+   * importBatchId for every patient created or enriched by the batch.
+   * Manual standard fields are never touched. Returns the affected count.
+   */
+  removeImportedBatch(batchId: string, organizationId: string): Promise<number>;
 }

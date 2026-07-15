@@ -148,6 +148,9 @@ class InMemoryPatientRepository implements IPatientRepository {
   async enrich(_id: string, _organizationId: string, _data: any, _updatedBy: string): Promise<Patient> {
     throw new Error('Not implemented');
   }
+  async removeImportedBatch(_batchId: string, _organizationId: string): Promise<number> {
+    return 0;
+  }
 }
 
 describe('CreateConsultationUseCase', () => {

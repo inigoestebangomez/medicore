@@ -225,6 +225,32 @@ export class PrismaPatientRepository implements IPatientRepository {
     return this.toEntity(record);
   }
 
+  async removeImportedBatch(batchId: string, organizationId: string): Promise<number> {
+    // BR-IMP-005: revert. Find every patient carrying this batch's block and
+    // strip the block from importedData, then clear importBatchId (only when
+    // this was the latest batch). Manual standard fields are untouched.
+    const affected = await this.prisma.patient.findMany({
+      where: { organizationId, importBatchId: batchId, deletedAt: null },
+      select: { id: true, importedData: true },
+    });
+
+    for (const p of affected) {
+      const imported = (p.importedData as Record<string, unknown> | null) ?? {};
+      if (batchId in imported) {
+        delete imported[batchId];
+      }
+      await this.prisma.patient.update({
+        where: { id: p.id },
+        data: {
+          importedData: imported as any,
+          importBatchId: null,
+          updatedAt: new Date(),
+        },
+      });
+    }
+    return affected.length;
+  }
+
   private toEntity(record: any): Patient {
     return new Patient({
       id: record.id,
