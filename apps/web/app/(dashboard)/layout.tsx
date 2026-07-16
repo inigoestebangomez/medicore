@@ -33,6 +33,7 @@ export default async function DashboardLayout({
             <Link href="/dashboard" className="text-sm text-gray-600 hover:text-gray-900">Dashboard</Link>
             <Link href="/patients" className="text-sm text-gray-600 hover:text-gray-900">Patients</Link>
             <Link href="/imports" className="text-sm text-gray-600 hover:text-gray-900">Importar</Link>
+            <Link href="/research" className="text-sm text-gray-600 hover:text-gray-900">Investigación</Link>
             <Link href="/analytics" className="text-sm text-gray-600 hover:text-gray-900">Analytics</Link>
             <Link href="/settings" className="text-sm text-gray-600 hover:text-gray-900">Settings</Link>
           </div>
