@@ -147,12 +147,12 @@ describe('DataCleanerService', () => {
   });
 
   describe('full clean() pipeline', () => {
-    it('should produce cleaned rows, skip junk, exclude phone fields (BR-IMP-007)', () => {
+    it('should produce cleaned rows, skip junk, and extract patient phone to cleaned.phone (BR-IMP-007 inverted)', () => {
       const mapping: ColumnMapping = {
         'Nº HISTORIA': 'nhc',
         'Paciente': 'patientName',
         'Edad': 'age',
-        'Teléfono': 'ignore',       // BR-IMP-007 phone exclusion
+        'Teléfono': 'ignore',       // ignored for field-walk, but scanned by the phone extractor
         'Fecha Nacimiento': 'birthDate',
       };
       const file = makeFile([
@@ -171,14 +171,66 @@ describe('DataCleanerService', () => {
       expect(ana.patientName).toBe('ANA GARCIA');
       expect(ana.age).toBe(45);
       expect(ana.birthDate?.toISOString().slice(0, 10)).toBe('2026-01-01');
-      // Phone field must NEVER appear in cleaned output (BR-IMP-007)
-      const allValues = JSON.stringify(ana);
-      expect(allValues).not.toContain('666111222');
+      // The phone extractor scans the original row and lands the patient phone
+      // on the new cleaned.phone field (BR-IMP-007 inverted: phone is no longer
+      // excluded from cleaned output — it is captured on a dedicated field).
+      expect(ana.phone).toBe('666111222');
 
       // Mixed-cell name + age parsing for the third row (no NHC, name present)
       const ivan = result.cleanedRows[1];
       expect(ivan.patientName).toBe('IVAN');
       expect(ivan.age).toBe(50);
+      // '999' is not a Spanish phone (must start with 6-9 and have 9 digits).
+      expect(ivan.phone).toBeNull();
+    });
+
+    it('should flag false records (equipment/brand name) into falseRecordRowIndices', () => {
+      const mapping: ColumnMapping = {
+        'NHC': 'nhc',
+        'Paciente': 'patientName',
+        'Edad': 'age',
+      };
+      const file = makeFile([
+        { NHC: '1', Paciente: 'JUAN PEREZ', Edad: 50 },
+        { NHC: '2', Paciente: 'PENDIENTE REVISIÓN', Edad: '' }, // false record (admin note)
+      ], ['NHC', 'Paciente', 'Edad']);
+
+      const result = cleaner.clean(file, mapping);
+
+      expect(result.cleanedRows.map((r) => r.patientName)).toEqual(['JUAN PEREZ']);
+      expect(result.falseRecordRowIndices).toContain(1);
+      expect(result.reasons.some((r) => r.rowIndex === 1 && r.reason.includes('false record'))).toBe(true);
+    });
+
+    it('should compute birthDate from age when no birthDate column is present', () => {
+      const mapping: ColumnMapping = { 'NHC': 'nhc', 'Paciente': 'patientName', 'Edad': 'age' };
+      const file = makeFile([
+        { NHC: '1', Paciente: 'JUAN PEREZ', Edad: 50 },
+      ], ['NHC', 'Paciente', 'Edad']);
+
+      const result = cleaner.clean(file, mapping);
+
+      // age 50 → Jan 1 of (currentYear - 50)
+      const expectedYear = new Date().getFullYear() - 50;
+      expect(result.cleanedRows[0].birthDate?.toISOString()).toMatch(new RegExp(`^${expectedYear}-01-01T00:00:00`));
+    });
+
+    it('should let a phone-named column mapped to custom flow through (no longer stripped)', () => {
+      const mapping: ColumnMapping = {
+        'NHC': 'nhc',
+        'Móvil': 'custom',        // phone-named but mapped custom — must NOT be skipped
+      };
+      const file = makeFile([
+        { NHC: '1', 'Móvil': '612345678' },
+      ], ['NHC', 'Móvil']);
+
+      const result = cleaner.clean(file, mapping);
+
+      const row = result.cleanedRows[0];
+      // Column walk no longer drops phone-named columns: the custom mapping holds.
+      expect(row.customFields['Móvil']).toBe('612345678');
+      // The extractor still scanned the original row and captured the phone.
+      expect(row.phone).toBe('612345678');
     });
 
     it('should skip rows lacking minimum identifiable info (no NHC and no name)', () => {

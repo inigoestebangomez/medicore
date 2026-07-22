@@ -8,8 +8,10 @@
 //   5. Excludes phone-like columns entirely (BR-IMP-007) — never present in output.
 // Returns a structured CleanResult with valid rows, skipped indices and reasons.
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import type { ColumnMapping, ParsedFile } from '@medicore/contracts';
+import { PhoneExtractorService } from './phone-extractor.service';
+import { FalseRecordDetectorService } from './false-record-detector.service';
 
 export interface CleanedRow {
   rowIndex: number;
@@ -21,6 +23,7 @@ export interface CleanedRow {
   admissionDate: Date | null;
   diagnosis: string | null;
   procedure: string | null;
+  phone: string | null;            // SDD import-data-quality: extracted patient phone
   customFields: Record<string, unknown>;   // custom column values, keyed by custom-field name
   raw: Record<string, unknown>;             // original row preserved for audit/importedData
 }
@@ -29,6 +32,7 @@ export interface CleanResult {
   cleanedRows: CleanedRow[];
   junkRowIndices: number[];
   skippedRowIndices: number[];   // rows skipped because no identifiable patient info
+  falseRecordRowIndices: number[]; // SDD import-data-quality: rows flagged as false records
   reasons: Array<{ rowIndex: number; reason: string }>;
 }
 
@@ -39,21 +43,30 @@ const SECONDS_PER_DAY = 86400;
 const EXCEL_SERIAL_MIN = 59;    // ~1900-03-01
 const EXCEL_SERIAL_MAX = 80000; // ~2118
 
-const PHONE_PATTERN_FIELDS: RegExp[] = [
-  /tel[eé]fono/i, /\btlf\b/i, /tlfno/i, /\bm[oó]vil\b/i, /\bmvl\b/i, /phone/i, /cel/i,
-];
-
 @Injectable()
 export class DataCleanerService {
+  private readonly falseRecordDetector: FalseRecordDetectorService;
+
+  constructor(
+    private readonly phoneExtractor: PhoneExtractorService = new PhoneExtractorService(),
+    @Optional() detector?: FalseRecordDetectorService,
+  ) {
+    // Construct the detector with `this` so the detector reuses THIS cleaner's
+    // parseDate/normalizeSex helpers instead of default-constructing a new
+    // DataCleanerService — which would recurse (cleaner ↔ detector) endlessly.
+    this.falseRecordDetector = detector ?? new FalseRecordDetectorService(this);
+  }
+
   /**
-   * Clean a parsed file using the confirmed mapping. Caller passes the full
-   * ParsedFile (rows) and the column→field mapping produced by the analyzer
-   * and (optionally) corrected by the physician.
-   */
+    * Clean a parsed file using the confirmed mapping. Caller passes the full
+    * ParsedFile (rows) and the column→field mapping produced by the analyzer
+    * and (optionally) corrected by the physician.
+    */
   clean(file: ParsedFile, mapping: ColumnMapping): CleanResult {
     const cleanedRows: CleanedRow[] = [];
     const junkRowIndices: number[] = [];
     const skippedRowIndices: number[] = [];
+    const falseRecordRowIndices: number[] = [];
     const reasons: CleanResult['reasons'] = [];
 
     file.rows.forEach((row, rowIndex) => {
@@ -74,6 +87,7 @@ export class DataCleanerService {
         admissionDate: null,
         diagnosis: null,
         procedure: null,
+        phone: null,
         customFields: {},
         // raw preserves the original row for importedData JSONB (BR-IMP-002),
         // but BR-IMP-007 phone/ignored columns are stripped here so they never
@@ -83,9 +97,10 @@ export class DataCleanerService {
 
       // Walk every mapped column; assign to the standard field or customFields.
       for (const [column, field] of Object.entries(mapping)) {
-        // 5. Phone columns are ALWAYS 'ignore' — never appear in output (BR-IMP-007).
+        // 5. 'ignore'-mapped columns never enter the field walk. Phone-named
+        //    columns are NO LONGER dropped here (SDD import-data-quality): they
+        //    flow through to the PhoneExtractorService which scans the full row.
         if (field === 'ignore') continue;
-        if (PHONE_PATTERN_FIELDS.some((re) => re.test(column))) continue; // defensive double-check
 
         const rawValue = row[column];
 
@@ -164,6 +179,26 @@ export class DataCleanerService {
         }
       }
 
+      // SDD import-data-quality: compute birthDate from age when no birthDate
+      // column yielded a date (age-only rows).
+      if (cleaned.birthDate === null && cleaned.age !== null) {
+        cleaned.birthDate = this.ageToBirthDate(cleaned.age);
+      }
+
+      // SDD import-data-quality: extract the patient phone from the FULL
+      // original row (scans every cell, regardless of the column mapping).
+      cleaned.phone = this.phoneExtractor.extract(row);
+
+      // SDD import-data-quality: validate cleaned cells against their mapped
+      // column expectations and flag false records (equipment names, admin
+      // notes, numeric record-id cells, ...).
+      const detection = this.falseRecordDetector.detect(row, this.toDetectorColumnMap(mapping));
+      if (detection.isFalse) {
+        falseRecordRowIndices.push(rowIndex);
+        reasons.push({ rowIndex, reason: `false record: ${detection.reasons.join('; ')}` });
+        return;
+      }
+
       // 4b. Row without minimum identifiable info → skip (not a patient).
       if (!this.hasMinimumIdentifiableInfo(cleaned)) {
         skippedRowIndices.push(rowIndex);
@@ -174,7 +209,24 @@ export class DataCleanerService {
       cleanedRows.push(cleaned);
     });
 
-    return { cleanedRows, junkRowIndices, skippedRowIndices, reasons };
+    return { cleanedRows, junkRowIndices, skippedRowIndices, falseRecordRowIndices, reasons };
+  }
+
+  /**
+   * Build the column→field-name map consumed by the FalseRecordDetector.
+   * Translates the pipeline's StandardField ('patientName') to the detector's
+   * column-rule name ('name') and keeps the rules the detector validates
+   * (nhc, age, birthDate, sex); all other fields are irrelevant to detection.
+   */
+  private toDetectorColumnMap(mapping: ColumnMapping): Map<string, string> {
+    const m = new Map<string, string>();
+    for (const [column, field] of Object.entries(mapping)) {
+      if (field === 'patientName') m.set(column, 'name');
+      else if (field === 'nhc' || field === 'age' || field === 'birthDate' || field === 'sex') {
+        m.set(column, field);
+      }
+    }
+    return m;
   }
 
   // ─────────────────────────────────────────────
@@ -396,16 +448,16 @@ export class DataCleanerService {
   }
 
   /**
-   * Strip 'ignore'-mapped columns (and any column whose name looks like a phone
-   * field) from the original row before it is stored in importedData. This is
-   * the second line of defense for BR-IMP-007: even if a custom formatter or
-   * re-mapping later touches the data, phone values never persist.
+   * Strip 'ignore'-mapped columns from the original row before it is stored in
+   * importedData. SDD import-data-quality: phone-named columns are no longer
+   * stripped here — they are captured on `CleanedRow.phone` by the
+   * PhoneExtractorService, and a phone column mapped to 'custom' must keep its
+   * value in the audit copy.
    */
   private stripIgnoredColumns(row: Record<string, unknown>, mapping: ColumnMapping): Record<string, unknown> {
     const stripped: Record<string, unknown> = {};
     for (const [column, field] of Object.entries(mapping)) {
       if (field === 'ignore') continue;
-      if (PHONE_PATTERN_FIELDS.some((re) => re.test(column))) continue;
       stripped[column] = row[column];
     }
     // Preserve unmapped columns too (they become part of the audit copy in

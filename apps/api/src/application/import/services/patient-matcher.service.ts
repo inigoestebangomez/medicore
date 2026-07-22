@@ -245,7 +245,11 @@ export class PatientMatcherService {
 
   agesMatch(rowAge: number | null, candidate: Patient, referenceDate: Date = new Date()): boolean {
     if (rowAge === null) return false;
+    // SDD import-data-quality: a candidate with null birthDate has no age to
+    // compare against — skip age scoring rather than penalize or falsely match
+    // (null age would coerce to 0 and match any 0-age row).
     const candidateAge = candidate.age(referenceDate);
+    if (candidateAge === null) return false;
     return Math.abs(rowAge - candidateAge) <= AGE_TOLERANCE_YEARS;
   }
 
