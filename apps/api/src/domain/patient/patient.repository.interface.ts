@@ -22,7 +22,7 @@ export interface CreatePatientInput {
   nhc: string;
   firstName: string;
   lastName: string;
-  birthDate: Date;
+  birthDate: Date | null;
   sex: string;
   phone?: string | null;
   email?: string | null;
