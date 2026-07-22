@@ -4,8 +4,9 @@
 // helpers (parseDate, normalizeSex) so the detector stays aligned with the same
 // parsing logic used to build the cleaned row.
 //
-// NHC rule is intentionally NOT enforced yet (test-first mode): the rule is
-// validated against a real import batch in T-10 before it can flag any row.
+// NHC rule is gated behind `nhcRuleActive` (default OFF, SDD T-10): it must be
+// validated against a real import batch before it can flag any row. The rule is
+// fully implemented and tested in both modes so activation is a one-line flip.
 
 import { Injectable } from '@nestjs/common';
 import { DataCleanerService } from './data-cleaner.service';
@@ -32,8 +33,15 @@ export interface DetectionResult {
 
 @Injectable()
 export class FalseRecordDetectorService {
+  /**
+   * `nhcRuleActive` gates the NHC-column false-record rule. It is OFF by
+   * default (SDD import-data-quality T-10): the rule must be validated against
+   * a real import batch before it can flag rows. Flip the default to true once
+   * a batch clears validation with no legitimate NHCs flagged.
+   */
   constructor(
     private readonly cleaner: DataCleanerService = new DataCleanerService(),
+    private readonly nhcRuleActive = false,
   ) {}
 
   /**
@@ -67,11 +75,27 @@ export class FalseRecordDetectorService {
       case 'sex':
         return this.validateSex(value);
       case 'nhc':
-        // Test-first mode: validate format but never flag. See SDD T-10.
-        return null;
+        return this.validateNhc(value);
       default:
         return null;
     }
+  }
+
+  /**
+   * NHC-column rule (T-10, gated): a stored/mapped NHC that is textual (≥4
+   * letters and does not start with a digit) is treated as a false record —
+   * genuine hospital NHCs are numeric (13046043) and MediCore NHCs start with a
+   * 4-digit year (2026-00012), neither of which this rule flags.
+   */
+  private validateNhc(value: unknown): string | null {
+    if (!this.nhcRuleActive) return null; // test-first mode until a real batch is validated
+    if (this.isEmpty(value)) return null;
+    const raw = String(value).trim();
+    const letters = (raw.match(/[A-Za-zÁÉÍÓÚÜáéíóúüÑñ]/g) ?? []).length;
+    if (letters >= 4 && !/^\d/.test(raw)) {
+      return 'nhc: textual identifier, not a patient NHC';
+    }
+    return null;
   }
 
   private isEmpty(value: unknown): boolean {

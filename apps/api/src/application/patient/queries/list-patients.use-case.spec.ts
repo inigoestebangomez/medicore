@@ -115,4 +115,32 @@ describe('ListPatientsUseCase', () => {
     expect(result.items).toHaveLength(3);
     expect(result.total).toBe(3);
   });
+
+  it('should return null birthDate/age for a patient without DOB (SDD import-data-quality)', async () => {
+    await seedPatients(1);
+    await repo.create({
+      nhc: await repo.getNextNhcSequence(orgId),
+      firstName: 'NoDob',
+      lastName: 'Patient',
+      birthDate: null,
+      sex: 'MALE',
+      organizationId: orgId,
+      createdBy: userId,
+    });
+
+    const result = await useCase.execute({
+      organizationId: orgId,
+      role: 'PHYSICIAN',
+      page: 1,
+      pageSize: 10,
+      sortBy: 'lastName',
+      sortOrder: 'asc',
+    });
+
+    const noDob = result.items.find((p) => p.firstName === 'NoDob');
+    expect(noDob).toBeDefined();
+    expect(noDob!.birthDate).toBeNull();
+    expect(noDob!.age).toBeNull();
+    expect(noDob!.isPediatric).toBe(false);
+  });
 });

@@ -6,12 +6,12 @@ export class DuplicatePatientError extends Error {
     id: string;
     firstName: string;
     lastName: string;
-    birthDate: string;
+    birthDate: string | null;
     nhc: string;
   }>;
   public readonly confirmationRequired: boolean;
 
-  constructor(candidates: Array<{ id: string; firstName: string; lastName: string; birthDate: string; nhc: string }>) {
+  constructor(candidates: Array<{ id: string; firstName: string; lastName: string; birthDate: string | null; nhc: string }>) {
     super('Duplicate patient detected. Confirm creation with X-Confirm-Duplicate header.');
     this.name = 'DuplicatePatientError';
     this.similarPatients = candidates;

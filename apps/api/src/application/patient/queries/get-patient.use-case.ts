@@ -16,9 +16,9 @@ export interface PatientPublicResponse {
   nhc: string;
   firstName: string;
   lastName: string;
-  birthDate: string;
+  birthDate: string | null;
   sex: string;
-  age: number;
+  age: number | null;
   isPediatric: boolean;
   hasCriticalAllergy: boolean;
   hasActiveAllergies: boolean;
@@ -51,7 +51,7 @@ export class GetPatientUseCase {
       nhc: patient.nhc,
       firstName: patient.firstName,
       lastName: patient.lastName,
-      birthDate: patient.birthDate.toISOString(),
+      birthDate: patient.birthDate ? patient.birthDate.toISOString() : null,
       sex: patient.sex,
       age: patient.age(),
       isPediatric: patient.isPediatric(),

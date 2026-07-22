@@ -15,6 +15,7 @@ import type { ColumnMapping, MatchDecision } from '@medicore/contracts';
 import type { IImportBatchRepository } from '@/domain/import/import-batch.repository.interface';
 import type { IPatientRepository, CreatePatientInput } from '@/domain/patient/patient.repository.interface';
 import { DataCleanerService } from '@/application/import/services/data-cleaner.service';
+import { buildPatientInputFromRow } from '@/application/import/services/patient-input-builder';
 import type { IParsedFileCache } from '@/application/import/ports/parsed-file-cache.port';
 import { ImportBatchNotFoundError } from '@/domain/import/errors/import-batch-not-found.error';
 
@@ -69,10 +70,24 @@ export class ImportProcessor {
       let enriched = 0;
       let skipped = 0;
       const affectedIds: string[] = [];
+      // SDD import-data-quality: false-record rows flagged by the cleaner are
+      // skipped entirely (never create/enrich a patient for an equipment name
+      // or admin note that slipped past junk detection).
+      const falseRecordRows = new Set<number>(cleaned.falseRecordRowIndices);
 
       for (const row of cleaned.cleanedRows) {
+        if (falseRecordRows.has(row.rowIndex)) {
+          this.logger.warn(`Skipping false-record row ${row.rowIndex}`);
+          skipped++;
+          continue;
+        }
+
         // Resolve the physician decision for this row index.
         const decision: MatchDecision = matchResolutions[String(row.rowIndex)] ?? 'new';
+
+        // SDD import-data-quality: name normalization + null birthDate + phone
+        // come from the shared, pure row → patient-parts builder.
+        const parts = buildPatientInputFromRow(row);
 
         // Build the importedData block for this batch (BR-IMP-002: original
         // Excel values preserved, phone columns already stripped by the cleaner).
@@ -93,9 +108,10 @@ export class ImportProcessor {
           const nhc = row.nhc ?? await this.patientRepo.getNextNhcSequence(organizationId);
           const input: CreatePatientInput = {
             nhc,
-            firstName: this.extractFirstName(row.patientName),
-            lastName: this.extractLastName(row.patientName),
-            birthDate: row.birthDate ?? new Date('1900-01-01'),
+            firstName: parts.firstName,
+            lastName: parts.lastName,
+            birthDate: parts.birthDate,
+            phone: parts.phone,
             sex: (row.sex ?? 'UNKNOWN') as any,
             organizationId,
             createdBy: userId,
@@ -129,9 +145,10 @@ export class ImportProcessor {
             // Candidate vanished between confirm and finalize — treat as new.
             const input: CreatePatientInput = {
               nhc: row.nhc,
-              firstName: this.extractFirstName(row.patientName),
-              lastName: this.extractLastName(row.patientName),
-              birthDate: row.birthDate ?? new Date('1900-01-01'),
+              firstName: parts.firstName,
+              lastName: parts.lastName,
+              birthDate: parts.birthDate,
+              phone: parts.phone,
               sex: (row.sex ?? 'UNKNOWN') as any,
               organizationId,
               createdBy: userId,
@@ -169,7 +186,7 @@ export class ImportProcessor {
         }
       }
 
-      skipped += cleaned.skippedRowIndices.length + cleaned.junkRowIndices.length;
+      skipped += cleaned.skippedRowIndices.length + cleaned.junkRowIndices.length + cleaned.falseRecordRowIndices.length;
 
       snapshot.affectedPatientIds = affectedIds;
       const processing = await this.batchRepo.findById(batchId, organizationId);
@@ -192,17 +209,5 @@ export class ImportProcessor {
       await this.batchRepo.updateStatus(batchId, organizationId, 'FAILED');
       throw err;
     }
-  }
-
-  /** Split a full patientName into first (first token) and last (rest). */
-  private extractFirstName(name: string | null): string {
-    if (!name) return 'Desconocido';
-    return name.trim().split(/\s+/)[0] ?? 'Desconocido';
-  }
-
-  private extractLastName(name: string | null): string {
-    if (!name) return '';
-    const tokens = name.trim().split(/\s+/);
-    return tokens.slice(1).join(' ') || tokens[0] || '';
   }
 }

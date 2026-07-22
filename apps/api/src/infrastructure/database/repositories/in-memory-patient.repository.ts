@@ -86,6 +86,10 @@ export class InMemoryPatientRepository implements IPatientRepository {
         p.organizationId === organizationId &&
         !p.deletedAt &&
         p.lastName.toLowerCase() === lastName.toLowerCase() &&
+        // SDD import-data-quality: a candidate with a null birthDate cannot
+        // match by birthDate (unknown DOB). Compare only when both are dates.
+        p.birthDate !== null &&
+        birthDate !== null &&
         p.birthDate.toDateString() === birthDate.toDateString(),
     );
   }

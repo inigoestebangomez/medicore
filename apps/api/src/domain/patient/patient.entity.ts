@@ -17,7 +17,7 @@ export interface PatientProps {
   nhc: string;
   firstName: string;
   lastName: string;
-  birthDate: Date;
+  birthDate: Date | null;
   sex: Sex;
   phone?: string | null;
   email?: string | null;
@@ -45,7 +45,7 @@ export class Patient {
   readonly nhc: string;
   readonly firstName: string;
   readonly lastName: string;
-  readonly birthDate: Date;
+  readonly birthDate: Date | null;
   readonly sex: Sex;
   readonly phone: string | null;
   readonly email: string | null;
@@ -95,8 +95,10 @@ export class Patient {
   /**
    * Calculate age in years based on birthDate.
    * BR-PAT-007: isPediatric = age < 14
+   * SDD import-data-quality: returns null when birthDate is null (unknown DOB).
    */
-  age(referenceDate: Date = new Date()): number {
+  age(referenceDate: Date = new Date()): number | null {
+    if (this.birthDate === null) return null;
     let age = referenceDate.getFullYear() - this.birthDate.getFullYear();
     const monthDiff = referenceDate.getMonth() - this.birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && referenceDate.getDate() < this.birthDate.getDate())) {
@@ -107,9 +109,11 @@ export class Patient {
 
   /**
    * BR-PAT-007: isPediatric = true when age < 14
+   * SDD import-data-quality: unknown age (null birthDate) is NOT pediatric.
    */
   isPediatric(referenceDate: Date = new Date()): boolean {
-    return this.age(referenceDate) < 14;
+    const age = this.age(referenceDate);
+    return age === null ? false : age < 14;
   }
 
   /**

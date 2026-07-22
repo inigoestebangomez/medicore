@@ -160,4 +160,31 @@ describe('SearchPatientsUseCase', () => {
     expect(result.items).toHaveLength(0);
     expect(result.total).toBe(0);
   });
+
+  it('should return null birthDate/age for a matched patient without DOB (SDD import-data-quality)', async () => {
+    await repo.create({
+      nhc: await repo.getNextNhcSequence(orgId),
+      firstName: 'NoDob',
+      lastName: 'García',
+      birthDate: null,
+      sex: 'MALE',
+      organizationId: orgId,
+      createdBy: userId,
+    });
+
+    const result = await useCase.execute({
+      organizationId: orgId,
+      role: 'PHYSICIAN',
+      query: 'García',
+      page: 1,
+      pageSize: 10,
+      sortBy: 'lastName',
+      sortOrder: 'asc',
+    });
+
+    const noDob = result.items.find((p) => p.firstName === 'NoDob');
+    expect(noDob).toBeDefined();
+    expect(noDob!.birthDate).toBeNull();
+    expect(noDob!.age).toBeNull();
+  });
 });

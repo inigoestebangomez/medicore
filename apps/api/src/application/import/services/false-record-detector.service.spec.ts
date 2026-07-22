@@ -1,6 +1,7 @@
 // apps/api/src/application/import/services/false-record-detector.service.spec.ts
 import { describe, it, expect } from '@jest/globals';
 import { FalseRecordDetectorService } from './false-record-detector.service';
+import { DataCleanerService } from './data-cleaner.service';
 
 const detector = new FalseRecordDetectorService();
 
@@ -65,15 +66,44 @@ describe('FalseRecordDetectorService', () => {
     });
   });
 
-  describe('detect — multiple failing columns', () => {
-    it('aggregates reasons from name and age columns', () => {
-      const r = detector.detect(
-        { '0': 'robot', '1': 'pendiente' },
-        new Map([['0', 'name'], ['1', 'age']]),
-      );
-      expect(r.isFalse).toBe(true);
-      expect(r.reasons.some((x) => x.startsWith('name'))).toBe(true);
-      expect(r.reasons.some((x) => x.startsWith('age'))).toBe(true);
-    });
+describe('detect — multiple failing columns', () => {
+  it('aggregates reasons from name and age columns', () => {
+    const r = detector.detect(
+      { '0': 'robot', '1': 'pendiente' },
+      new Map([['0', 'name'], ['1', 'age']]),
+    );
+    expect(r.isFalse).toBe(true);
+    expect(r.reasons.some((x) => x.startsWith('name'))).toBe(true);
+    expect(r.reasons.some((x) => x.startsWith('age'))).toBe(true);
   });
+});
+
+describe('detect — NHC rule (SDD import-data-quality T-10)', () => {
+  // The NHC rule is gated behind a flag (default OFF) until it has been
+  // validated against a real import batch. These tests pin both modes so the
+  // flag flip is a one-line, behavior-confirmed change.
+  const activeDetector = new FalseRecordDetectorService(new DataCleanerService(), true);
+
+  it('does NOT flag any NHC while the rule is gated off (test-first mode)', () => {
+    const r = detector.detect({ '0': 'PENDIENTE' }, new Map([['0', 'nhc']]));
+    expect(r.isFalse).toBe(false);
+    expect(r.reasons).toHaveLength(0);
+  });
+
+  it('does NOT flag a numeric hospital NHC even when the rule is active', () => {
+    const r = activeDetector.detect({ '0': '13046043' }, new Map([['0', 'nhc']]));
+    expect(r.isFalse).toBe(false);
+  });
+
+  it('does NOT flag a MediCore NHC (leading digit) even when the rule is active', () => {
+    const r = activeDetector.detect({ '0': '2026-00012' }, new Map([['0', 'nhc']]));
+    expect(r.isFalse).toBe(false);
+  });
+
+  it('flags a textual NHC (≥4 letters, no leading digit) when the rule is active', () => {
+    const r = activeDetector.detect({ '0': 'PENDIENTE REVISAR' }, new Map([['0', 'nhc']]));
+    expect(r.isFalse).toBe(true);
+    expect(r.reasons.some((x) => x.startsWith('nhc'))).toBe(true);
+  });
+});
 });

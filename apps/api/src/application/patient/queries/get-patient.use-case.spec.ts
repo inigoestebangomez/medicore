@@ -101,4 +101,18 @@ describe('GetPatientUseCase', () => {
       }),
     ).rejects.toThrow(PatientNotFoundError);
   });
+
+  it('should return null birthDate and null age for a patient without DOB (SDD import-data-quality)', async () => {
+    const patient = await seedPatient({ birthDate: null });
+
+    const result = await useCase.execute({
+      id: patient.id,
+      organizationId: orgId,
+      role: 'PHYSICIAN',
+    });
+
+    expect(result.birthDate).toBeNull();
+    expect(result.age).toBeNull();
+    expect(result.isPediatric).toBe(false);
+  });
 });

@@ -19,6 +19,7 @@ import { StructuredAnalysisModule } from '@/infrastructure/ai/structured-analysi
 import { ImportAnalyzerService } from '@/application/import/services/import-analyzer.service';
 import { FileParserService } from '@/application/import/services/file-parser.service';
 import { DataCleanerService } from '@/application/import/services/data-cleaner.service';
+import { PhoneExtractorService } from '@/application/import/services/phone-extractor.service';
 import { PatientMatcherService } from '@/application/import/services/patient-matcher.service';
 import { ImportReminderService } from '@/application/import/services/import-reminder.service';
 import { InMemoryParsedFileCache } from '@/application/import/services/in-memory-parsed-file-cache';
@@ -62,6 +63,7 @@ import { AuthModule } from '@/api/auth/auth.module';
     // Pipeline services.
     FileParserService,
     DataCleanerService,
+    PhoneExtractorService,
     PatientMatcherService,
     ImportAnalyzerService,
     ImportReminderService,

@@ -5,14 +5,14 @@ import { Patient } from './patient.entity';
 describe('Patient Entity', () => {
   const today = new Date('2026-06-10');
 
-  function makePatient(overrides: Partial<{ birthDate: Date; allergies: any[]; deletedAt: Date | null }> = {}): Patient {
+  function makePatient(overrides: Partial<{ birthDate: Date | null; allergies: any[]; deletedAt: Date | null }> = {}): Patient {
     return new Patient({
       id: 'patient-1',
       organizationId: 'org-1',
       nhc: '2026-00001',
       firstName: 'María',
       lastName: 'García López',
-      birthDate: overrides.birthDate ?? new Date('1984-03-12'),
+      birthDate: overrides.hasOwnProperty('birthDate') ? overrides.birthDate! : new Date('1984-03-12'),
       sex: 'FEMALE',
       phone: '+34612345678',
       email: 'maria@example.com',
@@ -43,6 +43,18 @@ describe('Patient Entity', () => {
       const patient = makePatient({ birthDate: new Date('1984-12-25') });
       const age = patient.age(today);
       expect(age).toBe(41);
+    });
+  });
+
+  describe('age calculation with null birthDate (SDD import-data-quality)', () => {
+    it('should return null age when birthDate is null', () => {
+      const patient = makePatient({ birthDate: null as unknown as Date });
+      expect(patient.age(today)).toBeNull();
+    });
+
+    it('should NOT be pediatric when birthDate is null (no age to compare)', () => {
+      const patient = makePatient({ birthDate: null as unknown as Date });
+      expect(patient.isPediatric(today)).toBe(false);
     });
   });
 
