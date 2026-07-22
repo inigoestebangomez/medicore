@@ -304,7 +304,7 @@ model Patient {
   // Datos demográficos
   firstName      String
   lastName       String
-  birthDate      DateTime
+  birthDate      DateTime?     // nullable: imported records may lack birth date (no 1900-01-01 fallback)
   sex            Sex
   idDocument     String?        // Número del documento de identidad
   idDocType      IdDocumentType @default(DNI)
