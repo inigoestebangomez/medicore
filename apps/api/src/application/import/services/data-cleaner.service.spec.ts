@@ -34,6 +34,68 @@ describe('DataCleanerService', () => {
     it('parseDate should handle Spanish dd/mm/yyyy strings', () => {
       expect(cleaner.parseDate('15/01/2026')?.toISOString().slice(0, 10)).toBe('2026-01-15');
     });
+
+    it('parseDate should accept Excel serial 45678 → 2025-01-21', () => {
+      expect(cleaner.parseDate(45678)?.toISOString().slice(0, 10)).toBe('2025-01-21');
+    });
+  });
+
+  describe('parseDate extended formats (SDD import-data-quality)', () => {
+    // All assertions compare epoch ms against Date.UTC so they are stable
+    // regardless of the host timezone: parsed dates land on UTC midnight.
+    const utc = (y: number, m: number, d: number) => Date.UTC(y, m, d);
+
+    it('parses Spanish slash date without leading zeros "1/1/1976"', () => {
+      expect(cleaner.parseDate('1/1/1976')?.getTime()).toBe(utc(1976, 0, 1));
+    });
+
+    it('still parses Spanish slash date with leading zeros "01/01/1976"', () => {
+      expect(cleaner.parseDate('01/01/1976')?.getTime()).toBe(utc(1976, 0, 1));
+    });
+
+    it('parses dash date "15-03-1982" → 1982-03-15', () => {
+      expect(cleaner.parseDate('15-03-1982')?.getTime()).toBe(utc(1982, 2, 15));
+    });
+
+    it('parses ISO date "2024-06-15" → 2024-06-15', () => {
+      expect(cleaner.parseDate('2024-06-15')?.getTime()).toBe(utc(2024, 5, 15));
+    });
+
+    it('parses two-digit year "5/3/68" → 1968 (rolling threshold; current year 2026 → 26)', () => {
+      // 68 > 26 → 1900 + 68 = 1968. Spanish d/m/yy → 5 March 1968.
+      expect(cleaner.parseDate('5/3/68')?.getTime()).toBe(utc(1968, 2, 5));
+    });
+
+    it('returns null for an empty date string', () => {
+      expect(cleaner.parseDate('')).toBeNull();
+    });
+
+    it('returns null for an invalid date string "not a date"', () => {
+      expect(cleaner.parseDate('not a date')).toBeNull();
+    });
+
+    it('returns null for null input', () => {
+      expect(cleaner.parseDate(null)).toBeNull();
+    });
+  });
+
+  describe('ageToBirthDate (SDD import-data-quality)', () => {
+    const utc = (y: number, m: number, d: number) => Date.UTC(y, m, d);
+
+    it('age 50 with ref 2026-07-22 → Jan 1, 1976', () => {
+      const ref = new Date(2026, 6, 22);
+      expect(cleaner.ageToBirthDate(50, ref)?.getTime()).toBe(utc(1976, 0, 1));
+    });
+
+    it('age 0 with ref 2026-07-22 → Jan 1, 2026', () => {
+      const ref = new Date(2026, 6, 22);
+      expect(cleaner.ageToBirthDate(0, ref)?.getTime()).toBe(utc(2026, 0, 1));
+    });
+
+    it('age 130 with ref 2026-07-22 → Jan 1, 1896', () => {
+      const ref = new Date(2026, 6, 22);
+      expect(cleaner.ageToBirthDate(130, ref)?.getTime()).toBe(utc(1896, 0, 1));
+    });
   });
 
   describe('text normalization', () => {

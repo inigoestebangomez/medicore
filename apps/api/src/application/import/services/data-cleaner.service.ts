@@ -201,16 +201,66 @@ export class DataCleanerService {
           return this.convertExcelSerial(n);
         }
       }
-      // Try ISO / Spanish date strings.
-      const parsed = new Date(trimmed.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'));
+      // ── SDD import-data-quality: explicit formats producing UTC-midnight dates.
+      // Spanish day-first: dd?/mm?/yyyy  or  dd?/mm?/yy (rolling 2-digit year).
+      const slash = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+      if (slash) {
+        const day = parseInt(slash[1], 10);
+        const month = parseInt(slash[2], 10);
+        const yearRaw = slash[3];
+        if (yearRaw.length === 2) {
+          const year = this.expandTwoDigitYear(parseInt(yearRaw, 10));
+          return this.utcDate(year, month - 1, day);
+        }
+        return this.utcDate(parseInt(yearRaw, 10), month - 1, day);
+      }
+      // Dash day-first: dd?/mm? style with dashes. dd-mm-yyyy
+      const dash = trimmed.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+      if (dash) {
+        return this.utcDate(parseInt(dash[3], 10), parseInt(dash[2], 10) - 1, parseInt(dash[1], 10));
+      }
+      // ISO: yyyy-mm-dd
+      const iso = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (iso) {
+        return this.utcDate(parseInt(iso[1], 10), parseInt(iso[2], 10) - 1, parseInt(iso[3], 10));
+      }
+      // Legacy fallback: try a native parse of anything we didn't match above
+      // (e.g. previously-supported yyyy-mm-dd variants). Date-only ISO strings
+      // land on UTC midnight; everything else is whatever the engine gives us.
+      const parsed = new Date(trimmed);
       return isNaN(parsed.getTime()) ? null : parsed;
     }
     return null;
   }
 
+  /**
+   * Expand a two-digit year into a four-digit year using a rolling threshold
+   * equal to `currentYear % 100`. Years greater than the threshold are anchored
+   * to the 1900s; otherwise to the 2000s.
+   *   currentYear 2026 → threshold 26 → 68 → 1968, 05 → 2005
+   */
+  private expandTwoDigitYear(twoDigit: number): number {
+    const threshold = new Date().getFullYear() % 100;
+    return twoDigit > threshold ? 1900 + twoDigit : 2000 + twoDigit;
+  }
+
+  /** Build a Date at UTC midnight from year/month(0-based)/day — timezone-stable. */
+  private utcDate(year: number, monthIndex: number, day: number): Date {
+    return new Date(Date.UTC(year, monthIndex, day));
+  }
+
   /** spec §3: serial 46023 → 2026-01-15. Formula: (serial - 25569) * 86400 * 1000. */
   convertExcelSerial(serial: number): Date {
     return new Date((serial - EXCEL_SERIAL_EPOCH_OFFSET) * SECONDS_PER_DAY * 1000);
+  }
+
+  /**
+   * Convert a numeric age to an approximate birthDate: Jan 1 of `ref.getFullYear() - age`.
+   *   ageToBirthDate(50, new Date(2026, 6, 22)) → new Date(Date.UTC(1976, 0, 1))
+   * Used when an import row supplies age but no birth date.
+   */
+  ageToBirthDate(age: number, ref: Date = new Date()): Date {
+    return this.utcDate(ref.getFullYear() - age, 0, 1);
   }
 
   // ─────────────────────────────────────────────
