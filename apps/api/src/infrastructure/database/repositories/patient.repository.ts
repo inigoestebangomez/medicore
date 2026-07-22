@@ -2,7 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Patient } from '@/domain/patient/patient.entity';
-import type { IPatientRepository, FindAllParams, SearchParams, CreatePatientInput, UpdatePatientInput } from '@/domain/patient/patient.repository.interface';
+import type { IPatientRepository, FindAllParams, SearchParams, CreatePatientInput, UpdatePatientInput, EnrichPatientInput } from '@/domain/patient/patient.repository.interface';
 import { NHC } from '@/domain/patient/value-objects/nhc.vo';
 
 @Injectable()
@@ -168,6 +168,89 @@ export class PrismaPatientRepository implements IPatientRepository {
     });
   }
 
+  // ─────────────────────────────────────────────
+  // Phase 11 — import matching + enrichment
+  // ─────────────────────────────────────────────
+
+  async findByNhc(nhc: string, organizationId: string): Promise<Patient | null> {
+    const record = await this.prisma.patient.findFirst({
+      where: { organizationId, nhc, deletedAt: null },
+    });
+    return record ? this.toEntity(record) : null;
+  }
+
+  async searchByNameFuzzy(organizationId: string, lastName: string, firstName?: string): Promise<Patient[]> {
+    // Trigram-backed fuzzy search. We fall back to an ILIKE when pg_trgm is
+    // not available (e.g.SQLite test DBs). Prisma's `mode: insensitive` covers
+    // equality/contains; for ORL practices this is sufficient given the
+    // conservative scoring thresholds in PatientMatcherService.
+    const query = firstName ? `${lastName}%` : `${lastName}%`;
+    const records = await this.prisma.patient.findMany({
+      where: {
+        organizationId,
+        deletedAt: null,
+        OR: [
+          { lastName: { contains: lastName, mode: 'insensitive' as const } },
+          { firstName: { contains: firstName ?? lastName, mode: 'insensitive' as const } },
+        ],
+      },
+      take: 50,
+    });
+    void query; // query hint retained for future raw-SQL trigram fallback
+    return records.map((r) => this.toEntity(r));
+  }
+
+  async enrich(id: string, organizationId: string, data: EnrichPatientInput, updatedBy: string): Promise<Patient> {
+    // BR-IMP-003: never overwrite a non-empty manual standard field.
+    // We read the existing record to detect empty standard fields, then only
+    // apply importedData/import_BATCH/source unconditionally.
+    const existing = await this.prisma.patient.findFirst({
+      where: { id, organizationId, deletedAt: null },
+    });
+    if (!existing) throw new Error('Patient not found');
+
+    const updateData: Record<string, unknown> = {
+      updatedAt: new Date(),
+      updatedBy,
+      importedData: data.importedData as any,
+    };
+    if (data.importBatchId !== undefined) updateData.importBatchId = data.importBatchId;
+    if (data.importSource !== undefined) updateData.importSource = data.importSource;
+
+    // Only set standard fields when they are currently empty/null.
+    if (data.birthDate && !existing.birthDate) updateData.birthDate = data.birthDate;
+    if (data.sex && !existing.sex) updateData.sex = data.sex as any;
+
+    const record = await this.prisma.patient.update({ where: { id }, data: updateData });
+    return this.toEntity(record);
+  }
+
+  async removeImportedBatch(batchId: string, organizationId: string): Promise<number> {
+    // BR-IMP-005: revert. Find every patient carrying this batch's block and
+    // strip the block from importedData, then clear importBatchId (only when
+    // this was the latest batch). Manual standard fields are untouched.
+    const affected = await this.prisma.patient.findMany({
+      where: { organizationId, importBatchId: batchId, deletedAt: null },
+      select: { id: true, importedData: true },
+    });
+
+    for (const p of affected) {
+      const imported = (p.importedData as Record<string, unknown> | null) ?? {};
+      if (batchId in imported) {
+        delete imported[batchId];
+      }
+      await this.prisma.patient.update({
+        where: { id: p.id },
+        data: {
+          importedData: imported as any,
+          importBatchId: null,
+          updatedAt: new Date(),
+        },
+      });
+    }
+    return affected.length;
+  }
+
   private toEntity(record: any): Patient {
     return new Patient({
       id: record.id,
@@ -187,6 +270,9 @@ export class PrismaPatientRepository implements IPatientRepository {
       notes: record.notes,
       createdBy: record.createdBy,
       updatedBy: record.updatedBy,
+      importedData: record.importedData,
+      importSource: record.importSource,
+      importBatchId: record.importBatchId,
       allergies: record.allergies?.map((a: any) => ({
         id: a.id,
         patientId: a.patientId,

@@ -3,18 +3,18 @@ import { signIn } from '@/lib/auth';
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+    <div className="flex min-h-screen items-center justify-center bg-surface-low">
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+          <h1 className="text-3xl font-bold tracking-tight text-on-surface">
             MediCore
           </h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-on-surface-variant">
             Clinical Management System
           </p>
         </div>
 
-        <div className="rounded-lg bg-white px-6 py-8 shadow">
+        <div className="rounded-lg bg-surface-lowest px-6 py-8 shadow">
           <form
             action={async () => {
               'use server';
@@ -23,7 +23,7 @@ export default function LoginPage() {
           >
             <button
               type="submit"
-              className="flex w-full items-center justify-center gap-3 rounded-md border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="flex w-full items-center justify-center gap-3 rounded-md border border-gray-300 bg-surface-lowest px-4 py-3 text-sm font-medium text-on-surface-variant shadow-card transition-colors hover:bg-surface-low focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                 <path
@@ -48,7 +48,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-gray-500">
+        <p className="text-center text-xs text-on-surface-variant">
           By continuing, you agree to MediCore&apos;s Terms of Service and Privacy Policy.
         </p>
       </div>

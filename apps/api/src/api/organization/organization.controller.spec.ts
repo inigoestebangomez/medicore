@@ -28,6 +28,10 @@ class MockOrgRepository implements IOrganizationRepository {
     return null;
   }
 
+  async findAll(): Promise<Organization[]> {
+    return Array.from(this.orgs.values());
+  }
+
   async create(data: { name: string; slug: string; type?: string; logoUrl?: string | null }): Promise<Organization> {
     const org = new Organization({ id: `org-${this.nextId++}`, name: data.name, slug: data.slug, type: data.type as any });
     this.orgs.set(org.id, org);
@@ -43,6 +47,10 @@ class MockOrgRepository implements IOrganizationRepository {
   }
 
   async softDelete(_id: string): Promise<Organization> {
+    throw new Error('Not implemented');
+  }
+
+  async updateSubscription(_id: string, _data: any): Promise<Organization> {
     throw new Error('Not implemented');
   }
 }

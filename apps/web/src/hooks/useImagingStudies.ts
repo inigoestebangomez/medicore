@@ -117,7 +117,10 @@ export function useImagingStudies(
 
   return useQuery<ListResponse>({
     queryKey: imagingKeys.list(patientId, { page, pageSize, ...params } as ListImagingStudiesQuery),
-    queryFn: () => apiFetch<ListResponse>(`${API_BASE}/${patientId}/imaging?${queryParams.toString()}`),
+    queryFn: async () => {
+      const res = await apiFetch<{ data: ListResponse } | ListResponse>(`${API_BASE}/${patientId}/imaging?${queryParams.toString()}`);
+      return 'data' in res ? res.data : res;
+    },
     enabled: !!patientId,
   });
 }
@@ -126,7 +129,10 @@ export function useImagingStudies(
 export function useImagingStudy(patientId: string, studyId: string) {
   return useQuery<ImagingStudyResponse>({
     queryKey: imagingKeys.detail(patientId, studyId),
-    queryFn: () => apiFetch<ImagingStudyResponse>(`${API_BASE}/${patientId}/imaging/${studyId}`),
+    queryFn: async () => {
+      const res = await apiFetch<{ data: ImagingStudyResponse } | ImagingStudyResponse>(`${API_BASE}/${patientId}/imaging/${studyId}`);
+      return 'data' in res ? res.data : res;
+    },
     enabled: !!patientId && !!studyId,
   });
 }

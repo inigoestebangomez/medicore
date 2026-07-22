@@ -7,7 +7,41 @@ import type {
   AnalyticsOverview,
   DiagnosisDistributionItem,
   ScaleEvolutionData,
+  DashboardStats,
+  DashboardStatsChange,
 } from '@/domain/analytics/analytics.repository.interface';
+
+type CountRow = { count: bigint };
+type MonthNewRow = { month: string; new_val: bigint };
+type MonthCountRow = { month: string; count_val: bigint };
+type WeekCountRow = { week: string; count_val: bigint };
+type GroupCountRow = { key: string; count_val: bigint };
+type MonthTotalRow = { month: string; total_val: number };
+type GroupTotalRow = { key: string; total_val: number };
+type NextAppointmentRow = { time: string; first_name: string; last_name: string };
+
+function computeChange(
+  thisPeriod: number,
+  lastPeriod: number,
+  period: 'month' | 'week',
+): DashboardStatsChange {
+  const value = thisPeriod - lastPeriod;
+  let percent: number;
+  if (lastPeriod === 0) {
+    percent = thisPeriod > 0 ? 100 : 0;
+  } else {
+    percent = Math.round((value / lastPeriod) * 10000) / 100;
+  }
+  return { value, percent, period };
+}
+
+function toRecord(rows: GroupCountRow[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const row of rows) {
+    out[row.key ?? 'UNKNOWN'] = Number(row.count_val);
+  }
+  return out;
+}
 
 const DEFAULT_MONTHS_LOOKBACK = 12;
 const LOW_SAMPLE_WARNING = 'Tamaño de muestra insuficiente para significancia estadística';
@@ -225,6 +259,188 @@ export class PrismaAnalyticsRepository implements IAnalyticsRepository {
       distribution,
       trend,
       warning: sampleSize < LOW_SAMPLE_THRESHOLD ? LOW_SAMPLE_WARNING : null,
+    };
+  }
+
+  async getDashboardStats(organizationId: string): Promise<DashboardStats> {
+    const [
+      patientTotalRows,
+      patientThisMonthRows,
+      patientLastMonthRows,
+      patientMonthlyRows,
+      appointmentTotalRows,
+      appointmentThisWeekRows,
+      appointmentLastWeekRows,
+      appointmentWeeklyRows,
+      appointmentByTypeRows,
+      surgeryTotalRows,
+      surgeryThisMonthRows,
+      surgeryLastMonthRows,
+      surgeryMonthlyRows,
+      surgeryByStatusRows,
+      treatmentActiveRows,
+      treatmentNewThisMonthRows,
+      treatmentMonthlyRows,
+      billingThisMonthRows,
+      billingLastMonthRows,
+      billingMonthlyRows,
+      billingByTypeRows,
+      todayAppointmentsRows,
+      todaySurgeriesRows,
+      nextAppointmentRows,
+    ] = await Promise.all([
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COUNT(*)::bigint AS count FROM patients WHERE "organizationId" = $1 AND "deletedAt" IS NULL`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COUNT(*)::bigint AS count FROM patients WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND "createdAt" >= date_trunc('month', NOW())`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COUNT(*)::bigint AS count FROM patients WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND "createdAt" >= date_trunc('month', NOW() - INTERVAL '1 month') AND "createdAt" < date_trunc('month', NOW())`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<MonthNewRow[]>(
+        `SELECT TO_CHAR("createdAt", 'YYYY-MM') AS month, COUNT(*)::bigint AS new_val FROM patients WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND "createdAt" >= NOW() - INTERVAL '12 months' GROUP BY month ORDER BY month`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COUNT(*)::bigint AS count FROM consultations WHERE "organizationId" = $1 AND "deletedAt" IS NULL`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COUNT(*)::bigint AS count FROM consultations WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND date >= date_trunc('week', NOW())`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COUNT(*)::bigint AS count FROM consultations WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND date >= date_trunc('week', NOW() - INTERVAL '1 week') AND date < date_trunc('week', NOW())`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<WeekCountRow[]>(
+        `SELECT TO_CHAR(date, 'IYYY-"W"IW') AS week, COUNT(*)::bigint AS count_val FROM consultations WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND date >= NOW() - INTERVAL '4 weeks' GROUP BY week ORDER BY week`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<GroupCountRow[]>(
+        `SELECT type::text AS key, COUNT(*)::bigint AS count_val FROM consultations WHERE "organizationId" = $1 AND "deletedAt" IS NULL GROUP BY type`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COUNT(*)::bigint AS count FROM surgeries WHERE "organizationId" = $1 AND "deletedAt" IS NULL`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COUNT(*)::bigint AS count FROM surgeries WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND date >= date_trunc('month', NOW())`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COUNT(*)::bigint AS count FROM surgeries WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND date >= date_trunc('month', NOW() - INTERVAL '1 month') AND date < date_trunc('month', NOW())`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<MonthCountRow[]>(
+        `SELECT TO_CHAR(date, 'YYYY-MM') AS month, COUNT(*)::bigint AS count_val FROM surgeries WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND date >= NOW() - INTERVAL '12 months' GROUP BY month ORDER BY month`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<GroupCountRow[]>(
+        `SELECT status::text AS key, COUNT(*)::bigint AS count_val FROM surgeries WHERE "organizationId" = $1 AND "deletedAt" IS NULL GROUP BY status`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COUNT(*)::bigint AS count FROM medication_prescriptions WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND status = 'ACTIVE'`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COUNT(*)::bigint AS count FROM medication_prescriptions WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND "startDate" >= date_trunc('month', NOW())`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<MonthNewRow[]>(
+        `SELECT TO_CHAR("startDate", 'YYYY-MM') AS month, COUNT(*)::bigint AS new_val FROM medication_prescriptions WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND "startDate" >= NOW() - INTERVAL '12 months' GROUP BY month ORDER BY month`,
+        organizationId,
+      ),
+      // Billing
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COALESCE(SUM(amount),0)::bigint AS count FROM billing_transactions WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND status = 'PAID' AND date >= date_trunc('month', NOW())`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COALESCE(SUM(amount),0)::bigint AS count FROM billing_transactions WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND status = 'PAID' AND date >= date_trunc('month', NOW() - INTERVAL '1 month') AND date < date_trunc('month', NOW())`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<MonthTotalRow[]>(
+        `SELECT TO_CHAR(date, 'YYYY-MM') AS month, COALESCE(SUM(amount),0)::float8 AS total_val FROM billing_transactions WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND status = 'PAID' AND date >= NOW() - INTERVAL '12 months' GROUP BY month ORDER BY month`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<GroupTotalRow[]>(
+        `SELECT type::text AS key, COALESCE(SUM(amount),0)::float8 AS total_val FROM billing_transactions WHERE "organizationId" = $1 AND "deletedAt" IS NULL GROUP BY type`,
+        organizationId,
+      ),
+      // Schedule (today)
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COUNT(*)::bigint AS count FROM consultations WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND date >= date_trunc('day', NOW()) AND date < date_trunc('day', NOW()) + INTERVAL '1 day'`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<CountRow[]>(
+        `SELECT COUNT(*)::bigint AS count FROM surgeries WHERE "organizationId" = $1 AND "deletedAt" IS NULL AND date >= date_trunc('day', NOW()) AND date < date_trunc('day', NOW()) + INTERVAL '1 day'`,
+        organizationId,
+      ),
+      this.prisma.$queryRawUnsafe<NextAppointmentRow[]>(
+        `
+        SELECT TO_CHAR(c.date, 'HH24:MI') AS time, p."firstName" AS first_name, p."lastName" AS last_name
+        FROM consultations c
+        JOIN patients p ON p.id = c."patientId"
+        WHERE c."organizationId" = $1 AND c."deletedAt" IS NULL AND c.date >= NOW()
+        ORDER BY c.date ASC
+        LIMIT 1
+        `,
+        organizationId,
+      ),
+    ]);
+
+    const toNum = (rows: CountRow[]) => (rows[0]?.count !== undefined ? Number(rows[0].count) : 0);
+
+    return {
+      patients: {
+        total: toNum(patientTotalRows),
+        change: computeChange(toNum(patientThisMonthRows), toNum(patientLastMonthRows), 'month'),
+        monthly: patientMonthlyRows.map((r) => ({ month: r.month, new: Number(r.new_val) })),
+      },
+      appointments: {
+        total: toNum(appointmentTotalRows),
+        change: computeChange(toNum(appointmentThisWeekRows), toNum(appointmentLastWeekRows), 'week'),
+        weekly: appointmentWeeklyRows.map((r) => ({ week: r.week, count: Number(r.count_val) })),
+        byType: toRecord(appointmentByTypeRows),
+      },
+      surgeries: {
+        total: toNum(surgeryTotalRows),
+        change: computeChange(toNum(surgeryThisMonthRows), toNum(surgeryLastMonthRows), 'month'),
+        monthly: surgeryMonthlyRows.map((r) => ({ month: r.month, count: Number(r.count_val) })),
+        byStatus: toRecord(surgeryByStatusRows),
+      },
+      treatments: {
+        active: toNum(treatmentActiveRows),
+        newThisMonth: toNum(treatmentNewThisMonthRows),
+        monthly: treatmentMonthlyRows.map((r) => ({ month: r.month, new: Number(r.new_val) })),
+      },
+      billing: {
+        totalThisMonth: Number(billingThisMonthRows[0]?.count ?? 0),
+        change: computeChange(
+          Number(billingThisMonthRows[0]?.count ?? 0),
+          Number(billingLastMonthRows[0]?.count ?? 0),
+          'month',
+        ),
+        monthly: billingMonthlyRows.map((r) => ({ month: r.month, total: Number(r.total_val) })),
+        byType: toRecord(billingByTypeRows.map((r) => ({ key: r.key, count_val: r.total_val } as any))),
+      },
+      schedule: {
+        todayAppointments: toNum(todayAppointmentsRows),
+        todaySurgeries: toNum(todaySurgeriesRows),
+        nextAppointment: nextAppointmentRows[0]
+          ? {
+              time: nextAppointmentRows[0].time,
+              patientName: `${nextAppointmentRows[0].first_name} ${nextAppointmentRows[0].last_name}`.trim(),
+            }
+          : null,
+      },
     };
   }
 }

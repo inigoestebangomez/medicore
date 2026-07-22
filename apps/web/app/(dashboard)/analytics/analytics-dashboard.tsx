@@ -102,7 +102,7 @@ function Spinner({ label = 'Loading...' }: { label?: string }) {
   return (
     <div className="flex items-center justify-center p-8">
       <svg
-        className="mr-2 h-5 w-5 animate-spin text-blue-600"
+        className="mr-2 h-5 w-5 animate-spin text-secondary"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"
@@ -121,7 +121,7 @@ function Spinner({ label = 'Loading...' }: { label?: string }) {
           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
         />
       </svg>
-      <span className="text-sm text-gray-500">{label}</span>
+      <span className="text-sm text-on-surface-variant">{label}</span>
     </div>
   );
 }
@@ -136,7 +136,7 @@ function ErrorBox({ message }: { message: string }) {
 
 function EmptyBox({ label = 'No data available' }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center p-8 text-sm text-gray-400">
+    <div className="flex items-center justify-center p-8 text-sm text-on-surface-variant/60">
       {label}
     </div>
   );
@@ -164,7 +164,7 @@ function DiagnosisTooltip({
   if (!active || !payload || payload.length === 0) return null;
   const d = payload[0].payload;
   return (
-    <div className="rounded border border-gray-200 bg-white px-3 py-2 text-xs shadow">
+    <div className="rounded border border-outline-variant bg-surface-lowest px-3 py-2 text-xs shadow">
       <p className="font-medium">{d.code} — {d.description}</p>
       <p>Count: {d.count}</p>
       <p>Percentage: {d.percentage.toFixed(1)}%</p>
@@ -183,7 +183,7 @@ function ScaleTooltip({
 }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="rounded border border-gray-200 bg-white px-3 py-2 text-xs shadow">
+    <div className="rounded border border-outline-variant bg-surface-lowest px-3 py-2 text-xs shadow">
       <p className="font-medium">{label}</p>
       {payload.map((entry) => (
         <p key={entry.name}>
@@ -211,7 +211,7 @@ function KpiCards({ data, isLoading, error }: {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="animate-pulse rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
+            className="animate-pulse rounded-lg border border-outline-variant bg-surface-lowest p-6 shadow-card"
           >
             <div className="mb-2 h-4 w-20 rounded bg-gray-200" />
             <div className="h-8 w-16 rounded bg-gray-300" />
@@ -225,28 +225,28 @@ function KpiCards({ data, isLoading, error }: {
 
   return (
     <div className="grid gap-4 sm:grid-cols-3">
-      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="text-sm font-medium text-gray-500">Pacientes activos</h3>
-        <p className="mt-1 text-2xl font-bold text-gray-900">
+      <div className="rounded-lg border border-outline-variant bg-surface-lowest p-6 shadow-card">
+        <h3 className="text-sm font-medium text-on-surface-variant">Pacientes activos</h3>
+        <p className="mt-1 text-2xl font-bold text-on-surface">
           {overview.totalPatients}
         </p>
-        <p className="mt-1 text-xs text-gray-400">
+        <p className="mt-1 text-xs text-on-surface-variant/60">
           {overview.newPatients} nuevos en el período
         </p>
       </div>
-      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="text-sm font-medium text-gray-500">Cirugías realizadas</h3>
-        <p className="mt-1 text-2xl font-bold text-gray-900">
+      <div className="rounded-lg border border-outline-variant bg-surface-lowest p-6 shadow-card">
+        <h3 className="text-sm font-medium text-on-surface-variant">Cirugías realizadas</h3>
+        <p className="mt-1 text-2xl font-bold text-on-surface">
           {overview.totalSurgeries}
         </p>
-        <p className="mt-1 text-xs text-gray-400">en el período</p>
+        <p className="mt-1 text-xs text-on-surface-variant/60">en el período</p>
       </div>
-      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="text-sm font-medium text-gray-500">Consultas / paciente</h3>
-        <p className="mt-1 text-2xl font-bold text-gray-900">
+      <div className="rounded-lg border border-outline-variant bg-surface-lowest p-6 shadow-card">
+        <h3 className="text-sm font-medium text-on-surface-variant">Consultas / paciente</h3>
+        <p className="mt-1 text-2xl font-bold text-on-surface">
           {overview.avgConsultationsPerPatient.toFixed(1)}
         </p>
-        <p className="mt-1 text-xs text-gray-400">promedio en el período</p>
+        <p className="mt-1 text-xs text-on-surface-variant/60">promedio en el período</p>
       </div>
     </div>
   );
@@ -341,8 +341,8 @@ function ScaleEvolutionChart({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-gray-900">{label} — Evolution</h4>
-        <span className="text-xs text-gray-400">
+        <h4 className="text-sm font-semibold text-on-surface">{label} — Evolution</h4>
+        <span className="text-xs text-on-surface-variant/60">
           n={scaleData.sampleSize}
         </span>
       </div>
@@ -414,12 +414,12 @@ export function AnalyticsDashboard() {
     <div>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+        <h1 className="text-2xl font-bold text-on-surface">Analytics</h1>
 
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value as PeriodOption)}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="rounded-lg border border-outline bg-surface-lowest px-3 py-2 text-sm text-on-surface-variant shadow-card focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
         >
           {PERIODS.map((p) => (
             <option key={p.value} value={p.value}>
@@ -441,8 +441,8 @@ export function AnalyticsDashboard() {
       {/* Charts Grid */}
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         {/* Top Diagnoses */}
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-sm font-semibold text-gray-900">
+        <div className="rounded-lg border border-outline-variant bg-surface-lowest p-6 shadow-card">
+          <h2 className="mb-4 text-sm font-semibold text-on-surface">
             Top Diagnoses (ICD-10)
           </h2>
           <TopDiagnoses
@@ -453,8 +453,8 @@ export function AnalyticsDashboard() {
         </div>
 
         {/* Scale Evolution */}
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-sm font-semibold text-gray-900">
+        <div className="rounded-lg border border-outline-variant bg-surface-lowest p-6 shadow-card">
+          <h2 className="mb-4 text-sm font-semibold text-on-surface">
             Scale Evolution
           </h2>
           <div className="space-y-8">

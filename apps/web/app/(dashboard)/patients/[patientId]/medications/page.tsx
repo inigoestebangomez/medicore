@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { MedicationList, PrescriptionForm, DiscontinuationModal } from '@/features/medications/components';
 import type { MedicationPrescriptionResponse } from '@/features/medications/hooks/useMedications';
 
@@ -16,13 +17,13 @@ export default function MedicationsPage({ params }: PageProps) {
   return (
     <div className="container mx-auto space-y-6 py-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Medications</h2>
-        <button
+        <h2 className="text-lg font-semibold text-on-surface">Medications</h2>
+        <Button
+          size="sm"
           onClick={() => setShowForm((v) => !v)}
-          className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
         >
           {showForm ? 'Cancel' : 'New Prescription'}
-        </button>
+        </Button>
       </div>
 
       {showForm && (

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { useCreateReport } from '@/hooks/useReports';
 import type { ReportType } from '@/hooks/useReports';
 
@@ -45,13 +46,13 @@ export function ManualReportForm({ patientId }: ManualReportFormProps) {
       <div className="flex items-center gap-4">
         <Link
           href={`/patients/${patientId}/reports`}
-          className="text-sm text-gray-500 hover:text-gray-700"
+          className="text-sm text-on-surface-variant hover:text-on-surface-variant"
         >
           &larr; Back to Reports
         </Link>
       </div>
 
-      <h2 className="text-lg font-semibold text-gray-900">New Manual Report</h2>
+      <h2 className="text-lg font-semibold text-on-surface">New Manual Report</h2>
 
       {error && (
         <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">{error}</div>
@@ -59,7 +60,7 @@ export function ManualReportForm({ patientId }: ManualReportFormProps) {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="title" className="block text-sm font-medium text-on-surface-variant mb-1">
             Title <span className="text-red-500">*</span>
           </label>
           <input
@@ -68,13 +69,13 @@ export function ManualReportForm({ patientId }: ManualReportFormProps) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full rounded-md border border-outline px-3 py-2 text-sm shadow-card focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             placeholder="Report title"
           />
         </div>
 
         <div>
-          <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="type" className="block text-sm font-medium text-on-surface-variant mb-1">
             Type <span className="text-red-500">*</span>
           </label>
           <select
@@ -82,7 +83,7 @@ export function ManualReportForm({ patientId }: ManualReportFormProps) {
             value={type}
             onChange={(e) => setType(e.target.value as ReportType)}
             required
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full rounded-md border border-outline px-3 py-2 text-sm shadow-card focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           >
             {REPORT_TYPES.map((t) => (
               <option key={t.value} value={t.value}>
@@ -93,7 +94,7 @@ export function ManualReportForm({ patientId }: ManualReportFormProps) {
         </div>
 
         <div>
-          <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="content" className="block text-sm font-medium text-on-surface-variant mb-1">
             Content <span className="text-red-500">*</span>
           </label>
           <textarea
@@ -102,22 +103,22 @@ export function ManualReportForm({ patientId }: ManualReportFormProps) {
             onChange={(e) => setContent(e.target.value)}
             required
             rows={20}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+            className="w-full rounded-md border border-outline px-3 py-2 text-sm shadow-card focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary font-mono"
             placeholder="Write report content (markdown)..."
           />
         </div>
 
         <div className="flex items-center gap-3">
-          <button
+          <Button
             type="submit"
+            size="sm"
             disabled={createReport.isPending}
-            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {createReport.isPending ? 'Creating...' : 'Create Report'}
-          </button>
+          </Button>
           <Link
             href={`/patients/${patientId}/reports`}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            className="rounded-md border border-outline px-4 py-2 text-sm text-on-surface-variant hover:bg-surface-low"
           >
             Cancel
           </Link>

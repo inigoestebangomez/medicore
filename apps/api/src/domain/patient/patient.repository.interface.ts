@@ -52,6 +52,17 @@ export interface UpdatePatientInput {
   updatedBy: string;
 }
 
+// Phase 11 — import enrichment inputs. These never overwrite manual standard
+// fields (BR-IMP-003): the repository only applies them when the existing
+// standard field is empty.
+export interface EnrichPatientInput {
+  birthDate?: Date | null;
+  sex?: string | null;
+  importedData: Record<string, unknown>; // full updated importedData object
+  importBatchId?: string | null;
+  importSource?: string | null;
+}
+
 export interface IPatientRepository {
   findById(id: string, organizationId: string): Promise<Patient | null>;
   findByIdWithAllergies(id: string, organizationId: string): Promise<Patient | null>;
@@ -64,4 +75,14 @@ export interface IPatientRepository {
   getNextNhcSequence(organizationId: string): Promise<string>;
   hasScheduledSurgeries(patientId: string, organizationId: string): Promise<boolean>;
   countByOrg(organizationId: string): Promise<number>;
+  // Phase 11 — import matching + enrichment (backward-compatible additions).
+  findByNhc(nhc: string, organizationId: string): Promise<Patient | null>;
+  searchByNameFuzzy(organizationId: string, lastName: string, firstName?: string): Promise<Patient[]>;
+  enrich(id: string, organizationId: string, data: EnrichPatientInput, updatedBy: string): Promise<Patient>;
+  /**
+   * BR-IMP-005 (revert): strip this batch's importedData block and clear
+   * importBatchId for every patient created or enriched by the batch.
+   * Manual standard fields are never touched. Returns the affected count.
+   */
+  removeImportedBatch(batchId: string, organizationId: string): Promise<number>;
 }

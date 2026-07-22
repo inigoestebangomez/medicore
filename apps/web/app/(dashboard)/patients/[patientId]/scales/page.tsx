@@ -1,5 +1,6 @@
 // apps/web/app/(dashboard)/patients/[patientId]/scales/page.tsx
 'use client';
+import { Button } from '@/components/ui/button';
 import { ScaleInputForm } from '@/features/scales/components/scale-input-form';
 import { ScoreEvolutionChart } from '@/features/scales/components/score-evolution-chart';
 import { useState } from 'react';
@@ -21,12 +22,12 @@ export default function ScalesPage({ params }: PageProps) {
     <div className="container mx-auto space-y-6 py-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Clinical Scales</h2>
-        <button
+        <Button
+          size="sm"
           onClick={() => setShowForm(!showForm)}
-          className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
         >
           {showForm ? 'Cancel' : 'New Scale'}
-        </button>
+        </Button>
       </div>
 
       {showForm && (

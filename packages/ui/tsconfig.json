@@ -1,6 +1,7 @@
 {
   "extends": "@medicore/tsconfig/base.json",
   "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "outDir": "dist",
     "composite": true,
     "jsx": "react-jsx"

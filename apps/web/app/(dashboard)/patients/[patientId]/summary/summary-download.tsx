@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 interface SummaryDownloadProps {
   patientId: string;
@@ -179,9 +180,9 @@ export function SummaryDownload({ patientId }: SummaryDownloadProps) {
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-      <h3 className="text-sm font-semibold text-gray-900">Clinical Summary</h3>
-      <p className="mt-1 text-xs text-gray-500">
+    <div className="rounded-lg border border-outline-variant bg-surface-lowest p-6 shadow-card">
+      <h3 className="text-sm font-semibold text-on-surface">Clinical Summary</h3>
+      <p className="mt-1 text-xs text-on-surface-variant">
         Download a plain-text summary of the patient&apos;s clinical history including allergies,
         consultations, and surgeries.
       </p>
@@ -190,23 +191,14 @@ export function SummaryDownload({ patientId }: SummaryDownloadProps) {
           {error}
         </div>
       )}
-      <button
+      <Button
+        size="sm"
         onClick={handleDownload}
         disabled={generating}
-        className="mt-4 inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="bg-blue-600 hover:bg-blue-700 text-white"
       >
-        {generating ? (
-          <>
-            <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            Generating...
-          </>
-        ) : (
-          'Download Summary'
-        )}
-      </button>
+        {generating ? 'Generating...' : 'Download Summary'}
+      </Button>
     </div>
   );
 }

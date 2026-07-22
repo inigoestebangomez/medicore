@@ -30,6 +30,10 @@ export interface PatientProps {
   createdBy: string;
   updatedBy?: string | null;
   allergies?: AllergySnapshot[];
+  // Phase 11 — import origin tracking (backward-compatible; null = manual entry)
+  importedData?: Record<string, unknown> | null;
+  importSource?: string | null;       // "xlsx" | "csv" | "tsv" | "manual" | null
+  importBatchId?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
@@ -54,6 +58,9 @@ export class Patient {
   readonly createdBy: string;
   readonly updatedBy: string | null;
   readonly allergies: AllergySnapshot[];
+  readonly importedData: Record<string, unknown> | null;
+  readonly importSource: string | null;
+  readonly importBatchId: string | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
   readonly deletedAt: Date | null;
@@ -77,6 +84,9 @@ export class Patient {
     this.createdBy = props.createdBy;
     this.updatedBy = props.updatedBy ?? null;
     this.allergies = props.allergies ?? [];
+    this.importedData = (props.importedData as Record<string, unknown>) ?? null;
+    this.importSource = props.importSource ?? null;
+    this.importBatchId = props.importBatchId ?? null;
     this.createdAt = props.createdAt ?? new Date();
     this.updatedAt = props.updatedAt ?? new Date();
     this.deletedAt = props.deletedAt ?? null;

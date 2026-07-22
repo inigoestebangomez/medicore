@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { useReports } from '@/hooks/useReports';
 import type { ReportType, ReportStatus } from '@/hooks/useReports';
 
@@ -47,7 +48,7 @@ export function ReportList({ patientId }: ReportListProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-primary" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-outline-variant border-t-primary" />
       </div>
     );
   }
@@ -65,24 +66,24 @@ export function ReportList({ patientId }: ReportListProps) {
   return (
     <div className="container mx-auto space-y-4 py-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Reports</h2>
+        <h2 className="text-lg font-semibold text-on-surface">Reports</h2>
         <div className="relative">
-          <button
+          <Button
+            size="sm"
             onClick={() => setMenuOpen(!menuOpen)}
-            className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
           >
             New Report
-          </button>
+          </Button>
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 z-20 mt-1 w-40 rounded-md border border-gray-200 bg-white shadow-lg">
+              <div className="absolute right-0 z-20 mt-1 w-40 rounded-md border border-outline-variant bg-surface-lowest shadow-lg">
                 <button
                   onClick={() => {
                     setMenuOpen(false);
                     router.push(`/patients/${patientId}/reports/generate`);
                   }}
-                  className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-t-md"
+                  className="block w-full px-4 py-2 text-left text-sm text-on-surface-variant hover:bg-surface-container rounded-t-md"
                 >
                   AI Generate
                 </button>
@@ -91,7 +92,7 @@ export function ReportList({ patientId }: ReportListProps) {
                     setMenuOpen(false);
                     router.push(`/patients/${patientId}/reports/new`);
                   }}
-                  className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-b-md"
+                  className="block w-full px-4 py-2 text-left text-sm text-on-surface-variant hover:bg-surface-container rounded-b-md"
                 >
                   Write Manually
                 </button>
@@ -102,8 +103,8 @@ export function ReportList({ patientId }: ReportListProps) {
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-          <p className="text-sm text-gray-500">No reports yet</p>
+        <div className="rounded-lg border border-outline-variant bg-surface-lowest p-8 text-center">
+          <p className="text-sm text-on-surface-variant">No reports yet</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -111,12 +112,12 @@ export function ReportList({ patientId }: ReportListProps) {
             <div
               key={report.id}
               onClick={() => router.push(`/patients/${patientId}/reports/${report.id}`)}
-              className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 hover:bg-gray-50 transition-colors"
+              className="cursor-pointer rounded-lg border border-outline-variant bg-surface-lowest p-4 hover:bg-surface-low transition-colors"
             >
               <div className="flex items-center justify-between">
                 <div className="space-y-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium text-gray-900 truncate">
+                    <span className="text-sm font-medium text-on-surface truncate">
                       {report.title}
                     </span>
                     <span
@@ -135,7 +136,7 @@ export function ReportList({ patientId }: ReportListProps) {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-on-surface-variant/60">
                     {new Date(report.createdAt).toLocaleDateString(undefined, {
                       year: 'numeric',
                       month: 'short',

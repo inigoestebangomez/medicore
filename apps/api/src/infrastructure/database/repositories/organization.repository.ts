@@ -2,8 +2,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Organization } from '@/domain/organization/organization.entity';
-import { IOrganizationRepository } from '@/domain/organization/organization.repository.interface';
-import { OrganizationType, PlanType, SubscriptionStatus } from '@/domain/organization/organization.types';
+import { IOrganizationRepository, UpdateSubscriptionData } from '@/domain/organization/organization.repository.interface';
+import { OrganizationType, PlanType, SubscriptionStatus, BillingInterval } from '@/domain/organization/organization.types';
 
 @Injectable()
 export class PrismaOrganizationRepository implements IOrganizationRepository {
@@ -19,6 +19,14 @@ export class PrismaOrganizationRepository implements IOrganizationRepository {
     const record = await this.prisma.organization.findUnique({ where: { slug } });
     if (!record) return null;
     return this.toEntity(record);
+  }
+
+  async findAll(): Promise<Organization[]> {
+    const records = await this.prisma.organization.findMany({
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+    });
+    return records.map((r) => this.toEntity(r));
   }
 
   async create(data: {
@@ -61,6 +69,21 @@ export class PrismaOrganizationRepository implements IOrganizationRepository {
     return this.toEntity(record);
   }
 
+  async updateSubscription(id: string, data: UpdateSubscriptionData): Promise<Organization> {
+    const record = await this.prisma.organization.update({
+      where: { id },
+      data: {
+        ...(data.plan !== undefined && { plan: data.plan }),
+        ...(data.subscriptionStatus !== undefined && { subscriptionStatus: data.subscriptionStatus }),
+        ...(data.subscriptionExpiresAt !== undefined && { subscriptionExpiresAt: data.subscriptionExpiresAt }),
+        ...(data.stripeCustomerId !== undefined && { stripeCustomerId: data.stripeCustomerId }),
+        ...(data.stripeSubscriptionId !== undefined && { stripeSubscriptionId: data.stripeSubscriptionId }),
+        ...(data.billingInterval !== undefined && { billingInterval: data.billingInterval }),
+      },
+    });
+    return this.toEntity(record);
+  }
+
   private toEntity(record: {
     id: string;
     name: string;
@@ -71,6 +94,7 @@ export class PrismaOrganizationRepository implements IOrganizationRepository {
     subscriptionExpiresAt?: Date | null;
     stripeCustomerId?: string | null;
     stripeSubscriptionId?: string | null;
+    billingInterval?: string | null;
     settings: any;
     logoUrl: string | null;
     createdAt: Date;
@@ -87,6 +111,7 @@ export class PrismaOrganizationRepository implements IOrganizationRepository {
       subscriptionExpiresAt: record.subscriptionExpiresAt ?? null,
       stripeCustomerId: record.stripeCustomerId ?? null,
       stripeSubscriptionId: record.stripeSubscriptionId ?? null,
+      billingInterval: (record.billingInterval as BillingInterval | null) ?? null,
       settings: record.settings as Record<string, unknown>,
       logoUrl: record.logoUrl,
       createdAt: record.createdAt,

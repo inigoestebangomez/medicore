@@ -31,8 +31,8 @@ export function AuthSync({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({
             oauthProvider,
             oauthSub,
-            email: session.user?.email,
-            name: session.user?.name,
+            email: (session as any)?.user?.email,
+            name: (session as any)?.user?.name,
           }),
           credentials: 'include',
         });

@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { useSurgeries } from '@/hooks/useSurgeries';
 import type { SurgeryStatus } from '@medicore/contracts';
 
@@ -8,7 +9,7 @@ const STATUS_BADGE: Record<SurgeryStatus, string> = {
   SCHEDULED: 'bg-blue-100 text-blue-800',
   COMPLETED: 'bg-green-100 text-green-800',
   CANCELLED: 'bg-red-100 text-red-800',
-  POSTPONED: 'bg-gray-100 text-gray-800',
+  POSTPONED: 'bg-surface-container text-on-surface',
 };
 
 const STATUS_LABEL: Record<SurgeryStatus, string> = {
@@ -32,7 +33,7 @@ export function SurgeryList({ patientId }: SurgeryListProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-primary" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-outline-variant border-t-primary" />
       </div>
     );
   }
@@ -50,18 +51,18 @@ export function SurgeryList({ patientId }: SurgeryListProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Surgeries</h2>
-        <button
+        <h2 className="text-lg font-semibold text-on-surface">Surgeries</h2>
+        <Button
+          size="sm"
           onClick={() => router.push(`/patients/${patientId}/surgeries/new`)}
-          className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
         >
           New Surgery
-        </button>
+        </Button>
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-          <p className="text-sm text-gray-500">No surgeries recorded yet</p>
+        <div className="rounded-lg border border-outline-variant bg-surface-lowest p-8 text-center">
+          <p className="text-sm text-on-surface-variant">No surgeries recorded yet</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -69,12 +70,12 @@ export function SurgeryList({ patientId }: SurgeryListProps) {
             <div
               key={surgery.id}
               onClick={() => router.push(`/patients/${patientId}/surgeries/${surgery.id}`)}
-              className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 hover:bg-gray-50 transition-colors"
+              className="cursor-pointer rounded-lg border border-outline-variant bg-surface-lowest p-4 hover:bg-surface-low transition-colors"
             >
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-on-surface">
                       {new Date(surgery.date).toLocaleDateString(undefined, {
                         year: 'numeric',
                         month: 'short',
@@ -87,11 +88,11 @@ export function SurgeryList({ patientId }: SurgeryListProps) {
                       {STATUS_LABEL[surgery.status]}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-on-surface-variant">
                     {surgery.procedureType}
                   </p>
                   {surgery.asa && (
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-on-surface-variant/60">
                       ASA: {surgery.asa.replace('_', ' ')}
                     </p>
                   )}

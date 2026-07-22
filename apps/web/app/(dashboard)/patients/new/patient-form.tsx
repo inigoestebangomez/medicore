@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { useCreatePatient } from '@/hooks/usePatients';
 import type { CreatePatientInput, Sex, IdDocumentType, BloodType } from '@medicore/contracts';
 
@@ -122,17 +123,18 @@ export function PatientForm() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 py-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">New Patient</h2>
-        <button
+        <h2 className="text-lg font-semibold text-on-surface">New Patient</h2>
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => router.back()}
-          className="text-sm text-gray-500 hover:text-gray-700"
         >
           Cancel
-        </button>
+        </Button>
       </div>
 
       <form onSubmit={(e) => handleSubmit(e)}>
-        <div className="rounded-lg border border-gray-200 bg-white p-6 space-y-5">
+        <div className="rounded-lg border border-outline-variant bg-surface-lowest p-6 space-y-5">
           {error && (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
               {error}
@@ -155,7 +157,7 @@ export function PatientForm() {
                 type="button"
                 onClick={(e) => handleSubmit(e, true)}
                 disabled={createMutation.isPending}
-                className="mt-3 rounded-md bg-amber-600 px-3 py-1.5 text-sm text-white hover:bg-amber-700 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-amber-600 text-white hover:bg-amber-700 h-9 px-3 py-1.5"
               >
                 {createMutation.isPending ? 'Confirming...' : 'Confirm — create anyway'}
               </button>
@@ -286,20 +288,20 @@ export function PatientForm() {
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => router.back()}
-              className="rounded-md border px-4 py-2 text-sm"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              size="sm"
               disabled={createMutation.isPending}
-              className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {createMutation.isPending ? 'Creating...' : 'Create Patient'}
-            </button>
+            </Button>
           </div>
         </div>
       </form>

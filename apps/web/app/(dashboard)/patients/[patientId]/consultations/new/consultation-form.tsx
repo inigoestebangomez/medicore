@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { useCreateConsultation } from '@/hooks/useConsultations';
 import { DiagnosisCodePicker } from '@/features/consultations/components/diagnosis-code-picker';
 import { DynamicForm } from '@/features/consultations/components/dynamic-form';
@@ -82,17 +83,18 @@ export function ConsultationForm({ patientId }: ConsultationFormProps) {
   return (
     <div className="mx-auto max-w-2xl space-y-6 py-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">New Consultation</h2>
-        <button
+        <h2 className="text-lg font-semibold text-on-surface">New Consultation</h2>
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => router.back()}
-          className="text-sm text-gray-500 hover:text-gray-700"
         >
           Cancel
-        </button>
+        </Button>
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="rounded-lg border border-gray-200 bg-white p-6 space-y-5">
+        <div className="rounded-lg border border-outline-variant bg-surface-lowest p-6 space-y-5">
           {error && (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
               {error}
@@ -150,7 +152,7 @@ export function ConsultationForm({ patientId }: ConsultationFormProps) {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900">Physical Exam (ORL)</h3>
+            <h3 className="text-sm font-semibold text-on-surface">Physical Exam (ORL)</h3>
             <DynamicForm
               template={ORL_PHYSICAL_EXAM_TEMPLATE}
               values={physicalExam}
@@ -208,20 +210,20 @@ export function ConsultationForm({ patientId }: ConsultationFormProps) {
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => router.back()}
-              className="rounded-md border px-4 py-2 text-sm"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              size="sm"
               disabled={createMutation.isPending}
-              className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {createMutation.isPending ? 'Creating...' : 'Create Consultation'}
-            </button>
+            </Button>
           </div>
         </div>
       </form>

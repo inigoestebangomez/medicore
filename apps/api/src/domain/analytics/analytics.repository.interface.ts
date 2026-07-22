@@ -34,6 +34,48 @@ export interface AnalyticsFilters {
   to?: Date;
 }
 
+export interface DashboardStatsChange {
+  value: number;
+  percent: number;
+  period: 'month' | 'week';
+}
+
+export interface DashboardStats {
+  patients: {
+    total: number;
+    change: DashboardStatsChange;
+    monthly: Array<{ month: string; new: number }>;
+  };
+  appointments: {
+    total: number;
+    change: DashboardStatsChange;
+    weekly: Array<{ week: string; count: number }>;
+    byType: Record<string, number>;
+  };
+  surgeries: {
+    total: number;
+    change: DashboardStatsChange;
+    monthly: Array<{ month: string; count: number }>;
+    byStatus: Record<string, number>;
+  };
+  treatments: {
+    active: number;
+    newThisMonth: number;
+    monthly: Array<{ month: string; new: number }>;
+  };
+  billing: {
+    totalThisMonth: number;
+    change: DashboardStatsChange;
+    monthly: Array<{ month: string; total: number }>;
+    byType: Record<string, number>;
+  };
+  schedule: {
+    todayAppointments: number;
+    todaySurgeries: number;
+    nextAppointment: { time: string; patientName: string } | null;
+  };
+}
+
 export interface IAnalyticsRepository {
   getOverview(filters: AnalyticsFilters): Promise<AnalyticsOverview>;
   getDiagnosisDistribution(
@@ -42,4 +84,5 @@ export interface IAnalyticsRepository {
   getScaleEvolution(
     filters: AnalyticsFilters & { scaleType: string; diagnosisCode?: string }
   ): Promise<ScaleEvolutionData>;
+  getDashboardStats(organizationId: string): Promise<DashboardStats>;
 }

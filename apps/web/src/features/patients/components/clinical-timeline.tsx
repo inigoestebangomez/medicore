@@ -126,7 +126,7 @@ export function ClinicalTimeline({ patientId }: ClinicalTimelineProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-brand-600" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-outline border-t-primary" />
       </div>
     );
   }
@@ -174,7 +174,7 @@ export function ClinicalTimeline({ patientId }: ClinicalTimelineProps) {
 
   if (events.length === 0) {
     return (
-      <div className="py-8 text-center text-sm text-gray-400">
+      <div className="py-8 text-center text-sm text-on-surface-variant/60">
         No clinical events recorded yet
       </div>
     );
@@ -182,7 +182,7 @@ export function ClinicalTimeline({ patientId }: ClinicalTimelineProps) {
 
   return (
     <div className="relative space-y-0 pl-8">
-      <div className="absolute left-[11px] top-2 bottom-2 w-px bg-gray-200" />
+      <div className="absolute left-[11px] top-2 bottom-2 w-px bg-surface-high" />
 
       {events.map((event) => {
         const IconNode = EVENT_ICONS[event.type];
@@ -204,19 +204,19 @@ export function ClinicalTimeline({ patientId }: ClinicalTimelineProps) {
               {IconNode}
             </span>
 
-            <div className="rounded-lg border border-gray-100 bg-white p-3 shadow-sm transition-shadow group-hover:shadow-md">
+            <div className="rounded-lg border border-outline-variant bg-surface-lowest p-3 shadow-card transition-shadow group-hover:shadow-dropdown">
               <div className="flex items-center justify-between">
                 <span
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${EVENT_COLORS[event.type]}`}
                 >
                   {EVENT_LABELS[event.type]}
                 </span>
-                <span className="text-xs text-gray-400">{dateFormatted}</span>
+                <span className="text-xs text-on-surface-variant/60">{dateFormatted}</span>
               </div>
               {event.label && (
-                <p className="mt-1 text-xs text-gray-500">{event.label}</p>
+                <p className="mt-1 text-xs text-on-surface-variant">{event.label}</p>
               )}
-              <p className="mt-1 text-sm font-medium text-gray-900 line-clamp-1">
+              <p className="mt-1 text-sm font-medium text-on-surface line-clamp-1">
                 {event.description}
               </p>
             </div>

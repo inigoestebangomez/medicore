@@ -168,7 +168,7 @@ export function FileUploader({ patientId, studyId, onUploadComplete, disabled }:
         onClick={() => !disabled && inputRef.current?.click()}
         className={`
           border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-          ${dragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
+          ${dragOver ? 'border-secondary bg-secondary-container/20' : 'border-outline hover:border-gray-400'}
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
         `}
       >
@@ -181,10 +181,10 @@ export function FileUploader({ patientId, studyId, onUploadComplete, disabled }:
           className="hidden"
           disabled={disabled}
         />
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-on-surface-variant">
           Arrastrá archivos acá o hacé click para seleccionar
         </p>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-on-surface-variant/60 mt-1">
           DICOM, imágenes, video, PDF — máx. {MAX_FILES_PER_UPLOAD} archivos
         </p>
       </div>
@@ -195,7 +195,7 @@ export function FileUploader({ patientId, studyId, onUploadComplete, disabled }:
           {files.map((f) => (
             <li
               key={f.id}
-              className="flex items-center gap-3 rounded border border-gray-200 bg-white p-3 text-sm"
+              className="flex items-center gap-3 rounded border border-outline-variant bg-surface-lowest p-3 text-sm"
             >
               {/* Preview */}
               {f.previewUrl ? (
@@ -205,20 +205,20 @@ export function FileUploader({ patientId, studyId, onUploadComplete, disabled }:
                   className="h-10 w-10 rounded object-cover"
                 />
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded bg-gray-100 text-xs text-gray-500">
+                <div className="flex h-10 w-10 items-center justify-center rounded bg-surface-container text-xs text-on-surface-variant">
                   {f.file.type.split('/').pop()?.toUpperCase().slice(0, 4) ?? 'FILE'}
                 </div>
               )}
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <p className="truncate font-medium text-gray-900">{f.file.name}</p>
-                <p className="text-xs text-gray-500">{formatSize(f.file.size)}</p>
+                <p className="truncate font-medium text-on-surface">{f.file.name}</p>
+                <p className="text-xs text-on-surface-variant">{formatSize(f.file.size)}</p>
               </div>
 
               {/* Status */}
               {f.status === 'uploading' && (
-                <span className="text-xs text-blue-600 animate-pulse">Subiendo...</span>
+                <span className="text-xs text-secondary animate-pulse">Subiendo...</span>
               )}
               {f.status === 'done' && (
                 <span className="text-xs text-green-600 font-medium">✓</span>
@@ -232,7 +232,7 @@ export function FileUploader({ patientId, studyId, onUploadComplete, disabled }:
                 <button
                   type="button"
                   onClick={() => handleRemove(f.id)}
-                  className="text-gray-400 hover:text-red-500"
+                  className="text-on-surface-variant/60 hover:text-red-500"
                   aria-label="Eliminar archivo"
                 >
                   ✕

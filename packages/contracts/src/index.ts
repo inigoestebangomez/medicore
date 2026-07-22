@@ -225,3 +225,106 @@ export type {
   ListScalesQuery,
   ScaleResponse,
 } from './scale.schema';
+
+// Billing
+export {
+  PlanTypeSchema,
+  BillingIntervalSchema,
+  CreateCheckoutSchema,
+  CreatePortalSchema,
+  UsageResponseSchema,
+  CheckoutResponseSchema,
+  PortalResponseSchema,
+  StripeWebhookEventSchema,
+} from './billing.schema';
+
+export type {
+  PlanType as BillingPlanType,
+  BillingInterval,
+  CreateCheckoutInput,
+  CreatePortalInput,
+  UsageResponse,
+  CheckoutResponse,
+  PortalResponse,
+  StripeWebhookEvent,
+} from './billing.schema';
+
+// Import (Phase 11)
+export {
+  ImportStatusSchema,
+  IMPORT_ALLOWED_TRANSITIONS,
+  StandardFieldSchema,
+  ColumnMappingSchema,
+  ColumnMappingProposalSchema,
+  FileSampleSchema,
+  ParsedFileSchema,
+  MatchDecisionSchema,
+  PatientMatchSchema,
+  ConfirmMappingSchema,
+  FinalizeImportSchema,
+  ImportBatchSummarySchema,
+  ImportBatchResponseSchema,
+  ListImportBatchesQuerySchema,
+  IMPORT_TIER_LIMITS,
+  IMPORT_LIMIT_BYPASS_ENV,
+} from './import.schema';
+
+export type {
+  ImportStatus,
+  StandardField,
+  ColumnMapping,
+  ColumnMappingProposal,
+  FileSample,
+  ParsedFile,
+  MatchDecision,
+  PatientMatch,
+  ConfirmMappingInput,
+  FinalizeImportInput,
+  ImportBatchSummary,
+  ImportBatchResponse,
+  ListImportBatchesQuery,
+} from './import.schema';
+
+// Research (Phase 12)
+export {
+  FieldSourceSchema,
+  FilterOperatorSchema,
+  FilterSchema,
+  FilterValueSchema,
+  FilterLogicSchema,
+  DataSourceSchema,
+  VisualizationTypeSchema,
+  ResearchQueryInputSchema,
+  ResearchQueryResponseSchema,
+  PatientCollectionInputSchema,
+  PatientCollectionResponseSchema,
+  AddToCollectionInputSchema,
+  QueryResultRowSchema,
+  FieldStatsSchema,
+  CategoryDistributionSchema,
+  ExecuteQueryResponseSchema,
+  ExportFormatSchema,
+  ExportRequestSchema,
+  ListResearchQueriesQuerySchema,
+} from './research.schema';
+
+export type {
+  FieldSource,
+  FilterOperator,
+  Filter,
+  FilterLogic,
+  DataSource,
+  VisualizationType,
+  ResearchQueryInput,
+  ResearchQueryResponse,
+  PatientCollectionInput,
+  PatientCollectionResponse,
+  AddToCollectionInput,
+  QueryResultRow,
+  FieldStats,
+  CategoryDistribution,
+  ExecuteQueryResponse,
+  ExportFormat,
+  ExportRequest,
+  ListResearchQueriesQuery,
+} from './research.schema';

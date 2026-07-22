@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { usePatients } from '@/hooks/usePatients';
 
 function calculateAge(birthDate: string): number {
@@ -57,13 +58,13 @@ export function PatientList() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Patients</h2>
-        <button
+        <h2 className="text-lg font-semibold text-on-surface">Patients</h2>
+        <Button
+          size="sm"
           onClick={() => router.push('/patients/new')}
-          className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
         >
           New Patient
-        </button>
+        </Button>
       </div>
 
       <div>
@@ -72,13 +73,13 @@ export function PatientList() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name, NHC, or document..."
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full rounded-md border border-outline px-3 py-2 text-sm placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         />
       </div>
 
       {isLoading && (
         <div className="flex items-center justify-center py-16">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-primary" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-outline-variant border-t-primary" />
         </div>
       )}
 
@@ -91,58 +92,59 @@ export function PatientList() {
       {!isLoading && !error && (
         <>
           {data && data.items.length === 0 ? (
-            <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-              <p className="text-sm text-gray-500">No patients found</p>
-              <button
+            <div className="rounded-lg border border-outline-variant bg-surface-lowest p-8 text-center">
+              <p className="text-sm text-on-surface-variant">No patients found</p>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => router.push('/patients/new')}
-                className="mt-3 text-sm font-medium text-primary hover:underline"
               >
                 Create your first patient
-              </button>
+              </Button>
             </div>
           ) : (
             <>
-              <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+              <div className="overflow-hidden rounded-lg border border-outline-variant bg-surface-lowest">
+                <table className="min-w-full divide-y divide-outline-variant">
+                  <thead className="bg-surface-low">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-on-surface-variant">
                         NHC
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-on-surface-variant">
                         Name
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-on-surface-variant">
                         Sex
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-on-surface-variant">
                         Age
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-on-surface-variant">
                         Phone
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-outline-variant">
                     {data?.items.map((patient) => (
                       <tr
                         key={patient.id}
                         onClick={() => router.push(`/patients/${patient.id}`)}
-                        className="cursor-pointer hover:bg-gray-50 transition-colors"
+                        className="cursor-pointer hover:bg-surface-low transition-colors"
                       >
-                        <td className="whitespace-nowrap px-4 py-3 text-sm font-mono text-gray-900">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm font-mono text-on-surface">
                           {patient.nhc}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-on-surface">
                           {patient.lastName}, {patient.firstName}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-on-surface-variant">
                           {SEX_LABEL[patient.sex] ?? patient.sex}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-on-surface-variant">
                           {patient.age ?? calculateAge(patient.birthDate)}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-on-surface-variant">
                           {patient.phone ?? '—'}
                         </td>
                       </tr>
@@ -153,24 +155,26 @@ export function PatientList() {
 
               {data && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">
+                  <span className="text-on-surface-variant">
                     Page {data.page} of {data.totalPages} ({data.total} patients)
                   </span>
                   <div className="flex gap-2">
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={handlePrevious}
                       disabled={page <= 1}
-                      className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Previous
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={handleNext}
                       disabled={!data || page >= data.totalPages}
-                      className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Next
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}

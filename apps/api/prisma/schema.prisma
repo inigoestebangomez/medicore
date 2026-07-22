@@ -42,6 +42,7 @@ model Organization {
   subscriptionExpiresAt   DateTime?
   stripeCustomerId        String?
   stripeSubscriptionId    String?
+  billingInterval         BillingInterval?  // monthly | yearly; null for FREE orgs
   settings    Json             @default("{}")  // configuración del workspace
   logoUrl     String?
   createdAt   DateTime         @default(now())
@@ -53,6 +54,14 @@ model Organization {
   auditLogs   AuditLog[]
   consents    ConsentRecord[]
   invitations Invitation[]
+  aiReportUsages AiReportUsage[]
+  importBatches ImportBatch[]
+  researchQueries ResearchQuery[]
+  patientCollections PatientCollection[]
+  billingTransactions BillingTransaction[]
+  doctorSchedules     DoctorSchedule[]
+  pharmaContacts      PharmaContact[]
+  pharmaInteractions  PharmaInteraction[]
 
   @@index([slug])
   @@map("organizations")
@@ -98,6 +107,35 @@ enum SubscriptionStatus {
   PAST_DUE
   CANCELED
   EXPIRED
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+enum BillingType {
+  CONSULTATION
+  SURGERY
+  TREATMENT
+  SUBSCRIPTION
+  OTHER
+}
+
+enum BillingStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum InteractionType {
+  CALL
+  MEETING
+  EMAIL
+  LUNCH
+  CONFERENCE
+  OTHER
 }
 
 enum MemberRole {
@@ -226,6 +264,14 @@ enum ReportStatus {
   SIGNED        // Firmado (estado final)
 }
 
+enum ImportStatus {
+  PENDING       // análisis en curso
+  CONFIRMING    // esperando confirmación del médico
+  PROCESSING    // importando datos
+  COMPLETED     // importación finalizada
+  FAILED        // error durante la importación
+}
+
 enum ClinicalScaleType {
   SNOT_22           // Sino-Nasal Outcome Test (rinosinusitis)
   VAS_TINNITUS      // Escala visual analógica para acúfenos
@@ -258,7 +304,7 @@ model Patient {
   // Datos demográficos
   firstName      String
   lastName       String
-  birthDate      DateTime
+  birthDate      DateTime?     // nullable: imported records may lack birth date (no 1900-01-01 fallback)
   sex            Sex
   idDocument     String?        // Número del documento de identidad
   idDocType      IdDocumentType @default(DNI)
@@ -273,6 +319,11 @@ model Patient {
   bloodType      BloodType      @default(UNKNOWN)
   notes          String?        // Notas libres del médico sobre el paciente
 
+  // Datos de importación (Phase 11)
+  importedData   Json?          // { "batch-uuid": { _batchName, _importedAt, ...customFields } }
+  importSource   String?        // "xlsx" | "csv" | "tsv" | "manual" (null = registro manual)
+  importBatchId  String?        // último batch que creó o enriqueció esta ficha
+
   // Metadata
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -283,6 +334,7 @@ model Patient {
   // Relaciones
   organization   Organization   @relation(fields: [organizationId], references: [id])
   allergies      Allergy[]
+  importBatch    ImportBatch?   @relation(fields: [importBatchId], references: [id])
   consultations  Consultation[]
   surgeries      Surgery[]
   imagingStudies ImagingStudy[]
@@ -290,13 +342,159 @@ model Patient {
   reports        Report[]
   scales         ClinicalScale[]
   consents       ConsentRecord[]
+  collectionMemberships PatientCollectionMember[]
+  billingTransactions BillingTransaction[]
 
   @@unique([organizationId, nhc])         // El NHC es único dentro de la organización
   @@index([organizationId])
   @@index([organizationId, lastName, firstName])
   @@index([organizationId, birthDate])
   @@index([organizationId, idDocument])
+  @@index([organizationId, importBatchId])
   @@map("patients")
+}
+
+// ─────────────────────────────────────────────
+// IMPORT (Phase 11)
+// ─────────────────────────────────────────────
+
+model ImportBatch {
+  id              String       @id @default(uuid())
+  organizationId  String
+  createdBy       String       // userId del médico que importó
+
+  // Metadata del archivo original
+  fileName        String
+  fileSize        Int          // bytes
+  fileHash        String       // SHA-256 para auditoría/dedup
+  originalFormat  String       // "xlsx" | "csv" | "tsv"
+
+  // Muestra del archivo y resultado del análisis IA
+  sample          Json         // { columns, rows } primeras 20 filas para UI
+  columnMapping   Json         // { "Nº HISTORIA": "nhc", "Edad": "age", ... }
+  customFieldNames Json        @default("{}") // { "NombreColumnaOriginal": "nombre legible" }
+  junkRowIndices  Int[]        // índices de filas basura detectadas
+  aiConfidence    Float?       // 0.0 - 1.0
+  aiProvider      String?      // "heuristic" | "groq" | "claude"
+  issues          String[]     @default([])
+  notes           String?
+
+  // Resultado del análisis (para la UI)
+  totalRows       Int          @default(0)
+  // Resultado de la importación
+  importedRows    Int          @default(0)
+  enrichedRows    Int          @default(0)
+  createdRows     Int          @default(0)
+  skippedRows     Int          @default(0)
+  pendingRows     Int          @default(0)
+
+  // Snapshot pre-import para revert (BR-IMP-005)
+  snapshot        Json?
+
+  // Estado
+  status          ImportStatus @default(PENDING)
+  errorMessage    String?
+
+  createdAt       DateTime     @default(now())
+  completedAt     DateTime?
+  deletedAt       DateTime?    // soft delete (revert)
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  patients        Patient[]    // pacientes creados o enriquecidos en este batch
+
+  @@index([organizationId])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, status])
+  @@map("import_batches")
+}
+
+// ─────────────────────────────────────────────
+// RESEARCH (Phase 12)
+// ─────────────────────────────────────────────
+
+model ResearchQuery {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  createdBy       String   @map("created_by")
+
+  name            String
+  description     String?
+
+  // Source of data
+  dataSource      String   @default("all_patients")   // "all_patients" | "import_batch" | "manual_only" | "imported_only"
+  importBatchIds  String[] @default([])
+
+  // Filters (AND/OR by filterLogic)
+  filters         Json     @default("[]")    // Filter[]
+  filterLogic     String   @default("AND")   // "AND" | "OR"
+
+  // Display config
+  displayFields   String[] @default([])
+  visualizations  String[] @default([])      // "table" | "bar_chart" | "line_chart" | "scatter" | "stats"
+
+  // Privacy (BR-RES-001: private by default)
+  sharedWith      String[] @default([])
+
+  // Last execution
+  lastRunAt       DateTime?
+  lastRunCount    Int?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  collections     PatientCollection[]
+
+  @@index([organizationId])
+  @@index([organizationId, createdBy])
+  @@index([organizationId, createdAt])
+  @@map("research_queries")
+}
+
+model PatientCollection {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  createdBy       String   @map("created_by")
+
+  name            String
+  description     String?
+  queryId         String?  @map("query_id")
+
+  // BR-RES-003: locked collections are immutable (published study cohort)
+  isLocked        Boolean  @default(false) @map("is_locked")
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  query           ResearchQuery?   @relation(fields: [queryId], references: [id])
+  members         PatientCollectionMember[]
+
+  @@index([organizationId])
+  @@index([organizationId, createdBy])
+  @@map("patient_collections")
+}
+
+// ─────────────────────────────────────────────
+// PATIENT COLLECTION MEMBER (Phase 12)
+// ─────────────────────────────────────────────
+
+model PatientCollectionMember {
+  collectionId  String   @map("collection_id")
+  patientId    String    @map("patient_id")
+  addedAt      DateTime  @default(now()) @map("added_at")
+  addedBy      String    @map("added_by")
+  notes        String?
+
+  collection    PatientCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  patient       Patient          @relation(fields: [patientId], references: [id])
+
+  @@id([collectionId, patientId])
+  @@index([collectionId])
+  @@index([patientId])
+  @@map("patient_collection_members")
 }
 
 model Allergy {
@@ -361,6 +559,7 @@ model Consultation {
   scales         ClinicalScale[]
   reports        Report[]
   imagingStudies ImagingStudy[]
+  billingTransactions BillingTransaction[]
 
   @@index([organizationId])
   @@index([organizationId, patientId])
@@ -444,6 +643,7 @@ model Surgery {
   patient        Patient          @relation(fields: [patientId], references: [id])
   imagingStudies ImagingStudy[]
   reports        Report[]
+  billingTransactions BillingTransaction[]
 
   @@index([organizationId])
   @@index([organizationId, patientId])
@@ -646,4 +846,132 @@ model ConsentRecord {
   @@index([organizationId, patientId])
   @@index([organizationId, patientId, consentType])
   @@map("consent_records")
+}
+
+// ─────────────────────────────────────────────
+// BILLING & AI USAGE TRACKING
+// ─────────────────────────────────────────────
+
+// Per-organization monthly AI report generation counter (BR-REP-009 enforcement).
+// yearMonth is "YYYY-MM". Unique constraint guarantees one row per org per month.
+model AiReportUsage {
+  id             String   @id @default(uuid())
+  organizationId String
+  yearMonth      String   // "2026-07"
+  count          Int      @default(0)
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, yearMonth])
+  @@index([organizationId])
+  @@map("ai_report_usage")
+}
+
+// Idempotency table for Stripe webhook events. eventId is the Stripe event id (PK).
+// Survives Stripe retries and app restarts: a duplicate event is a no-op.
+model ProcessedStripeEvent {
+  eventId     String   @id
+  eventType   String
+  processedAt DateTime @default(now())
+
+  @@map("processed_stripe_events")
+}
+
+// ─────────────────────────────────────────────
+// BILLING TRANSACTIONS (clinical/financial)
+// ─────────────────────────────────────────────
+
+model BillingTransaction {
+  id              String         @id @default(uuid())
+  organizationId  String
+  patientId       String?
+  consultationId  String?
+  surgeryId       String?
+  amount          Float
+  type            BillingType    @default(OTHER)
+  status          BillingStatus  @default(PENDING)
+  description     String?
+  date            DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+  patient         Patient?       @relation(fields: [patientId], references: [id])
+  consultation    Consultation?  @relation(fields: [consultationId], references: [id])
+  surgery         Surgery?       @relation(fields: [surgeryId], references: [id])
+
+  @@index([organizationId, date])
+  @@index([organizationId, status])
+  @@map("billing_transactions")
+}
+
+// ─────────────────────────────────────────────
+// DOCTOR SCHEDULE (weekly slots)
+// ─────────────────────────────────────────────
+
+model DoctorSchedule {
+  id              String    @id @default(uuid())
+  organizationId  String
+  userId          String
+  dayOfWeek       Int       // 0=Sun..6=Sat
+  startTime       String    // "09:00"
+  endTime         String    // "17:00"
+  slotDuration    Int       @default(30)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, userId, dayOfWeek])
+  @@index([organizationId, userId])
+  @@map("doctor_schedules")
+}
+
+// ─────────────────────────────────────────────
+// PHARMA CONTACTS & INTERACTIONS
+// ─────────────────────────────────────────────
+
+model PharmaContact {
+  id              String    @id @default(uuid())
+  organizationId  String
+  name            String
+  company         String
+  role            String?
+  email           String?
+  phone           String?
+  notes           String?
+  lastContactAt   DateTime?
+  nextFollowUpAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  interactions    PharmaInteraction[]
+
+  @@index([organizationId])
+  @@index([organizationId, company])
+  @@map("pharma_contacts")
+}
+
+model PharmaInteraction {
+  id              String           @id @default(uuid())
+  organizationId  String
+  contactId       String
+  date            DateTime         @default(now())
+  type            InteractionType  @default(OTHER)
+  notes           String?
+  followUpNeeded  Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  contact         PharmaContact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, date])
+  @@index([organizationId, date])
+  @@map("pharma_interactions")
 }

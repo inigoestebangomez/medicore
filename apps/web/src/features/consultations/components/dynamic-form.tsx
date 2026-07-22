@@ -115,7 +115,7 @@ function asNumber(value: unknown, fallback: number | undefined): number | undefi
 }
 
 function fieldInputClass(extra?: string): string {
-  return `mt-1 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ${extra ?? ''}`;
+  return `mt-1 w-full rounded-md border border-outline-variant bg-surface-lowest px-3 py-2 text-sm ${extra ?? ''}`;
 }
 
 function SectionHeader({
@@ -133,7 +133,7 @@ function SectionHeader({
     <button
       type="button"
       onClick={collapsible ? onToggle : undefined}
-      className="flex w-full items-center gap-2 rounded-md bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700"
+      className="flex w-full items-center gap-2 rounded-md bg-surface-low px-4 py-2 text-sm font-semibold text-on-surface-variant"
     >
       {collapsible &&
         (isOpen ? (
@@ -173,7 +173,7 @@ function TextField({
 
   return (
     <div>
-      <label className="text-sm font-medium text-gray-700">
+      <label className="text-sm font-medium text-on-surface-variant">
         {field.label}
         {field.required && <span className="ml-1 text-red-500">*</span>}
       </label>
@@ -199,7 +199,7 @@ function SelectField({
 }) {
   return (
     <div>
-      <label className="text-sm font-medium text-gray-700">
+      <label className="text-sm font-medium text-on-surface-variant">
         {field.label}
         {field.required && <span className="ml-1 text-red-500">*</span>}
       </label>
@@ -236,12 +236,12 @@ function ScaleField({
 
   return (
     <div>
-      <label className="text-sm font-medium text-gray-700">
+      <label className="text-sm font-medium text-on-surface-variant">
         {field.label}: <span className="font-semibold">{current}</span>
       </label>
       <div className="mt-1 flex items-center gap-3">
         {field.showLabels !== false && (
-          <span className="text-xs text-gray-500 w-8 text-right">{field.min}</span>
+          <span className="text-xs text-on-surface-variant w-8 text-right">{field.min}</span>
         )}
         <input
           type="range"
@@ -254,7 +254,7 @@ function ScaleField({
           className="flex-1"
         />
         {field.showLabels !== false && (
-          <span className="text-xs text-gray-500 w-8">{field.max}</span>
+          <span className="text-xs text-on-surface-variant w-8">{field.max}</span>
         )}
       </div>
     </div>
@@ -274,16 +274,16 @@ function CheckboxField({
 }) {
   return (
     <fieldset className="space-y-1">
-      <legend className="text-sm font-medium text-gray-700">{field.label}</legend>
+      <legend className="text-sm font-medium text-on-surface-variant">{field.label}</legend>
       {field.options.map((opt) => (
-        <label key={opt.value} className="flex items-center gap-2 text-sm text-gray-700">
+        <label key={opt.value} className="flex items-center gap-2 text-sm text-on-surface-variant">
           <input
             type="checkbox"
             value={opt.value}
             checked={value.includes(opt.value)}
             onChange={(e) => onChange(opt.value, e.target.checked)}
             disabled={readOnly}
-            className="rounded border-gray-300"
+            className="rounded border-outline"
           />
           {opt.label}
         </label>
@@ -305,7 +305,7 @@ function NumberField({
 }) {
   return (
     <div>
-      <label className="text-sm font-medium text-gray-700">
+      <label className="text-sm font-medium text-on-surface-variant">
         {field.label}
         {field.required && <span className="ml-1 text-red-500">*</span>}
       </label>

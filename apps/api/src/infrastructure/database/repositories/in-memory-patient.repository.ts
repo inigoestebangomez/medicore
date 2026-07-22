@@ -1,7 +1,7 @@
 // apps/api/src/infrastructure/database/repositories/in-memory-patient.repository.ts
 // In-memory implementation of IPatientRepository for unit tests
 
-import type { IPatientRepository, FindAllParams, SearchParams, CreatePatientInput, UpdatePatientInput } from '@/domain/patient/patient.repository.interface';
+import type { IPatientRepository, FindAllParams, SearchParams, CreatePatientInput, UpdatePatientInput, EnrichPatientInput } from '@/domain/patient/patient.repository.interface';
 import type { Patient } from '@/domain/patient/patient.entity';
 import { Patient as PatientEntity } from '@/domain/patient/patient.entity';
 import { NHC } from '@/domain/patient/value-objects/nhc.vo';
@@ -127,6 +127,65 @@ export class InMemoryPatientRepository implements IPatientRepository {
     });
     this.patients.set(id, updated);
     return updated;
+  }
+
+  // Phase 11 — import matching + enrichment
+  async findByNhc(nhc: string, organizationId: string): Promise<Patient | null> {
+    const p = Array.from(this.patients.values()).find(
+      (x) => x.organizationId === organizationId && !x.deletedAt && x.nhc === nhc,
+    );
+    return p ?? null;
+  }
+
+  async searchByNameFuzzy(organizationId: string, lastName: string, firstName?: string): Promise<Patient[]> {
+    const qLast = lastName.toLowerCase();
+    const qFirst = firstName?.toLowerCase();
+    return Array.from(this.patients.values()).filter(
+      (p) =>
+        p.organizationId === organizationId &&
+        !p.deletedAt &&
+        (p.lastName.toLowerCase().includes(qLast) ||
+          (qFirst ? p.firstName.toLowerCase().includes(qFirst) : false)),
+    );
+  }
+
+  async enrich(id: string, organizationId: string, data: EnrichPatientInput, updatedBy: string): Promise<Patient> {
+    const existing = this.patients.get(id);
+    if (!existing || existing.organizationId !== organizationId) {
+      throw new Error('Patient not found');
+    }
+    // BR-IMP-003: only set standard fields when currently empty.
+    const props: any = {
+      ...existing,
+      importedData: data.importedData ?? existing.importedData,
+      importBatchId: data.importBatchId ?? existing.importBatchId,
+      importSource: data.importSource ?? existing.importSource,
+      updatedBy,
+      updatedAt: new Date(),
+    };
+    if (data.birthDate && !existing.birthDate) props.birthDate = data.birthDate;
+    if (data.sex && !existing.sex) props.sex = data.sex as any;
+    const merged = new PatientEntity(props);
+    this.patients.set(id, merged);
+    return merged;
+  }
+
+  async removeImportedBatch(batchId: string, organizationId: string): Promise<number> {
+    let count = 0;
+    for (const [id, p] of this.patients.entries()) {
+      if (p.organizationId !== organizationId || p.importBatchId !== batchId) continue;
+      const imported = (p.importedData as Record<string, unknown> | null) ?? {};
+      if (batchId in imported) delete imported[batchId];
+      const reverted = new PatientEntity({
+        ...p,
+        importedData: imported,
+        importBatchId: null,
+        updatedAt: new Date(),
+      });
+      this.patients.set(id, reverted);
+      count++;
+    }
+    return count;
   }
 
   async softDelete(id: string, organizationId: string): Promise<Patient> {

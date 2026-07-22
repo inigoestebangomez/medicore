@@ -20,3 +20,13 @@ export enum SubscriptionStatus {
   CANCELED = 'CANCELED',
   EXPIRED = 'EXPIRED',
 }
+
+/**
+ * Billing cycle interval for paid subscriptions.
+ * Mirrors the Prisma `BillingInterval` enum. Kept here to avoid a domain
+ * dependency on @prisma/client; re-exported from billing.types.ts.
+ */
+export enum BillingInterval {
+  MONTHLY = 'MONTHLY',
+  YEARLY = 'YEARLY',
+}

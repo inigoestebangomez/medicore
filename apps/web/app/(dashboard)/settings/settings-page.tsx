@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { apiFetch } from '@/lib/api-fetch';
 
 type MemberRole = 'OWNER' | 'ADMIN' | 'PHYSICIAN' | 'VIEWER';
 
@@ -27,18 +29,6 @@ interface SettingsPageProps {
 
 const ROLES: MemberRole[] = ['OWNER', 'ADMIN', 'PHYSICIAN', 'VIEWER'];
 
-async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(err.message ?? `Request failed: ${res.status}`);
-  }
-  return res.json();
-}
-
 export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
   const [tab, setTab] = useState<'organization' | 'members'>('organization');
 
@@ -63,9 +53,9 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
     setOrgLoading(true);
     setOrgError(null);
     try {
-      const data = await apiFetch<Organization>(`/v1/organizations/${organizationId}`);
-      setOrg(data);
-      setOrgName(data.name);
+      const res = await apiFetch<{ data: Organization }>(`/v1/organizations/${organizationId}`);
+      setOrg(res.data);
+      setOrgName(res.data.name);
     } catch (e) {
       setOrgError((e as Error).message);
     } finally {
@@ -77,8 +67,8 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
     setMembersLoading(true);
     setMembersError(null);
     try {
-      const data = await apiFetch<Member[]>(`/v1/organizations/${organizationId}/members`);
-      setMembers(data);
+      const res = await apiFetch<{ data: Member[] }>(`/v1/organizations/${organizationId}/members`);
+      setMembers(res.data);
     } catch (e) {
       setMembersError((e as Error).message);
     } finally {
@@ -100,11 +90,11 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
     setSavingOrg(true);
     setOrgSaved(false);
     try {
-      const data = await apiFetch<Organization>(`/v1/organizations/${organizationId}`, {
+      const res = await apiFetch<{ data: Organization }>(`/v1/organizations/${organizationId}`, {
         method: 'PATCH',
         body: JSON.stringify({ name: orgName }),
       });
-      setOrg(data);
+      setOrg(res.data);
       setOrgSaved(true);
     } catch (e) {
       setOrgError((e as Error).message);
@@ -160,14 +150,14 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-gray-200">
+      <div className="border-b border-outline-variant">
         <nav className="flex gap-6">
           <button
             onClick={() => setTab('organization')}
             className={`pb-3 text-sm font-medium transition-colors ${
               tab === 'organization'
-                ? 'border-b-2 border-blue-600 text-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'border-b-2 border-blue-600 text-secondary'
+                : 'text-on-surface-variant hover:text-on-surface-variant'
             }`}
           >
             Organization
@@ -176,8 +166,8 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
             onClick={() => setTab('members')}
             className={`pb-3 text-sm font-medium transition-colors ${
               tab === 'members'
-                ? 'border-b-2 border-blue-600 text-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'border-b-2 border-blue-600 text-secondary'
+                : 'text-on-surface-variant hover:text-on-surface-variant'
             }`}
           >
             Members
@@ -189,43 +179,43 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
         <div className="max-w-lg space-y-6">
           {orgLoading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-outline border-t-blue-600" />
             </div>
           ) : orgError ? (
             <div className="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               {orgError}
-              <button onClick={fetchOrg} className="ml-4 underline">Retry</button>
+              <Button variant="ghost" size="sm" onClick={fetchOrg} className="ml-4">Retry</Button>
             </div>
           ) : org ? (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
+                <label className="block text-sm font-medium text-on-surface-variant">Name</label>
                 <input
                   type="text"
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
-                  className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-lg border border-outline px-3 py-2 text-sm shadow-card focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Type</label>
+                <label className="block text-sm font-medium text-on-surface-variant">Type</label>
                 <input
                   type="text"
                   value={org.type}
                   disabled
-                  className="mt-1 block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
+                  className="mt-1 block w-full rounded-lg border border-outline-variant bg-surface-low px-3 py-2 text-sm text-on-surface-variant"
                 />
-                <p className="mt-1 text-xs text-gray-400">Organization type cannot be changed</p>
+                <p className="mt-1 text-xs text-on-surface-variant/60">Organization type cannot be changed</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Plan</label>
+                <label className="block text-sm font-medium text-on-surface-variant">Plan</label>
                 <input
                   type="text"
                   value={org.plan}
                   disabled
-                  className="mt-1 block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500"
+                  className="mt-1 block w-full rounded-lg border border-outline-variant bg-surface-low px-3 py-2 text-sm text-on-surface-variant"
                 />
               </div>
 
@@ -235,13 +225,14 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
                 </div>
               )}
 
-              <button
+              <Button
+                size="sm"
                 onClick={handleSaveOrg}
                 disabled={savingOrg || orgName === org.name}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 {savingOrg ? 'Saving...' : 'Save Changes'}
-              </button>
+              </Button>
             </>
           ) : null}
         </div>
@@ -250,26 +241,26 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
       {tab === 'members' && (
         <div className="space-y-8">
           {isOwner && (
-            <div className="max-w-lg rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-900">Invite Member</h3>
+            <div className="max-w-lg rounded-lg border border-outline-variant bg-surface-lowest p-6 shadow-card">
+              <h3 className="text-sm font-semibold text-on-surface">Invite Member</h3>
               <form onSubmit={handleInvite} className="mt-4 space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600">Email</label>
+                  <label className="block text-xs font-medium text-on-surface-variant">Email</label>
                   <input
                     type="email"
                     required
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                     placeholder="doctor@example.com"
-                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="mt-1 block w-full rounded-lg border border-outline px-3 py-2 text-sm shadow-card focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600">Role</label>
+                  <label className="block text-xs font-medium text-on-surface-variant">Role</label>
                   <select
                     value={inviteRole}
                     onChange={(e) => setInviteRole(e.target.value as MemberRole)}
-                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="mt-1 block w-full rounded-lg border border-outline px-3 py-2 text-sm shadow-card focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
                   >
                     {ROLES.map((r) => (
                       <option key={r} value={r}>{r}</option>
@@ -286,50 +277,51 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
                     Invitation sent
                   </div>
                 )}
-                <button
+                <Button
                   type="submit"
+                  size="sm"
                   disabled={inviting || !inviteEmail}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   {inviting ? 'Sending...' : 'Send Invitation'}
-                </button>
+                </Button>
               </form>
             </div>
           )}
 
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">Current Members</h3>
+            <h3 className="text-sm font-semibold text-on-surface">Current Members</h3>
             {membersLoading ? (
               <div className="flex items-center justify-center py-8">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-outline border-t-blue-600" />
               </div>
             ) : membersError ? (
               <div className="mt-2 rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                 {membersError}
-                <button onClick={fetchMembers} className="ml-4 underline">Retry</button>
+                <Button variant="ghost" size="sm" onClick={fetchMembers} className="ml-4">Retry</Button>
               </div>
             ) : members.length === 0 ? (
-              <p className="mt-2 text-sm text-gray-400">No members found</p>
+              <p className="mt-2 text-sm text-on-surface-variant/60">No members found</p>
             ) : (
-              <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white">
-                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                  <thead className="bg-gray-50">
+              <div className="mt-3 overflow-hidden rounded-lg border border-outline-variant bg-surface-lowest">
+                <table className="min-w-full divide-y divide-outline-variant text-sm">
+                  <thead className="bg-surface-low">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Name</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Email</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Role</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-on-surface-variant">Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-on-surface-variant">Email</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-on-surface-variant">Role</th>
                       {isOwner && (
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">Actions</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-on-surface-variant">Actions</th>
                       )}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-outline-variant">
                     {members.map((member) => (
                       <tr key={member.id}>
-                        <td className="px-4 py-3 text-gray-900">
+                        <td className="px-4 py-3 text-on-surface">
                           {member.user?.name ?? member.userId.slice(0, 8)}
                         </td>
-                        <td className="px-4 py-3 text-gray-500">
+                        <td className="px-4 py-3 text-on-surface-variant">
                           {member.user?.email ?? '—'}
                         </td>
                         <td className="px-4 py-3">
@@ -337,7 +329,7 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
                             <select
                               value={member.role}
                               onChange={(e) => handleRoleChange(member.userId, e.target.value as MemberRole)}
-                              className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              className="rounded border border-outline px-2 py-1 text-xs focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
                             >
                               {ROLES.map((r) => (
                                 <option key={r} value={r}>{r}</option>
@@ -352,17 +344,19 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
                         {isOwner && (
                           <td className="px-4 py-3 text-right">
                             {member.role !== 'OWNER' && (
-                              <button
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() =>
                                   handleRemoveMember(
                                     member.userId,
                                     member.user?.name ?? member.userId.slice(0, 8),
                                   )
                                 }
-                                className="text-xs text-red-600 hover:text-red-800"
+                                className="text-red-600 hover:text-red-800"
                               >
                                 Remove
-                              </button>
+                              </Button>
                             )}
                           </td>
                         )}

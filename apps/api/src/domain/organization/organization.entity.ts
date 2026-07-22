@@ -1,5 +1,5 @@
 // apps/api/src/domain/organization/organization.entity.ts
-import { OrganizationType, PlanType, SubscriptionStatus } from './organization.types';
+import { OrganizationType, PlanType, SubscriptionStatus, BillingInterval } from './organization.types';
 
 export class Organization {
   readonly id: string;
@@ -11,6 +11,7 @@ export class Organization {
   readonly subscriptionExpiresAt: Date | null;
   readonly stripeCustomerId: string | null;
   readonly stripeSubscriptionId: string | null;
+  readonly billingInterval: BillingInterval | null;
   readonly settings: Record<string, unknown>;
   readonly logoUrl: string | null;
   readonly createdAt: Date;
@@ -27,6 +28,7 @@ export class Organization {
     subscriptionExpiresAt?: Date | null;
     stripeCustomerId?: string | null;
     stripeSubscriptionId?: string | null;
+    billingInterval?: BillingInterval | null;
     settings?: Record<string, unknown>;
     logoUrl?: string | null;
     createdAt?: Date;
@@ -42,6 +44,7 @@ export class Organization {
     this.subscriptionExpiresAt = props.subscriptionExpiresAt ?? null;
     this.stripeCustomerId = props.stripeCustomerId ?? null;
     this.stripeSubscriptionId = props.stripeSubscriptionId ?? null;
+    this.billingInterval = props.billingInterval ?? null;
     this.settings = props.settings ?? {};
     this.logoUrl = props.logoUrl ?? null;
     this.createdAt = props.createdAt ?? new Date();
