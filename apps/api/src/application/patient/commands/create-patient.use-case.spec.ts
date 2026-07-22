@@ -144,4 +144,38 @@ describe('CreatePatientUseCase', () => {
       expect(result.bloodType).toBe('UNKNOWN');
     });
   });
+
+  describe('name normalization (SDD import-data-quality)', () => {
+    it('should title-case the first and last name on manual creation', async () => {
+      const result = await useCase.execute({
+        ...validInput,
+        firstName: 'MARÍA ELENA',
+        lastName: 'GARCÍA-LÓPEZ',
+      });
+
+      expect(result.firstName).toBe('María Elena');
+      expect(result.lastName).toBe('García-López');
+    });
+
+    it('should accept a null birthDate and skip duplicate detection', async () => {
+      const first = await useCase.execute({
+        ...validInput,
+        firstName: 'Juan',
+        lastName: 'Pérez',
+        birthDate: null as unknown as string,
+      });
+      expect(first.birthDate).toBeNull();
+
+      // Same lastName, no birthDate — duplicate detection is skipped because
+      // there is no DOB to match on, so a second patient is created (not flagged).
+      const second = await useCase.execute({
+        ...validInput,
+        firstName: 'Pedro',
+        lastName: 'Pérez',
+        birthDate: null as unknown as string,
+      });
+      expect(second.birthDate).toBeNull();
+      expect(second.id).not.toBe(first.id);
+    });
+  });
 });

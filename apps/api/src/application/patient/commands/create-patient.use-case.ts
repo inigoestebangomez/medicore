@@ -5,13 +5,14 @@
 import type { IPatientRepository, CreatePatientInput } from '@/domain/patient/patient.repository.interface';
 import { Patient } from '@/domain/patient/patient.entity';
 import { NHC } from '@/domain/patient/value-objects/nhc.vo';
+import { normalizeName } from '@/domain/patient/name-normalizer';
 import { DuplicatePatientError } from '@/domain/patient/errors/duplicate-patient.error';
 import { DuplicateNhcError } from '@/domain/patient/errors/duplicate-nhc.error';
 
 export interface CreatePatientCommand {
   firstName: string;
   lastName: string;
-  birthDate: string;
+  birthDate: string | null;
   sex: string;
   phone?: string;
   email?: string;
@@ -45,13 +46,18 @@ export class CreatePatientUseCase {
       nhc = await this.patientRepo.getNextNhcSequence(organizationId);
     }
 
-    // BR-PAT-002: Duplicate detection by lastName + birthDate
-    const birthDate = new Date(command.birthDate);
-    const duplicates = await this.patientRepo.findDuplicates(
-      organizationId,
-      command.lastName,
-      birthDate,
-    );
+    // BR-PAT-002: Duplicate detection by lastName + birthDate. SDD
+    // import-data-quality: when the birthDate is unknown (null) there is no
+    // DOB signal to match on, so duplicate detection is skipped.
+    const birthDate: Date | null = command.birthDate ? new Date(command.birthDate) : null;
+    let duplicates: Awaited<ReturnType<IPatientRepository['findDuplicates']>> = [];
+    if (birthDate !== null) {
+      duplicates = await this.patientRepo.findDuplicates(
+        organizationId,
+        command.lastName,
+        birthDate,
+      );
+    }
 
     if (duplicates.length > 0 && !command.confirmDuplicate) {
       throw new DuplicatePatientError(
@@ -59,17 +65,18 @@ export class CreatePatientUseCase {
           id: p.id,
           firstName: p.firstName,
           lastName: p.lastName,
-          birthDate: p.birthDate.toISOString(),
+          birthDate: p.birthDate ? p.birthDate.toISOString() : null,
           nhc: p.nhc,
         })),
       );
     }
 
-    // Create patient
+    // Create patient. SDD import-data-quality: normalize the name input to
+    // title case (shared normalizer used by both import and manual creation).
     const patientData: CreatePatientInput = {
       nhc,
-      firstName: command.firstName,
-      lastName: command.lastName,
+      firstName: normalizeName(command.firstName),
+      lastName: normalizeName(command.lastName),
       birthDate,
       sex: command.sex,
       phone: command.phone ?? null,
