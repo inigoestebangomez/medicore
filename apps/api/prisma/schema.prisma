@@ -58,6 +58,10 @@ model Organization {
   importBatches ImportBatch[]
   researchQueries ResearchQuery[]
   patientCollections PatientCollection[]
+  billingTransactions BillingTransaction[]
+  doctorSchedules     DoctorSchedule[]
+  pharmaContacts      PharmaContact[]
+  pharmaInteractions  PharmaInteraction[]
 
   @@index([slug])
   @@map("organizations")
@@ -108,6 +112,30 @@ enum SubscriptionStatus {
 enum BillingInterval {
   MONTHLY
   YEARLY
+}
+
+enum BillingType {
+  CONSULTATION
+  SURGERY
+  TREATMENT
+  SUBSCRIPTION
+  OTHER
+}
+
+enum BillingStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum InteractionType {
+  CALL
+  MEETING
+  EMAIL
+  LUNCH
+  CONFERENCE
+  OTHER
 }
 
 enum MemberRole {
@@ -315,6 +343,7 @@ model Patient {
   scales         ClinicalScale[]
   consents       ConsentRecord[]
   collectionMemberships PatientCollectionMember[]
+  billingTransactions BillingTransaction[]
 
   @@unique([organizationId, nhc])         // El NHC es único dentro de la organización
   @@index([organizationId])
@@ -385,8 +414,8 @@ model ImportBatch {
 
 model ResearchQuery {
   id              String   @id @default(uuid())
-  organizationId  String
-  createdBy       String
+  organizationId  String   @map("organization_id")
+  createdBy       String   @map("created_by")
 
   name            String
   description     String?
@@ -425,15 +454,15 @@ model ResearchQuery {
 
 model PatientCollection {
   id              String   @id @default(uuid())
-  organizationId  String
-  createdBy       String
+  organizationId  String   @map("organization_id")
+  createdBy       String   @map("created_by")
 
   name            String
   description     String?
-  queryId         String?
+  queryId         String?  @map("query_id")
 
   // BR-RES-003: locked collections are immutable (published study cohort)
-  isLocked        Boolean  @default(false)
+  isLocked        Boolean  @default(false) @map("is_locked")
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -453,10 +482,10 @@ model PatientCollection {
 // ─────────────────────────────────────────────
 
 model PatientCollectionMember {
-  collectionId  String
-  patientId    String
-  addedAt      DateTime @default(now())
-  addedBy      String
+  collectionId  String   @map("collection_id")
+  patientId    String    @map("patient_id")
+  addedAt      DateTime  @default(now()) @map("added_at")
+  addedBy      String    @map("added_by")
   notes        String?
 
   collection    PatientCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
@@ -530,6 +559,7 @@ model Consultation {
   scales         ClinicalScale[]
   reports        Report[]
   imagingStudies ImagingStudy[]
+  billingTransactions BillingTransaction[]
 
   @@index([organizationId])
   @@index([organizationId, patientId])
@@ -613,6 +643,7 @@ model Surgery {
   patient        Patient          @relation(fields: [patientId], references: [id])
   imagingStudies ImagingStudy[]
   reports        Report[]
+  billingTransactions BillingTransaction[]
 
   @@index([organizationId])
   @@index([organizationId, patientId])
@@ -846,4 +877,101 @@ model ProcessedStripeEvent {
   processedAt DateTime @default(now())
 
   @@map("processed_stripe_events")
+}
+
+// ─────────────────────────────────────────────
+// BILLING TRANSACTIONS (clinical/financial)
+// ─────────────────────────────────────────────
+
+model BillingTransaction {
+  id              String         @id @default(uuid())
+  organizationId  String
+  patientId       String?
+  consultationId  String?
+  surgeryId       String?
+  amount          Float
+  type            BillingType    @default(OTHER)
+  status          BillingStatus  @default(PENDING)
+  description     String?
+  date            DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+  patient         Patient?       @relation(fields: [patientId], references: [id])
+  consultation    Consultation?  @relation(fields: [consultationId], references: [id])
+  surgery         Surgery?       @relation(fields: [surgeryId], references: [id])
+
+  @@index([organizationId, date])
+  @@index([organizationId, status])
+  @@map("billing_transactions")
+}
+
+// ─────────────────────────────────────────────
+// DOCTOR SCHEDULE (weekly slots)
+// ─────────────────────────────────────────────
+
+model DoctorSchedule {
+  id              String    @id @default(uuid())
+  organizationId  String
+  userId          String
+  dayOfWeek       Int       // 0=Sun..6=Sat
+  startTime       String    // "09:00"
+  endTime         String    // "17:00"
+  slotDuration    Int       @default(30)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, userId, dayOfWeek])
+  @@index([organizationId, userId])
+  @@map("doctor_schedules")
+}
+
+// ─────────────────────────────────────────────
+// PHARMA CONTACTS & INTERACTIONS
+// ─────────────────────────────────────────────
+
+model PharmaContact {
+  id              String    @id @default(uuid())
+  organizationId  String
+  name            String
+  company         String
+  role            String?
+  email           String?
+  phone           String?
+  notes           String?
+  lastContactAt   DateTime?
+  nextFollowUpAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  interactions    PharmaInteraction[]
+
+  @@index([organizationId])
+  @@index([organizationId, company])
+  @@map("pharma_contacts")
+}
+
+model PharmaInteraction {
+  id              String           @id @default(uuid())
+  organizationId  String
+  contactId       String
+  date            DateTime         @default(now())
+  type            InteractionType  @default(OTHER)
+  notes           String?
+  followUpNeeded  Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  contact         PharmaContact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, date])
+  @@index([organizationId, date])
+  @@map("pharma_interactions")
 }

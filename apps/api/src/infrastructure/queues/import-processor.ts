@@ -88,13 +88,15 @@ export class ImportProcessor {
         if (decision === 'new') {
           // Create a new patient. Standard fields come from the row; the NHC
           // is the imported one if present, else a generated MediCore NHC.
+          // The DataCleanerService already normalized `sex` to Prisma's Sex enum
+          // (MALE, FEMALE, OTHER, UNKNOWN) — no further mapping needed.
           const nhc = row.nhc ?? await this.patientRepo.getNextNhcSequence(organizationId);
           const input: CreatePatientInput = {
             nhc,
             firstName: this.extractFirstName(row.patientName),
             lastName: this.extractLastName(row.patientName),
             birthDate: row.birthDate ?? new Date('1900-01-01'),
-            sex: (row.sex ?? 'O') as any,
+            sex: (row.sex ?? 'UNKNOWN') as any,
             organizationId,
             createdBy: userId,
           };
@@ -130,7 +132,7 @@ export class ImportProcessor {
               firstName: this.extractFirstName(row.patientName),
               lastName: this.extractLastName(row.patientName),
               birthDate: row.birthDate ?? new Date('1900-01-01'),
-              sex: (row.sex ?? 'O') as any,
+              sex: (row.sex ?? 'UNKNOWN') as any,
               organizationId,
               createdBy: userId,
             };

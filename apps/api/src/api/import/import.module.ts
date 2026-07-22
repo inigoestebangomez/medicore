@@ -38,7 +38,12 @@ import { AuthModule } from '@/api/auth/auth.module';
     AuthModule,
     StructuredAnalysisModule,
     ScheduleModule.forRoot(),
-    BullModule.registerQueue({ name: IMPORT_QUEUE_NAME }),
+    BullModule.registerQueue({
+      name: IMPORT_QUEUE_NAME,
+      redis: {
+        maxRetriesPerRequest: null, // Required for Bull workers; prevents ioredis retry limit
+      },
+    }),
   ],
   controllers: [ImportController],
   providers: [

@@ -67,6 +67,17 @@ export enum Action {
   // Analytics
   READ_ANALYTICS = 'READ_ANALYTICS',
 
+  // Billing (transactions)
+  BILLING_READ = 'BILLING_READ',
+  BILLING_WRITE = 'BILLING_WRITE',
+
+  // Doctor Schedule
+  SCHEDULE_MANAGE = 'SCHEDULE_MANAGE',
+
+  // Pharma Contacts
+  PHARMA_READ = 'PHARMA_READ',
+  PHARMA_MANAGE = 'PHARMA_MANAGE',
+
   // Audit
   VIEW_AUDIT_LOG = 'VIEW_AUDIT_LOG',
 }
@@ -98,6 +109,9 @@ export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
     Action.CREATE_REPORT, Action.READ_REPORT, Action.SIGN_REPORT,
     Action.IMPORT_DATA, Action.READ_IMPORT, Action.REVERT_IMPORT,
     Action.READ_ANALYTICS,
+    Action.BILLING_READ, Action.BILLING_WRITE,
+    Action.SCHEDULE_MANAGE,
+    Action.PHARMA_READ, Action.PHARMA_MANAGE,
     Action.VIEW_AUDIT_LOG,
   ]),
 
@@ -118,6 +132,9 @@ export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
     Action.VIEW_ORGANIZATION, Action.VIEW_MEMBERS,
     Action.ACCEPT_INVITATION,
     Action.READ_ANALYTICS,
+    Action.BILLING_READ, Action.BILLING_WRITE,
+    Action.SCHEDULE_MANAGE,
+    Action.PHARMA_READ, Action.PHARMA_MANAGE,
     Action.CREATE_REPORT, Action.READ_REPORT, Action.SIGN_REPORT,
     Action.IMPORT_DATA, Action.READ_IMPORT, Action.REVERT_IMPORT,
   ]),
@@ -128,6 +145,8 @@ export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
     Action.READ_MEDICATION, Action.READ_SCALE,
     Action.VIEW_ORGANIZATION, Action.VIEW_MEMBERS,
     Action.READ_ANALYTICS,
+    Action.BILLING_READ,
+    Action.PHARMA_READ,
     Action.READ_REPORT,
     Action.READ_IMPORT,
   ]),
@@ -137,6 +156,9 @@ export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
     Action.MANAGE_MEMBERS, Action.VIEW_MEMBERS,
     Action.CREATE_INVITATION, Action.ACCEPT_INVITATION,
     Action.READ_ANALYTICS,
+    Action.BILLING_READ, Action.BILLING_WRITE,
+    Action.SCHEDULE_MANAGE,
+    Action.PHARMA_READ, Action.PHARMA_MANAGE,
     Action.VIEW_AUDIT_LOG,
     Action.READ_PATIENT,
   ]),

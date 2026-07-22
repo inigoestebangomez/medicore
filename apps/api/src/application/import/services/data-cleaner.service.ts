@@ -298,17 +298,16 @@ export class DataCleanerService {
 
   normalizeSex(rawValue: unknown): string | null {
     if (rawValue == null) return null;
-    // Spanish convention: H = Hombre (male), M = Mujer (female). Avoid the
-    // English M/F collision by checking Spanish single letters first.
+    // Spanish/English/Catalan normalization → Prisma Sex enum.
     const s = String(rawValue).trim().toUpperCase();
     if (!s) return null;
-    if (['HOMBRE', 'MALE', 'HOME', 'MASCULINO'].includes(s)) return 'H';
-    if (['MUJER', 'FEMALE', 'DONA', 'FEMENINO'].includes(s)) return 'M';
-    // Single letters — Spanish H/M convention (H=Hombre, M=Mujer).
-    if (s === 'H') return 'H';
-    if (s === 'M') return 'M';
-    if (['O', 'OTRO', 'OTHER'].includes(s)) return 'O';
-    return s || null;
+    if (['HOMBRE', 'MALE', 'HOME', 'MASCULINO', 'H', 'VARÓN', 'VARON'].includes(s)) return 'MALE';
+    if (['MUJER', 'FEMALE', 'DONA', 'FEMENINO', 'M', 'HEMBRA'].includes(s)) return 'FEMALE';
+    if (['O', 'OTRO', 'OTHER'].includes(s)) return 'OTHER';
+    if (['DESCONOCIDO', 'UNKNOWN'].includes(s)) return 'UNKNOWN';
+    // Fallback: return the cleaned value if it matches a known enum; null otherwise.
+    if (['MALE', 'FEMALE', 'OTHER', 'UNKNOWN'].includes(s)) return s;
+    return null;
   }
 
   // ─────────────────────────────────────────────

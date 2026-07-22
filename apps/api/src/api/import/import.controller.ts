@@ -15,7 +15,7 @@
 import {
   Controller, Get, Post, Param, Body, Query, UseGuards, UseInterceptors,
   UploadedFile, Inject, NotFoundException, UnprocessableEntityException,
-  ConflictException, BadRequestException,
+  ConflictException, BadRequestException, ServiceUnavailableException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@/api/shared/guards/auth.guard';
@@ -220,6 +220,16 @@ export class ImportController {
     if (error instanceof InvalidImportTransitionError) throw new ConflictException(error.message);
     if (error instanceof Error && error.message.includes('not configured')) {
       throw new UnprocessableEntityException(error.message);
+    }
+    // Redis / Bull connection errors — give a clear diagnostic.
+    if (error instanceof Error && (
+      error.message.includes('ECONNREFUSED') ||
+      error.message.includes('maxRetriesPerRequest') ||
+      error.message.includes('connect')
+    )) {
+      throw new ServiceUnavailableException(
+        'Redis is not running. Start Redis to enable import finalization: redis-server'
+      );
     }
     throw error;
   }

@@ -4,6 +4,7 @@ import {
   Get,
   Post,
   Body,
+  Query,
   Req,
   UseGuards,
   Inject,
@@ -13,6 +14,8 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthGuard } from '@/api/shared/guards/auth.guard';
+import { RBACGuard } from '@/api/shared/guards/rbac.guard';
+import { REQUIRED_ACTION_KEY } from '@/api/shared/guards/rbac.guard';
 import { CurrentUser } from '@/api/shared/decorators/current-user.decorator';
 import { SkipSubscriptionCheck } from '@/api/shared/decorators/skip-subscription.decorator';
 import { ZodValidationPipe } from '@/api/shared/pipes/zod-validation.pipe';
@@ -21,6 +24,12 @@ import type { JwtPayload } from '@medicore/contracts';
 import type { IOrganizationRepository } from '@/domain/organization/organization.repository.interface';
 import type { IProcessedStripeEventRepository } from '@/domain/billing/stripe-event.repository.interface';
 import type { IAiReportUsageRepository } from '@/domain/billing/ai-report-usage.repository.interface';
+import type { IBillingTransactionRepository } from '@/domain/billing/billing-transaction.repository.interface';
+import { Action } from '@/domain/shared/rbac-permissions';
+import {
+  CreateBillingTransactionSchema,
+  ListBillingTransactionsQuerySchema,
+} from './dto/billing-transaction.dto';
 import { StripeService } from '@/infrastructure/billing/stripe.service';
 import { CreateCheckoutUseCase } from '@/application/billing/commands/create-checkout.use-case';
 import { CreatePortalUseCase } from '@/application/billing/commands/create-portal.use-case';
@@ -37,17 +46,96 @@ export class BillingController {
   private readonly portalUseCase: CreatePortalUseCase;
   private readonly webhookUseCase: HandleStripeWebhookUseCase;
   private readonly usageUseCase: GetCurrentUsageUseCase;
+  private readonly transactionRepo: IBillingTransactionRepository;
 
   constructor(
     @Inject('IOrganizationRepository') orgRepo: IOrganizationRepository,
     @Inject('IProcessedStripeEventRepository') eventRepo: IProcessedStripeEventRepository,
     @Inject('IAiReportUsageRepository') usageRepo: IAiReportUsageRepository,
+    @Inject('IBillingTransactionRepository') transactionRepo: IBillingTransactionRepository,
     private readonly stripeService: StripeService, // value import — reflect-metadata token
   ) {
     this.checkoutUseCase = new CreateCheckoutUseCase(orgRepo, stripeService);
     this.portalUseCase = new CreatePortalUseCase(orgRepo, stripeService);
     this.webhookUseCase = new HandleStripeWebhookUseCase(eventRepo, orgRepo);
     this.usageUseCase = new GetCurrentUsageUseCase(orgRepo, usageRepo);
+    this.transactionRepo = transactionRepo;
+  }
+
+  // ─────────────────────────────────────────────
+  // Billing transactions (clinical/financial)
+  // ─────────────────────────────────────────────
+
+  @Get('transactions')
+  @UseGuards(AuthGuard, RBACGuard)
+  @Reflect.metadata(REQUIRED_ACTION_KEY, Action.BILLING_READ)
+  async listTransactions(
+    @Query() query: any,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const parsed = ListBillingTransactionsQuerySchema.parse(query);
+    const result = await this.transactionRepo.list({
+      organizationId: user.organizationId,
+      page: parsed.page,
+      pageSize: parsed.pageSize,
+      type: parsed.type,
+      status: parsed.status,
+      from: parsed.from ? new Date(parsed.from) : undefined,
+      to: parsed.to ? new Date(parsed.to) : undefined,
+    });
+
+    return {
+      items: result.items.map((t) => this.toTransactionResponse(t)),
+      total: result.total,
+      page: parsed.page,
+      pageSize: parsed.pageSize,
+    };
+  }
+
+  @Post('transactions')
+  @UseGuards(AuthGuard, RBACGuard)
+  @Reflect.metadata(REQUIRED_ACTION_KEY, Action.BILLING_WRITE)
+  async createTransaction(
+    @Body(new ZodValidationPipe(CreateBillingTransactionSchema)) body: any,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const tx = await this.transactionRepo.create({
+      organizationId: user.organizationId,
+      patientId: body.patientId ?? null,
+      consultationId: body.consultationId ?? null,
+      surgeryId: body.surgeryId ?? null,
+      amount: body.amount,
+      type: body.type,
+      status: body.status,
+      description: body.description ?? null,
+      date: body.date ? new Date(body.date) : undefined,
+    });
+    return this.toTransactionResponse(tx);
+  }
+
+  @Get('stats')
+  @UseGuards(AuthGuard, RBACGuard)
+  @Reflect.metadata(REQUIRED_ACTION_KEY, Action.BILLING_READ)
+  async getStats(@CurrentUser() user: JwtPayload) {
+    const stats = await this.transactionRepo.getStats(user.organizationId);
+    return { data: stats };
+  }
+
+  private toTransactionResponse(t: any) {
+    return {
+      id: t.id,
+      organizationId: t.organizationId,
+      patientId: t.patientId,
+      consultationId: t.consultationId,
+      surgeryId: t.surgeryId,
+      amount: t.amount,
+      type: t.type,
+      status: t.status,
+      description: t.description,
+      date: t.date instanceof Date ? t.date.toISOString() : t.date,
+      createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt,
+      updatedAt: t.updatedAt instanceof Date ? t.updatedAt.toISOString() : t.updatedAt,
+    };
   }
 
   @Post('checkout')

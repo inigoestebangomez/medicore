@@ -16,8 +16,8 @@ import { PendingDeletionsProcessor } from '@/infrastructure/queues/pending-delet
     AuthModule,
     R2StorageModule,
     BullModule.registerQueue(
-      { name: 'imaging' },
-      { name: 'pending-deletions' },
+      { name: 'imaging', redis: { maxRetriesPerRequest: null } },
+      { name: 'pending-deletions', redis: { maxRetriesPerRequest: null } },
     ),
   ],
   controllers: [ImagingStudiesController],

@@ -61,11 +61,11 @@ describe('DataCleanerService', () => {
       const r = cleaner.parseMixedCell('13046043');
       expect(r.nhc).toBe('13046043');
     });
-    it('should parse "NOMBRE (HOME, 25 anys)" → name + age + sex H', () => {
+    it('should parse "NOMBRE (HOME, 25 anys)" → name + age + sex MALE', () => {
       const r = cleaner.parseMixedCell('NOMBRE (HOME, 25 anys)');
       expect(r.name).toBe('NOMBRE');
       expect(r.age).toBe(25);
-      expect(r.sex).toBe('H');
+      expect(r.sex).toBe('MALE');
     });
   });
 
@@ -142,17 +142,28 @@ describe('DataCleanerService', () => {
     });
   });
 
-  describe('sex normalization (Spanish H/M convention — M = Mujer, NOT Male)', () => {
-    it('should map HOME/HOMBRE/H → H', () => {
-      expect(cleaner.normalizeSex('H')).toBe('H');
-      expect(cleaner.normalizeSex('HOME')).toBe('H');
-      expect(cleaner.normalizeSex('hombre')).toBe('H');
+  describe('sex normalization (maps to Prisma Sex enum: MALE, FEMALE, OTHER, UNKNOWN)', () => {
+    it('should map HOME/HOMBRE/H/MALE → MALE', () => {
+      expect(cleaner.normalizeSex('H')).toBe('MALE');
+      expect(cleaner.normalizeSex('HOME')).toBe('MALE');
+      expect(cleaner.normalizeSex('hombre')).toBe('MALE');
+      expect(cleaner.normalizeSex('MALE')).toBe('MALE');
+      expect(cleaner.normalizeSex('VARÓN')).toBe('MALE');
     });
-    it('should map DONA/MUJER/M/FEMALE → M', () => {
-      expect(cleaner.normalizeSex('DONA')).toBe('M');
-      expect(cleaner.normalizeSex('mujer')).toBe('M');
-      expect(cleaner.normalizeSex('M')).toBe('M');
-      expect(cleaner.normalizeSex('FEMALE')).toBe('M');
+    it('should map DONA/MUJER/M/FEMALE → FEMALE', () => {
+      expect(cleaner.normalizeSex('DONA')).toBe('FEMALE');
+      expect(cleaner.normalizeSex('mujer')).toBe('FEMALE');
+      expect(cleaner.normalizeSex('M')).toBe('FEMALE');
+      expect(cleaner.normalizeSex('FEMALE')).toBe('FEMALE');
+    });
+    it('should map OTHER/O → OTHER', () => {
+      expect(cleaner.normalizeSex('O')).toBe('OTHER');
+      expect(cleaner.normalizeSex('OTHER')).toBe('OTHER');
+    });
+    it('should return null for unrecognized values', () => {
+      expect(cleaner.normalizeSex('XYZ')).toBeNull();
+      expect(cleaner.normalizeSex('')).toBeNull();
+      expect(cleaner.normalizeSex(null)).toBeNull();
     });
   });
 });

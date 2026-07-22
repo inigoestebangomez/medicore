@@ -7,7 +7,10 @@ import { BullModule } from '@nestjs/bull';
 import { ImportProcessor, IMPORT_QUEUE_NAME } from './import-processor';
 
 @Module({
-  imports: [BullModule.registerQueue({ name: IMPORT_QUEUE_NAME })],
+  imports: [BullModule.registerQueue({
+    name: IMPORT_QUEUE_NAME,
+    redis: { maxRetriesPerRequest: null },
+  })],
   providers: [ImportProcessor],
   exports: [BullModule],
 })

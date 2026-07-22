@@ -1,17 +1,17 @@
 -- CreateTable
 CREATE TABLE "research_queries" (
-    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
-    "organization_id" UUID NOT NULL,
-    "created_by" UUID NOT NULL,
+    "id" TEXT NOT NULL,
+    "organization_id" TEXT NOT NULL,
+    "created_by" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
     "dataSource" TEXT NOT NULL DEFAULT 'all_patients',
-    "importBatchIds" UUID[] NOT NULL DEFAULT ARRAY[]::UUID[],
+    "importBatchIds" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
     "filters" JSONB NOT NULL DEFAULT '[]'::jsonb,
     "filterLogic" TEXT NOT NULL DEFAULT 'AND',
     "displayFields" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
     "visualizations" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
-    "sharedWith" UUID[] NOT NULL DEFAULT ARRAY[]::UUID[],
+    "sharedWith" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
     "lastRunAt" TIMESTAMPTZ(6),
     "lastRunCount" INTEGER,
     "createdAt" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -23,12 +23,12 @@ CREATE TABLE "research_queries" (
 
 -- CreateTable
 CREATE TABLE "patient_collections" (
-    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
-    "organization_id" UUID NOT NULL,
-    "created_by" UUID NOT NULL,
+    "id" TEXT NOT NULL,
+    "organization_id" TEXT NOT NULL,
+    "created_by" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
-    "query_id" UUID,
+    "query_id" TEXT,
     "is_locked" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMPTZ(6) NOT NULL,
@@ -39,10 +39,10 @@ CREATE TABLE "patient_collections" (
 
 -- CreateTable
 CREATE TABLE "patient_collection_members" (
-    "collection_id" UUID NOT NULL,
-    "patient_id" UUID NOT NULL,
+    "collection_id" TEXT NOT NULL,
+    "patient_id" TEXT NOT NULL,
     "added_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "added_by" UUID NOT NULL,
+    "added_by" TEXT NOT NULL,
     "notes" TEXT,
 
     CONSTRAINT "patient_collection_members_pkey" PRIMARY KEY ("collection_id","patient_id")

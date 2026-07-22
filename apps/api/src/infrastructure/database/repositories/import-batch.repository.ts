@@ -24,10 +24,13 @@ export class PrismaImportBatchRepository implements IImportBatchRepository {
   async persist(batch: ImportBatch): Promise<ImportBatch> {
     const data = this.toPrismaCreate(batch) as any; // Prisma ImportBatchUncheckedCreateInput shape
     // upsert keeps persist idempotent for the create-pending step.
+    // Prisma's XOR type validation rejects `id` in the `update` payload
+    // because ImportBatchUpdateInput does not include it. Strip it.
+    const { id: _id, ...updateData } = data;
     const record = await this.prisma.importBatch.upsert({
       where: { id: batch.id },
       create: data,
-      update: data,
+      update: updateData,
     });
     return this.toEntity(record);
   }

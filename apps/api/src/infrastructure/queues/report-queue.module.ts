@@ -9,7 +9,10 @@ import { ReportProcessor } from './report-processor';
 import { AnthropicModule } from '@/infrastructure/ai/anthropic.module';
 
 @Module({
-  imports: [BullModule.registerQueue({ name: 'generate-report' }), AnthropicModule],
+  imports: [BullModule.registerQueue({
+    name: 'generate-report',
+    redis: { maxRetriesPerRequest: null },
+  }), AnthropicModule],
   providers: [
     ReportProcessor,
     {

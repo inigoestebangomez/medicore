@@ -7,6 +7,7 @@ import { AuthModule } from '@/api/auth/auth.module';
 import { PrismaOrganizationRepository } from '@/infrastructure/database/repositories/organization.repository';
 import { PrismaProcessedStripeEventRepository } from '@/infrastructure/database/repositories/processed-stripe-event.repository';
 import { PrismaAiReportUsageRepository } from '@/infrastructure/database/repositories/ai-report-usage.repository';
+import { PrismaBillingTransactionRepository } from '@/infrastructure/database/repositories/billing-transaction.repository';
 
 @Module({
   imports: [PrismaModule, StripeModule, AuthModule],
@@ -23,6 +24,10 @@ import { PrismaAiReportUsageRepository } from '@/infrastructure/database/reposit
     {
       provide: 'IAiReportUsageRepository',
       useClass: PrismaAiReportUsageRepository,
+    },
+    {
+      provide: 'IBillingTransactionRepository',
+      useClass: PrismaBillingTransactionRepository,
     },
   ],
 })
