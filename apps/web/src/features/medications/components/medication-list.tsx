@@ -1,5 +1,6 @@
 // apps/web/src/features/medications/components/medication-list.tsx
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { useMedications } from '../hooks/useMedications';
 import type { MedicationStatus } from '@medicore/contracts';
 
@@ -65,12 +66,12 @@ export function MedicationList({ patientId, onEdit, onDiscontinue, onCreate }: M
           </select>
         </div>
         {onCreate && (
-          <button
+          <Button
+            size="sm"
             onClick={onCreate}
-            className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
           >
             Add Medication
-          </button>
+          </Button>
         )}
       </div>
 
@@ -126,23 +127,25 @@ export function MedicationList({ patientId, onEdit, onDiscontinue, onCreate }: M
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="rounded border px-2 py-1 text-sm disabled:opacity-50"
           >
             Previous
-          </button>
+          </Button>
           <span className="text-sm text-muted-foreground">
             Page {page} of {totalPages}
           </span>
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
-            className="rounded border px-2 py-1 text-sm disabled:opacity-50"
           >
             Next
-          </button>
+          </Button>
         </div>
       )}
     </div>

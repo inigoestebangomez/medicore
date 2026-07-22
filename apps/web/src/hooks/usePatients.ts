@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { PatientResponse, CreatePatientInput } from '@medicore/contracts';
+import type { PatientResponse, CreatePatientInput, UpdatePatientInput } from '@medicore/contracts';
 import { apiFetch } from '@/lib/api-fetch';
 
 const API_BASE = '/v1/patients';
@@ -110,6 +110,25 @@ export function useCreatePatient() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: patientKeys.lists() });
+    },
+  });
+}
+
+export function useUpdatePatient() {
+  const queryClient = useQueryClient();
+  return useMutation<PatientResponse, Error, { id: string } & UpdatePatientInput>({
+    mutationFn: async ({ id, ...data }) => {
+      const res = await apiFetch<{ data: PatientResponse } | PatientResponse>(
+        `${API_BASE}/${id}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(data),
+        },
+      );
+      return 'data' in res ? (res as { data: PatientResponse }).data : (res as PatientResponse);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: patientKeys.detail(variables.id) });
     },
   });
 }

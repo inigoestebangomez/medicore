@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { createOrganization } from './actions';
 
 const ORG_TYPE_OPTIONS: { value: string; label: string }[] = [
@@ -12,6 +13,7 @@ const ORG_TYPE_OPTIONS: { value: string; label: string }[] = [
 
 export function OnboardingForm() {
   const router = useRouter();
+  const { update } = useSession();
   const [name, setName] = useState('');
   const [type, setType] = useState('SOLO_PRACTICE');
   const [loading, setLoading] = useState(false);
@@ -29,7 +31,10 @@ export function OnboardingForm() {
     }
 
     try {
-      await createOrganization(name.trim(), type);
+      const result = await createOrganization(name.trim(), type);
+      // Force JWT refresh with the new organizationId so the dashboard
+      // layout doesn't redirect back to onboarding.
+      await update({ organizationId: result.id });
       router.push('/dashboard');
     } catch (err) {
       setError((err as Error).message);
@@ -39,7 +44,7 @@ export function OnboardingForm() {
   };
 
   return (
-    <div className="rounded-lg bg-white px-6 py-8 shadow-lg ring-1 ring-gray-900/5">
+    <div className="rounded-lg bg-surface-lowest px-6 py-8 shadow-lg ring-1 ring-gray-900/5">
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
           <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
@@ -48,7 +53,7 @@ export function OnboardingForm() {
         )}
 
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="name" className="block text-sm font-medium text-on-surface-variant">
             Organization Name
           </label>
           <input
@@ -59,19 +64,19 @@ export function OnboardingForm() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Dr. Smith ENT Clinic"
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-card transition-colors placeholder:text-on-surface-variant/60 focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
           />
         </div>
 
         <div>
-          <label htmlFor="type" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="type" className="block text-sm font-medium text-on-surface-variant">
             Organization Type
           </label>
           <select
             id="type"
             value={type}
             onChange={(e) => setType(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-card transition-colors focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
           >
             {ORG_TYPE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -84,7 +89,7 @@ export function OnboardingForm() {
         <button
           type="submit"
           disabled={loading}
-          className="flex w-full items-center justify-center rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+          className="flex w-full items-center justify-center rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 disabled:opacity-50"
         >
           {loading ? 'Creating workspace...' : 'Create Workspace'}
         </button>

@@ -1,5 +1,6 @@
 // apps/web/src/features/scales/components/scale-input-form.tsx
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { useCreateScale } from '../hooks/useScales';
 import type { ClinicalScaleType } from '@medicore/contracts';
 
@@ -169,26 +170,27 @@ export function ScaleInputForm({ patientId, onSuccess, onCancel }: ScaleInputFor
                 className="w-16 rounded border px-1 py-0.5 text-sm"
               />
               {isCustom && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => handleRemoveCustomItem(key)}
-                  className="text-xs text-destructive hover:underline"
+                  className="h-6 w-6 text-xs text-destructive"
                 >
                   ×
-                </button>
+                </Button>
               )}
             </div>
           ))}
         </div>
 
         {isCustom && (
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleAddCustomItem}
-            className="mt-2 rounded border px-3 py-1 text-xs hover:bg-muted"
           >
             + Add Item
-          </button>
+          </Button>
         )}
       </div>
 
@@ -205,17 +207,17 @@ export function ScaleInputForm({ patientId, onSuccess, onCancel }: ScaleInputFor
 
       <div className="flex justify-end gap-2">
         {onCancel && (
-          <button type="button" onClick={onCancel} className="rounded-md border px-4 py-2 text-sm">
+          <Button variant="outline" size="sm" onClick={onCancel}>
             Cancel
-          </button>
+          </Button>
         )}
-        <button
+        <Button
           type="submit"
+          size="sm"
           disabled={createMutation.isPending}
-          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
           {createMutation.isPending ? 'Creating...' : 'Create Scale'}
-        </button>
+        </Button>
       </div>
     </form>
   );

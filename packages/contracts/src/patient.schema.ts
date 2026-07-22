@@ -74,6 +74,7 @@ export const UpdatePatientSchema = z.object({
   idDocType: IdDocumentTypeSchema.optional(),
   bloodType: BloodTypeSchema.optional(),
   notes: z.string().nullable().optional(),
+  emergencyContact: z.record(z.unknown()).nullable().optional(),
 });
 export type UpdatePatientInput = z.infer<typeof UpdatePatientSchema>;
 

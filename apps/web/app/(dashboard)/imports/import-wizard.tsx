@@ -7,6 +7,7 @@
 // physician's explicit Confirm / Finalize actions.
 
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   useParseImportFile,
   useReanalyzeImport,
@@ -179,7 +180,7 @@ function Stepper({ step }: { step: Step }) {
           className={
             step === s.id
               ? 'rounded-md bg-blue-600 px-3 py-1 font-medium text-white'
-              : 'rounded-md bg-gray-100 px-3 py-1 text-gray-600'
+              : 'rounded-md bg-surface-container px-3 py-1 text-on-surface-variant'
           }
         >
           {s.label}
@@ -196,8 +197,8 @@ function UploadStep({
   loading: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center">
-      <p className="text-sm text-gray-600">
+    <div className="rounded-lg border border-dashed border-outline bg-surface-lowest p-8 text-center">
+      <p className="text-sm text-on-surface-variant">
         Sube un archivo Excel (.xlsx/.xls), CSV o TSV del estadista del hospital. El sistema
         analiza la estructura y propone un mapeo de columnas. Nada se importa sin tu
         confirmación.
@@ -210,9 +211,9 @@ function UploadStep({
           const f = e.target.files?.[0];
           if (f) onFile(f);
         }}
-        className="mt-4 block w-full text-sm text-gray-700 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100"
+        className="mt-4 block w-full text-sm text-on-surface-variant file:mr-4 file:rounded-md file:border-0 file:bg-secondary-container/20 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100"
       />
-      {loading && <p className="mt-2 text-sm text-gray-500">Analizando…</p>}
+      {loading && <p className="mt-2 text-sm text-on-surface-variant">Analizando…</p>}
     </div>
   );
 }
@@ -230,49 +231,51 @@ function MappingStep({
   onBack: () => void;
 }) {
   const cols = parsed.sample.columns;
+  const previewRows = parsed.sample.rows.slice(0, 5);
   return (
-    <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-6">
+    <div className="space-y-6 rounded-lg border border-outline-variant bg-surface-lowest p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Revisar mapeo de columnas</h2>
-          <p className="text-sm text-gray-600">
+          <h2 className="text-lg font-semibold text-on-surface">Revisar mapeo de columnas</h2>
+          <p className="text-sm text-on-surface-variant">
             {parsed.fileName} · {parsed.totalRows} filas · análisis por {parsed.provider}
           </p>
         </div>
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={onReanalyze}
           disabled={reanalyzing}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
           {reanalyzing ? 'Re-analizando…' : 'Re-analizar con IA'}
-        </button>
+        </Button>
       </div>
 
-      <div className="overflow-hidden rounded-md border border-gray-200">
+      <div className="overflow-hidden rounded-md border border-outline-variant">
         <table className="min-w-full text-sm">
-          <thead className="bg-gray-50 text-left text-gray-600">
+          <thead className="bg-surface-low text-left text-on-surface-variant">
             <tr>
               <th className="px-3 py-2">Columna del archivo</th>
               <th className="px-3 py-2">Campo de MediCore</th>
               <th className="px-3 py-2">Ejemplo</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-outline-variant">
             {cols.map((col) => (
               <tr key={col}>
-                <td className="px-3 py-2 font-medium text-gray-900">{col}</td>
+                <td className="px-3 py-2 font-medium text-on-surface">{col}</td>
                 <td className="px-3 py-2">
                   <select
                     value={mapping[col] ?? 'ignore'}
                     onChange={(e) => setMapping({ ...mapping, [col]: e.target.value as StandardField })}
-                    className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                    className="rounded-md border border-outline px-2 py-1 text-sm"
                   >
                     {FIELD_OPTIONS.map((opt) => (
                       <option key={opt} value={opt}>{FIELD_LABELS[opt]}</option>
                     ))}
                   </select>
                 </td>
-                <td className="px-3 py-2 text-gray-600">
+                <td className="px-3 py-2 text-on-surface-variant">
                   {String(parsed.sample.rows[0]?.[col] ?? '')}
                 </td>
               </tr>
@@ -281,17 +284,54 @@ function MappingStep({
         </table>
       </div>
 
+      {/* Vista previa de las primeras 5 filas del Excel para dar contexto */}
+      <div>
+        <h3 className="mb-2 text-sm font-medium text-on-surface-variant">
+          Vista previa del archivo (primeras {previewRows.length} filas)
+        </h3>
+        <div className="overflow-x-auto rounded-md border border-outline-variant">
+          <table className="min-w-full text-xs">
+            <thead className="bg-surface-low text-left text-on-surface-variant">
+              <tr>
+                <th className="sticky left-0 bg-surface-low px-2 py-1.5 font-medium">#</th>
+                {cols.map((col) => (
+                  <th key={col} className="whitespace-nowrap px-2 py-1.5 font-medium">
+                    {col}
+                    {mapping[col] && mapping[col] !== 'ignore' && (
+                      <span className="ml-1 text-blue-500">→ {FIELD_LABELS[mapping[col]]}</span>
+                    )}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline-variant">
+              {previewRows.map((row, i) => (
+                <tr key={i} className={i === 0 ? 'bg-secondary-container/20' : ''}>
+                  <td className="sticky left-0 bg-surface-lowest px-2 py-1.5 text-on-surface-variant/60">{i + 1}</td>
+                  {cols.map((col) => (
+                    <td key={col} className="whitespace-nowrap px-2 py-1.5 text-on-surface-variant">
+                      {String(row[col] ?? '—')}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div className="flex justify-between">
-        <button onClick={onBack} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+        <Button variant="outline" size="sm" onClick={onBack}>
           Cancelar
-        </button>
-        <button
+        </Button>
+        <Button
+          size="sm"
           onClick={onConfirm}
           disabled={confirming}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="bg-blue-600 hover:bg-blue-700 text-white"
         >
           {confirming ? 'Confirmando…' : 'Confirmar mapeo'}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -308,62 +348,124 @@ function MatchesStep({
   finalizing: boolean;
   onBack: () => void;
 }) {
-  void parsed;
   const pending = confirmed.matches.filter((m) => m.decision !== 'auto');
 
+  /** Traduce el score y reason técnico a un mensaje comprensible. */
+  function scoreLabel(m: (typeof pending)[number]): { label: string; color: string } {
+    if (m.score >= 90) return { label: 'Coincidencia alta', color: 'text-green-700' };
+    if (m.score >= 50) return { label: 'Coincidencia parcial — revisar', color: 'text-amber-700' };
+    return { label: 'Sin coincidencia', color: 'text-red-600' };
+  }
+
+  function reasonLabel(reason: string): string {
+    const map: Record<string, string> = {
+      'NHC exacto': 'NHC idéntico encontrado',
+      'nombre completo exacto': 'Nombre y apellidos coinciden exactamente',
+      'nombre parcial (apellidos)': 'Coincidencia parcial por apellidos',
+      'nombre parcial (nombre)': 'Coincidencia parcial por nombre',
+      'no matching candidate found': 'No se encontró ningún paciente similar',
+      'score demasiado bajo': 'Puntuación insuficiente para emparejar',
+    };
+    return map[reason] ?? reason;
+  }
+
+  /** Busca los datos crudos de la fila en el sample del Excel. */
+  function rowData(rowIndex: number): Record<string, unknown> | null {
+    return parsed.sample.rows[rowIndex] ?? null;
+  }
+
   return (
-    <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-6">
+    <div className="space-y-4 rounded-lg border border-outline-variant bg-surface-lowest p-6">
       <div>
-        <h2 className="text-lg font-semibold text-gray-900">Resolver cruces de pacientes</h2>
-        <p className="text-sm text-gray-600">
-          {confirmed.autoMatchCount} auto · {confirmed.pendingResolutionCount} por confirmar ·{' '}
+        <h2 className="text-lg font-semibold text-on-surface">Resolver cruces de pacientes</h2>
+        <p className="text-sm text-on-surface-variant">
+          {confirmed.autoMatchCount} automáticos · {confirmed.pendingResolutionCount} por revisar ·{' '}
           {confirmed.newPatientCount} nuevos
         </p>
       </div>
 
       {pending.length === 0 ? (
-        <p className="text-sm text-gray-600">
-          Todos los cruces están resueltos automáticamente. Puedes finalizar la importación.
+        <p className="text-sm text-on-surface-variant">
+          Todos los cruces están resueltos. Podés finalizar la importación.
         </p>
       ) : (
-        <ul className="divide-y divide-gray-100">
-          {pending.map((m) => (
-            <li key={m.rowIndex} className="flex items-center justify-between py-2">
-              <div>
-                <p className="text-sm font-medium text-gray-900">Fila {m.rowIndex}</p>
-                <p className="text-xs text-gray-500">
-                  Score {m.score} · {m.reason}
-                </p>
-              </div>
-              <select
-                value={resolutions[String(m.rowIndex)] ?? 'new'}
-                onChange={(e) =>
-                  setResolutions({
-                    ...resolutions,
-                    [String(m.rowIndex)]: e.target.value as MatchDecision,
-                  })
-                }
-                className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+        <div className="space-y-2">
+          {pending.map((m) => {
+            const s = scoreLabel(m);
+            const data = rowData(m.rowIndex);
+            return (
+              <div
+                key={m.rowIndex}
+                className="rounded-md border border-outline-variant bg-surface-low/50 p-3"
               >
-                <option value="confirm">Mismo paciente (enriquecer)</option>
-                <option value="new">Crear nuevo</option>
-              </select>
-            </li>
-          ))}
-        </ul>
+                {/* Cabecera: score y decisión */}
+                <div className="mb-2 flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-medium text-on-surface">
+                      Fila {m.rowIndex}
+                    </span>
+                    <span className={`ml-2 text-xs font-medium ${s.color}`}>
+                      {s.label} (score {m.score})
+                    </span>
+                  </div>
+                  <select
+                    value={resolutions[String(m.rowIndex)] ?? 'new'}
+                    onChange={(e) =>
+                      setResolutions({
+                        ...resolutions,
+                        [String(m.rowIndex)]: e.target.value as MatchDecision,
+                      })
+                    }
+                    className="rounded-md border border-outline px-2 py-1 text-sm"
+                  >
+                    <option value="confirm">Mismo paciente (enriquecer)</option>
+                    <option value="new">Crear nuevo paciente</option>
+                  </select>
+                </div>
+
+                {/* Motivo del match */}
+                <p className="mb-1.5 text-xs text-on-surface-variant">
+                  {reasonLabel(m.reason)}
+                </p>
+
+                {/* Datos de la fila del Excel */}
+                {data && (
+                  <div className="rounded border border-outline-variant bg-surface-lowest p-2">
+                    <p className="mb-1 text-[10px] font-medium uppercase text-on-surface-variant/60">
+                      Datos del archivo
+                    </p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                      {Object.entries(data).map(([key, val]) => {
+                        const sval = String(val ?? '—');
+                        if (sval === '—' || sval === '') return null;
+                        return (
+                          <span key={key} className="text-on-surface-variant">
+                            <span className="text-on-surface-variant/60">{key}:</span>{' '}
+                            <span className="font-medium text-on-surface">{sval}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
 
       <div className="flex justify-between">
-        <button onClick={onBack} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+        <Button variant="outline" size="sm" onClick={onBack}>
           Volver al mapeo
-        </button>
-        <button
+        </Button>
+        <Button
+          size="sm"
           onClick={onFinalize}
           disabled={finalizing}
-          className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+          className="bg-green-600 hover:bg-green-700 text-white"
         >
           {finalizing ? 'Importando…' : 'Finalizar importación'}
-        </button>
+        </Button>
       </div>
     </div>
   );

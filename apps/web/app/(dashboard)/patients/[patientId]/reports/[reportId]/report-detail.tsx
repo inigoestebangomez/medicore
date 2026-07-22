@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { useReport, useUpdateReport, useSignReport } from '@/hooks/useReports';
 import type { ReportStatus } from '@/hooks/useReports';
 
@@ -36,7 +37,7 @@ export function ReportDetail({ patientId, reportId }: ReportDetailProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-primary" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-outline-variant border-t-primary" />
       </div>
     );
   }
@@ -92,30 +93,31 @@ export function ReportDetail({ patientId, reportId }: ReportDetailProps) {
       <div className="flex items-center justify-between">
         <Link
           href={`/patients/${patientId}/reports`}
-          className="text-sm text-gray-500 hover:text-gray-700"
+          className="text-sm text-on-surface-variant hover:text-on-surface-variant"
         >
           &larr; Back to Reports
         </Link>
         <div className="flex items-center gap-2">
           {canEdit && !editing && (
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleStartEdit}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
             >
               Edit
-            </button>
+            </Button>
           )}
           {canSign && !editing && (
-            <button
+            <Button
+              size="sm"
               onClick={() => {
                 setShowSignConfirm(true);
                 setDisclaimerConfirmed(false);
                 setActionError(null);
               }}
-              className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
             >
               Sign
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -124,9 +126,9 @@ export function ReportDetail({ patientId, reportId }: ReportDetailProps) {
         <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">{actionError}</div>
       )}
 
-      <div className="rounded-lg border border-gray-200 bg-white p-6 space-y-4">
+      <div className="rounded-lg border border-outline-variant bg-surface-lowest p-6 space-y-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <h2 className="text-xl font-semibold text-gray-900">{report.title}</h2>
+          <h2 className="text-xl font-semibold text-on-surface">{report.title}</h2>
           <span
             className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_BADGE[report.status]}`}
           >
@@ -139,7 +141,7 @@ export function ReportDetail({ patientId, reportId }: ReportDetailProps) {
           )}
         </div>
 
-        <div className="text-xs text-gray-400 space-y-1">
+        <div className="text-xs text-on-surface-variant/60 space-y-1">
           <p>
             Created: {new Date(report.createdAt).toLocaleDateString(undefined, {
               year: 'numeric',
@@ -162,33 +164,34 @@ export function ReportDetail({ patientId, reportId }: ReportDetailProps) {
           )}
         </div>
 
-        <div className="border-t border-gray-200 pt-4">
+        <div className="border-t border-outline-variant pt-4">
           {editing ? (
             <div className="space-y-3">
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 rows={20}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                className="w-full rounded-md border border-outline px-3 py-2 text-sm shadow-card focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary font-mono"
               />
               <div className="flex items-center gap-3">
-                <button
+                <Button
+                  size="sm"
                   onClick={handleSave}
                   disabled={updateReport.isPending}
-                  className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {updateReport.isPending ? 'Saving...' : 'Save'}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setEditing(false)}
-                  className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
-            <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700">
+            <div className="prose prose-sm max-w-none whitespace-pre-wrap text-on-surface-variant">
               {report.content}
             </div>
           )}
@@ -196,35 +199,36 @@ export function ReportDetail({ patientId, reportId }: ReportDetailProps) {
       </div>
 
       {showSignConfirm && (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 space-y-4">
-          <h3 className="text-base font-semibold text-gray-900">Sign Report</h3>
-          <p className="text-sm text-gray-600">
+        <div className="rounded-lg border border-outline-variant bg-surface-lowest p-6 space-y-4">
+          <h3 className="text-base font-semibold text-on-surface">Sign Report</h3>
+          <p className="text-sm text-on-surface-variant">
             By signing this report, you certify that you have reviewed the content
             and confirm it is accurate and complete. Signed reports cannot be modified.
           </p>
-          <label className="flex items-center gap-3 text-sm text-gray-700">
+          <label className="flex items-center gap-3 text-sm text-on-surface-variant">
             <input
               type="checkbox"
               checked={disclaimerConfirmed}
               onChange={(e) => setDisclaimerConfirmed(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              className="h-4 w-4 rounded border-outline text-primary focus:ring-primary"
             />
             I confirm that I have reviewed this report and it is accurate.
           </label>
           <div className="flex items-center gap-3">
-            <button
+            <Button
+              size="sm"
               onClick={handleSign}
               disabled={!disclaimerConfirmed || signReport.isPending}
-              className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {signReport.isPending ? 'Signing...' : 'Confirm and Sign'}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setShowSignConfirm(false)}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       )}

@@ -105,21 +105,21 @@ export function ResultsViewer({ rows, displayFields, stats, distributions }: Res
       {/* Stats panel */}
       {stats.length > 0 && (
         <section>
-          <h3 className="mb-2 text-sm font-semibold text-gray-700">Estadística descriptiva</h3>
-          <div className="overflow-x-auto rounded-md border border-gray-200">
+          <h3 className="mb-2 text-sm font-semibold text-on-surface-variant">Estadística descriptiva</h3>
+          <div className="overflow-x-auto rounded-md border border-outline-variant">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
+              <thead className="bg-surface-low text-on-surface-variant">
                 <tr>
                   {['Variable', 'n', 'Media', 'Mediana', 'DE', 'Mín', 'Máx', 'IC 95%'].map((h) => (
                     <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-outline-variant">
                 {stats.map((s) => (
                   <tr key={s.field}>
-                    <td className="px-3 py-2 font-medium text-gray-800">{s.field}</td>
-                    <td className="px-3 py-2 text-gray-500">
+                    <td className="px-3 py-2 font-medium text-on-surface">{s.field}</td>
+                    <td className="px-3 py-2 text-on-surface-variant">
                       {s.n}
                       {s.n < 5 && (
                         <span className="ml-1 rounded bg-amber-100 px-1 text-xs text-amber-700" title="BR-RES-004: N<5">
@@ -149,7 +149,7 @@ export function ResultsViewer({ rows, displayFields, stats, distributions }: Res
           Empty distributions render nothing (no small-sample leaking). */}
       {distributions.map((dist) => (
         <section key={dist.field}>
-          <h3 className="mb-1 text-sm font-semibold text-gray-700">
+          <h3 className="mb-1 text-sm font-semibold text-on-surface-variant">
             Distribución: {dist.field}
           </h3>
           {dist.categories.length === 0 ? (
@@ -199,15 +199,15 @@ export function ResultsViewer({ rows, displayFields, stats, distributions }: Res
       {numFields.length > 0 && (
         <section className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h3 className="text-sm font-semibold text-gray-700">Análisis numérico</h3>
-            <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
+            <h3 className="text-sm font-semibold text-on-surface-variant">Análisis numérico</h3>
+            <div className="inline-flex rounded-md border border-outline overflow-hidden">
               {(['line', 'scatter', 'box'] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => setChartType(t)}
                   className={`px-3 py-1 text-sm ${
-                    chartType === t ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                    chartType === t ? 'bg-indigo-600 text-white' : 'bg-surface-lowest text-on-surface-variant hover:bg-surface-low'
                   }`}
                 >
                   {t === 'line' ? 'Línea' : t === 'scatter' ? 'Dispersión' : 'Box plot'}
@@ -252,32 +252,32 @@ export function ResultsViewer({ rows, displayFields, stats, distributions }: Res
 
       {/* Results table — anonymized display fields */}
       <section>
-        <h3 className="mb-2 text-sm font-semibold text-gray-700">
+        <h3 className="mb-2 text-sm font-semibold text-on-surface-variant">
           Resultados ({rows.length} pacientes)
         </h3>
         {rows.length === 0 ? (
-          <p className="text-sm text-gray-500">La consulta no devolvió pacientes.</p>
+          <p className="text-sm text-on-surface-variant">La consulta no devolvió pacientes.</p>
         ) : (
-          <div className="overflow-x-auto rounded-md border border-gray-200">
+          <div className="overflow-x-auto rounded-md border border-outline-variant">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
+              <thead className="bg-surface-low text-on-surface-variant">
                 <tr>
                   {displayFields.map((f) => (
                     <th
                       key={f}
                       onClick={() => toggleSort(f)}
-                      className="cursor-pointer select-none px-3 py-2 text-left font-medium hover:bg-gray-100"
+                      className="cursor-pointer select-none px-3 py-2 text-left font-medium hover:bg-surface-container"
                     >
                       {f} {sort?.field === f ? (sort.dir === 'asc' ? '▲' : '▼') : ''}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-outline-variant">
                 {sortedRows.slice(0, 200).map((row) => (
-                  <tr key={row.patientId} className="hover:bg-gray-50">
+                  <tr key={row.patientId} className="hover:bg-surface-low">
                     {displayFields.map((f) => (
-                      <td key={f} className="px-3 py-2 text-gray-700">
+                      <td key={f} className="px-3 py-2 text-on-surface-variant">
                         {formatCell(row.fields[f] ?? (row as unknown as Record<string, unknown>)[f])}
                       </td>
                     ))}
@@ -286,7 +286,7 @@ export function ResultsViewer({ rows, displayFields, stats, distributions }: Res
               </tbody>
             </table>
             {rows.length > 200 && (
-              <p className="bg-gray-50 px-3 py-1.5 text-xs text-gray-500">
+              <p className="bg-surface-low px-3 py-1.5 text-xs text-on-surface-variant">
                 Mostrando 200 de {rows.length} filas. Exporta para ver la cohorte completa.
               </p>
             )}
@@ -320,11 +320,11 @@ function NumericFieldSelect({
 }) {
   return (
     <label className="text-sm">
-      <span className="font-medium text-gray-700">{label}</span>
+      <span className="font-medium text-on-surface-variant">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 ml-2 rounded border border-gray-300 px-2 py-1 text-sm"
+        className="mt-1 ml-2 rounded border border-outline px-2 py-1 text-sm"
       >
         {fields.map((f) => (
           <option key={f} value={f}>{f}</option>
@@ -371,7 +371,7 @@ function NumericChart({
 
   if (type === 'scatter') {
     if (!scatterX || !scatterY || scatterX === scatterY) {
-      return <p className="text-xs text-gray-500">Elige dos variables distintas para los ejes X e Y.</p>;
+      return <p className="text-xs text-on-surface-variant">Elige dos variables distintas para los ejes X e Y.</p>;
     }
     const pairs = rows
       .map((r) => ({ x: r.fields[scatterX], y: r.fields[scatterY] }))

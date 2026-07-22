@@ -20,18 +20,37 @@ const nextAuth = NextAuth({
     signIn: '/login',
   },
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session }) {
       if (user) {
         token.id = user.id;
       }
 
-      if (account?.provider === 'google' && account?.access_token) {
+      if (account?.provider === 'google') {
         // Store OAuth data in token so we can re-sync if needed
         token.oauthProvider = account.provider;
         token.oauthSub = account.providerAccountId;
         token.userEmail = user?.email ?? token.email;
         token.userName = user?.name ?? token.name;
+      }
 
+      // Handle session update — e.g., after onboarding creates an org,
+      // the client calls update({ organizationId }). Merge it into the token
+      // so the next server-side auth() picks it up without a round-trip.
+      if (trigger === 'update' && session) {
+        if (session.organizationId) {
+          token.organizationId = session.organizationId;
+        }
+        if (session.role) {
+          token.role = session.role;
+        }
+      }
+
+      // Re-sync with backend: if we have OAuth credentials but no
+      // organizationId (e.g. initial sync failed, or org was created
+      // after sign-in), fetch it now. This covers:
+      // - First sync failure during sign-in
+      // - update() calls when the client doesn't pass organizationId
+      if (!token.organizationId && token.oauthProvider && token.oauthSub) {
         try {
           const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
           const response = await fetch(`${apiBaseUrl}/v1/auth/sync`, {
@@ -43,16 +62,16 @@ const nextAuth = NextAuth({
                 : {}),
             },
             body: JSON.stringify({
-              oauthProvider: 'google',
-              oauthSub: account.providerAccountId,
-              email: user?.email ?? token.email,
-              name: user?.name ?? token.name,
-              avatarUrl: user?.image ?? token.picture,
+              oauthProvider: token.oauthProvider,
+              oauthSub: token.oauthSub,
+              email: token.userEmail ?? token.email,
+              name: token.userName ?? token.name,
             }),
           });
 
           if (response.ok) {
-            const data = await response.json();
+            const body = await response.json();
+            const data = body.data ?? body;
             const setCookieHeader = response.headers.get('set-cookie');
             if (setCookieHeader) {
               const match = setCookieHeader.match(/medicore-session=([^;]+)/);
@@ -61,18 +80,19 @@ const nextAuth = NextAuth({
               }
             }
 
-            // Fallback: also capture token from response body
             if (!token.backendToken && data.token) {
               token.backendToken = data.token;
             }
 
-            token.userId = data.id;
+            token.userId = token.userId ?? data.id;
             token.organizationId = data.organizationId;
-            token.role = data.role;
+            token.role = token.role ?? data.role;
             token.isNewUser = data.isNewUser;
+          } else {
+            console.error('[Auth JWT] Backend sync returned non-OK status:', response.status);
           }
-        } catch {
-          // Fail gracefully — user can retry sync
+        } catch (err) {
+          console.error('[Auth JWT] Backend sync failed — organizationId will be missing:', err);
         }
       }
 
@@ -86,6 +106,37 @@ const nextAuth = NextAuth({
       if (token.organizationId) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (session as any).organizationId = token.organizationId;
+      } else if (token.email) {
+        // Fallback: if JWT sync missed organizationId, fetch from backend
+        try {
+          const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+          const email = token.email ?? session.user?.email;
+          if (email) {
+            const res = await fetch(`${apiBaseUrl}/v1/auth/sync`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                oauthProvider: token.oauthProvider ?? 'google',
+                oauthSub: token.oauthSub ?? token.sub,
+                email,
+              }),
+            });
+            if (res.ok) {
+              const body = await res.json();
+              const data = body.data ?? body;
+              if (data.organizationId) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (session as any).organizationId = data.organizationId;
+              }
+              if (data.role) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (session as any).role = data.role;
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[Auth Session] Fallback sync failed:', err);
+        }
       }
       if (token.role) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

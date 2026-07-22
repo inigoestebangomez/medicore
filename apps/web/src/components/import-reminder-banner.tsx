@@ -21,7 +21,7 @@ export function ImportReminderBanner() {
       : `han pasado ${data.daysSinceLastImport} días desde tu última importación`;
 
   return (
-    <div className="border-b border-blue-200 bg-blue-50">
+    <div className="border-b border-blue-200 bg-secondary-container/20">
       <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-2 text-sm text-blue-800">
           <span aria-hidden>📥</span>
@@ -39,7 +39,7 @@ export function ImportReminderBanner() {
           </Link>
           <Link
             href="/settings"
-            className="rounded-md border border-blue-300 px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-100"
+            className="rounded-md border border-secondary px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-100"
           >
             Recordarme luego
           </Link>

@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  transpilePackages: ['@medicore/contracts', '@medicore/clinical-codes', '@medicore/ui'],
+  transpilePackages: ['@medicore/contracts', '@medicore/clinical-codes', '@medicore/ui', 'geist'],
   typescript: {
     // Auth.js v5 beta has complex inferred types that Next.js strict build
     // cannot resolve portably. This does NOT disable type checking during

@@ -6,6 +6,7 @@
 // delete.
 
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { useQueryHistory, useDeleteQuery } from '@/hooks/useResearch';
 
 export default function ResearchPage() {
@@ -16,8 +17,8 @@ export default function ResearchPage() {
     <div className="container mx-auto space-y-6 py-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Investigación clínica</h1>
-          <p className="text-sm text-gray-600">
+          <h1 className="text-2xl font-semibold text-on-surface">Investigación clínica</h1>
+          <p className="text-sm text-on-surface-variant">
             Construye consultas sobre pacientes importados y estándar; guarda cohortes y exporta datos anónimos.
           </p>
         </div>
@@ -30,14 +31,14 @@ export default function ResearchPage() {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-gray-500">Cargando consultas…</p>
+        <p className="text-sm text-on-surface-variant">Cargando consultas…</p>
       ) : data && data.items.length > 0 ? (
-        <ul className="divide-y divide-gray-100 rounded-md border border-gray-200">
+        <ul className="divide-y divide-outline-variant rounded-md border border-outline-variant">
           {data.items.map((q) => (
             <li key={q.id} className="flex items-center justify-between px-4 py-3">
               <Link href={`/research/${q.id}`} className="flex-1">
-                <div className="font-medium text-gray-800">{q.name}</div>
-                <div className="text-xs text-gray-500">
+                <div className="font-medium text-on-surface">{q.name}</div>
+                <div className="text-xs text-on-surface-variant">
                   Origen: {q.dataSource} · Última ejecución:{' '}
                   {q.lastRunAt ? `${new Date(q.lastRunAt).toLocaleDateString()} (${q.lastRunCount ?? 0} pacientes)` : '—'}
                 </div>
@@ -46,20 +47,21 @@ export default function ResearchPage() {
                 <Link href={`/research/${q.id}`} className="rounded px-3 py-1 text-sm text-indigo-600 hover:bg-indigo-50">
                   Abrir
                 </Link>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => { if (confirm('¿Eliminar la consulta guardada?')) void del.mutateAsync(q.id); }}
                   disabled={del.isPending}
-                  className="rounded px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+                  className="text-red-600 hover:text-red-800"
                 >
                   Eliminar
-                </button>
+                </Button>
               </div>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-on-surface-variant">
           No hay consultas guardadas. Crea la primera con «Nueva consulta».
         </p>
       )}

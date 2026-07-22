@@ -45,15 +45,15 @@ export function CollectionManager({ queryId, patientIds }: CollectionManagerProp
   };
 
   return (
-    <section className="space-y-3 rounded-md border border-gray-200 p-3">
-      <h3 className="text-sm font-semibold text-gray-700">Colecciones de pacientes</h3>
+    <section className="space-y-3 rounded-md border border-outline-variant p-3">
+      <h3 className="text-sm font-semibold text-on-surface-variant">Colecciones de pacientes</h3>
 
       <div className="flex gap-2">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nombre de la colección"
-          className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+          className="flex-1 rounded border border-outline px-2 py-1 text-sm"
           disabled={create.isPending}
         />
         <button
@@ -71,14 +71,14 @@ export function CollectionManager({ queryId, patientIds }: CollectionManagerProp
       )}
 
       {isLoading ? (
-        <p className="text-sm text-gray-500">Cargando…</p>
+        <p className="text-sm text-on-surface-variant">Cargando…</p>
       ) : data && data.items.length > 0 ? (
-        <ul className="divide-y divide-gray-100 rounded border border-gray-200">
+        <ul className="divide-y divide-outline-variant rounded border border-outline-variant">
           {data.items.map((c) => (
             <li key={c.id} className="flex items-center justify-between px-3 py-2 text-sm">
               <div>
-                <span className="font-medium text-gray-800">{c.name}</span>
-                <span className="ml-2 text-gray-500">{c.patientCount} pacientes</span>
+                <span className="font-medium text-on-surface">{c.name}</span>
+                <span className="ml-2 text-on-surface-variant">{c.patientCount} pacientes</span>
                 {c.isLocked && (
                   <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-700" title="BR-RES-003: inmutable">
                     🔒 bloqueada
@@ -90,7 +90,7 @@ export function CollectionManager({ queryId, patientIds }: CollectionManagerProp
                   type="button"
                   onClick={() => void onLock(c.id)}
                   disabled={lock.isPending}
-                  className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                  className="rounded px-2 py-1 text-xs text-on-surface-variant hover:bg-surface-container"
                 >
                   Bloquear
                 </button>
@@ -99,7 +99,7 @@ export function CollectionManager({ queryId, patientIds }: CollectionManagerProp
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-gray-500">Aún no hay colecciones.</p>
+        <p className="text-sm text-on-surface-variant">Aún no hay colecciones.</p>
       )}
     </section>
   );

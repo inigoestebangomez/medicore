@@ -1,5 +1,6 @@
 // apps/web/src/features/medications/components/prescription-form.tsx
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { useCreatePrescriptionWithOverride } from '../hooks/useMedications';
 import type { CreatePrescriptionInput } from '../hooks/useMedications';
 
@@ -211,17 +212,17 @@ export function PrescriptionForm({ patientId, onSuccess, onCancel }: Prescriptio
 
       <div className="flex justify-end gap-2">
         {onCancel && (
-          <button type="button" onClick={onCancel} className="rounded-md border px-4 py-2 text-sm">
+          <Button variant="outline" size="sm" onClick={onCancel}>
             Cancel
-          </button>
+          </Button>
         )}
-        <button
+        <Button
           type="submit"
+          size="sm"
           disabled={createMutation.isPending}
-          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
           {createMutation.isPending ? 'Creating...' : 'Create Prescription'}
-        </button>
+        </Button>
       </div>
     </form>
   );

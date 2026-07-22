@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { FilterBuilder } from '@/components/research/filter-builder';
 import { useSaveQuery } from '@/hooks/useResearch';
 import type { Filter, FilterLogic, DataSource, VisualizationType } from '@medicore/contracts';
@@ -53,38 +54,38 @@ export default function NewResearchQueryPage() {
   return (
     <div className="container mx-auto space-y-6 py-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Nueva consulta de investigación</h1>
-        <p className="text-sm text-gray-600">
+        <h1 className="text-2xl font-semibold text-on-surface">Nueva consulta de investigación</h1>
+        <p className="text-sm text-on-surface-variant">
           La consulta se guarda como privada (BR-RES-001). Para compartirla, exporta la cohorte a una colección bloqueada.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 rounded-md border border-gray-200 p-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 rounded-md border border-outline-variant p-4 md:grid-cols-2">
         <label className="text-sm">
-          <span className="font-medium text-gray-700">Nombre</span>
+          <span className="font-medium text-on-surface-variant">Nombre</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5"
+            className="mt-1 w-full rounded border border-outline px-2 py-1.5"
             placeholder="p.ej. Pacientes > 50 con IMC > 30"
           />
         </label>
 
         <label className="text-sm">
-          <span className="font-medium text-gray-700">Descripción</span>
+          <span className="font-medium text-on-surface-variant">Descripción</span>
           <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5"
+            className="mt-1 w-full rounded border border-outline px-2 py-1.5"
           />
         </label>
 
         <label className="text-sm">
-          <span className="font-medium text-gray-700">Origen de datos</span>
+          <span className="font-medium text-on-surface-variant">Origen de datos</span>
           <select
             value={dataSource}
             onChange={(e) => setDataSource(e.target.value as DataSource)}
-            className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5"
+            className="mt-1 w-full rounded border border-outline px-2 py-1.5"
           >
             <option value="all_patients">Todos los pacientes</option>
             <option value="manual_only">Solo cargados manualmente</option>
@@ -95,31 +96,31 @@ export default function NewResearchQueryPage() {
 
         {dataSource === 'import_batch' && (
           <label className="text-sm">
-            <span className="font-medium text-gray-700">IDs de lote (coma-separados)</span>
+            <span className="font-medium text-on-surface-variant">IDs de lote (coma-separados)</span>
             <input
               value={importBatchIds}
               onChange={(e) => setImportBatchIds(e.target.value)}
-              className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5"
+              className="mt-1 w-full rounded border border-outline px-2 py-1.5"
               placeholder="uuid, uuid…"
             />
           </label>
         )}
 
         <label className="text-sm md:col-span-2">
-          <span className="font-medium text-gray-700">Campos a mostrar (coma-separados)</span>
+          <span className="font-medium text-on-surface-variant">Campos a mostrar (coma-separados)</span>
           <input
             value={displayFields}
             onChange={(e) => setDisplayFields(e.target.value)}
-            className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5"
+            className="mt-1 w-full rounded border border-outline px-2 py-1.5"
             placeholder={SUGGESTED_DISPLAY.join(', ')}
           />
-          <span className="mt-1 block text-xs text-gray-500">
+          <span className="mt-1 block text-xs text-on-surface-variant">
             Campos estándar (age, sex, nhc…) o importados (customField…).
           </span>
         </label>
 
         <fieldset className="text-sm md:col-span-2">
-          <span className="font-medium text-gray-700">Visualizaciones</span>
+          <span className="font-medium text-on-surface-variant">Visualizaciones</span>
           <div className="mt-1 flex flex-wrap gap-3">
             {(['table', 'bar_chart', 'line_chart', 'scatter', 'stats'] as VisualizationType[]).map((v) => (
               <label key={v} className="inline-flex items-center gap-1.5">
@@ -127,29 +128,29 @@ export default function NewResearchQueryPage() {
                   type="checkbox"
                   checked={visualizations.includes(v)}
                   onChange={() => toggleViz(v)}
-                  className="rounded border-gray-300"
+                  className="rounded border-outline"
                 />
-                <span className="text-gray-700">{v}</span>
+                <span className="text-on-surface-variant">{v}</span>
               </label>
             ))}
           </div>
         </fieldset>
       </div>
 
-      <div className="rounded-md border border-gray-200 p-4">
-        <h2 className="mb-2 text-sm font-semibold text-gray-700">Filtros</h2>
+      <div className="rounded-md border border-outline-variant p-4">
+        <h2 className="mb-2 text-sm font-semibold text-on-surface-variant">Filtros</h2>
         <FilterBuilder filters={filters} logic={logic} onChange={(f, l) => { setFilters(f); setLogic(l); }} />
       </div>
 
       <div className="flex items-center gap-3">
-        <button
-          type="button"
+        <Button
+          size="sm"
           onClick={() => void onSaveAndRun()}
           disabled={save.isPending || !name.trim()}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white"
         >
           {save.isPending ? 'Guardando…' : 'Guardar y ejecutar'}
-        </button>
+        </Button>
         {save.isError && (
           <span className="text-sm text-red-600">Error: {(save.error as Error).message}</span>
         )}

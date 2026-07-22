@@ -53,8 +53,8 @@ export function FilterBuilder({ filters, logic, onChange, disabled }: FilterBuil
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-gray-700">Combinar filtros:</span>
-        <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
+        <span className="text-sm font-medium text-on-surface-variant">Combinar filtros:</span>
+        <div className="inline-flex rounded-md border border-outline overflow-hidden">
           {(['AND', 'OR'] as FilterLogic[]).map((l) => (
             <button
               key={l}
@@ -62,7 +62,7 @@ export function FilterBuilder({ filters, logic, onChange, disabled }: FilterBuil
               disabled={disabled}
               onClick={() => setLogic(l)}
               className={`px-3 py-1 text-sm ${
-                logic === l ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                logic === l ? 'bg-indigo-600 text-white' : 'bg-surface-lowest text-on-surface-variant hover:bg-surface-low'
               } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {l}
@@ -72,19 +72,19 @@ export function FilterBuilder({ filters, logic, onChange, disabled }: FilterBuil
       </div>
 
       {filters.length === 0 && (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-on-surface-variant">
           Sin filtros. Pulsa «Añadir filtro» para acotar la cohorte.
         </p>
       )}
 
       <div className="space-y-2">
         {filters.map((filter, i) => (
-          <div key={i} className="flex flex-wrap items-center gap-2 rounded-md border border-gray-200 bg-gray-50 p-2">
+          <div key={i} className="flex flex-wrap items-center gap-2 rounded-md border border-outline-variant bg-surface-low p-2">
             <select
               disabled={disabled}
               value={filter.source}
               onChange={(e) => update(i, { source: e.target.value as Source, field: '' })}
-              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              className="rounded border border-outline px-2 py-1 text-sm"
               aria-label="Origen del dato"
             >
               {SOURCES.map((s) => (
@@ -97,14 +97,14 @@ export function FilterBuilder({ filters, logic, onChange, disabled }: FilterBuil
               value={filter.field}
               onChange={(e) => update(i, { field: e.target.value })}
               placeholder="campo (p.ej. age, nhc, customField…)"
-              className="min-w-[180px] flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+              className="min-w-[180px] flex-1 rounded border border-outline px-2 py-1 text-sm"
             />
 
             <select
               disabled={disabled}
               value={filter.operator}
               onChange={(e) => update(i, { operator: e.target.value as Operator })}
-              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              className="rounded border border-outline px-2 py-1 text-sm"
               aria-label="Operador"
             >
               {(['equals','not_equals','contains','not_contains','starts_with','greater_than','less_than','between','is_empty','is_not_empty','in_list','date_before','date_after','date_between','boolean_true','boolean_false'] as Operator[]).map((o) => (
@@ -118,7 +118,7 @@ export function FilterBuilder({ filters, logic, onChange, disabled }: FilterBuil
                 value={String(filter.value ?? '')}
                 onChange={(e) => update(i, { value: e.target.value })}
                 placeholder="valor"
-                className="w-32 rounded border border-gray-300 px-2 py-1 text-sm"
+                className="w-32 rounded border border-outline px-2 py-1 text-sm"
               />
             )}
 
@@ -129,15 +129,15 @@ export function FilterBuilder({ filters, logic, onChange, disabled }: FilterBuil
                   value={String(filter.value ?? '')}
                   onChange={(e) => update(i, { value: e.target.value })}
                   placeholder="desde"
-                  className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
+                  className="w-20 rounded border border-outline px-2 py-1 text-sm"
                 />
-                <span className="text-gray-400">–</span>
+                <span className="text-on-surface-variant/60">–</span>
                 <input
                   disabled={disabled}
                   value={String(filter.valueTo ?? '')}
                   onChange={(e) => update(i, { valueTo: e.target.value })}
                   placeholder="hasta"
-                  className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
+                  className="w-20 rounded border border-outline px-2 py-1 text-sm"
                 />
               </>
             )}
@@ -158,7 +158,7 @@ export function FilterBuilder({ filters, logic, onChange, disabled }: FilterBuil
         type="button"
         disabled={disabled}
         onClick={addRow}
-        className="rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+        className="rounded-md bg-surface-container px-3 py-1.5 text-sm text-on-surface-variant hover:bg-surface-high disabled:opacity-50"
       >
         + Añadir filtro
       </button>

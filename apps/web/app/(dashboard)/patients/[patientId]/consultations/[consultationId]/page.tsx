@@ -22,8 +22,8 @@ const TYPE_LABEL: Record<ConsultationType, string> = {
 };
 
 const DIAG_TYPE_COLOR: Record<DiagnosisCode['type'], string> = {
-  primary: 'bg-blue-50 text-blue-700 border-blue-200',
-  secondary: 'bg-gray-50 text-gray-700 border-gray-200',
+  primary: 'bg-secondary-container/20 text-blue-700 border-blue-200',
+  secondary: 'bg-surface-low text-on-surface-variant border-outline-variant',
   differential: 'bg-amber-50 text-amber-700 border-amber-200',
 };
 
@@ -46,17 +46,17 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1 border-t border-gray-100 pt-4 first:border-0 first:pt-0">
-      <dt className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+    <div className="space-y-1 border-t border-outline-variant pt-4 first:border-0 first:pt-0">
+      <dt className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant/60">
         {label}
       </dt>
-      <dd className="text-sm text-gray-700">{children}</dd>
+      <dd className="text-sm text-on-surface-variant">{children}</dd>
     </div>
   );
 }
 
 function Empty({ children = 'Not recorded' }: { children?: React.ReactNode }) {
-  return <span className="text-gray-400 italic">{children}</span>;
+  return <span className="text-on-surface-variant/60 italic">{children}</span>;
 }
 
 export default function ConsultationDetailPage() {
@@ -70,7 +70,7 @@ export default function ConsultationDetailPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-primary" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-outline-variant border-t-primary" />
       </div>
     );
   }
@@ -83,7 +83,7 @@ export default function ConsultationDetailPage() {
         </div>
         <Link
           href={`/patients/${patientId}`}
-          className="inline-block text-sm text-gray-500 hover:text-gray-700"
+          className="inline-block text-sm text-on-surface-variant hover:text-on-surface-variant"
         >
           &larr; Back to patient
         </Link>
@@ -101,14 +101,14 @@ export default function ConsultationDetailPage() {
     <div className="container mx-auto max-w-3xl space-y-6 py-6">
       <Link
         href={`/patients/${patientId}`}
-        className="text-sm text-gray-500 hover:text-gray-700"
+        className="text-sm text-on-surface-variant hover:text-on-surface-variant"
       >
         &larr; Back to patient
       </Link>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <div className="rounded-lg border border-outline-variant bg-surface-lowest p-6">
         <div className="flex items-center gap-3 flex-wrap">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-xl font-semibold text-on-surface">
             {formatDate(consultation.date) ?? consultation.date}
           </h2>
           <span
@@ -119,7 +119,7 @@ export default function ConsultationDetailPage() {
         </div>
 
         {consultation.physicianName && (
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-on-surface-variant/60">
             Physician: {consultation.physicianName}
           </p>
         )}
@@ -144,7 +144,7 @@ export default function ConsultationDetailPage() {
               <ul className="space-y-1">
                 {physicalEntries.map(([key, value]) => (
                   <li key={key} className="flex gap-2">
-                    <span className="font-medium text-gray-600">{key}:</span>
+                    <span className="font-medium text-on-surface-variant">{key}:</span>
                     <span>
                       {typeof value === 'object'
                         ? JSON.stringify(value)

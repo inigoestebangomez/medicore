@@ -75,14 +75,14 @@ export function ImagingStudyList({ patientId, onStudyClick }: ImagingStudyListPr
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
         <div>
-          <label htmlFor="type-filter" className="block text-xs font-medium text-gray-600 mb-1">
+          <label htmlFor="type-filter" className="block text-xs font-medium text-on-surface-variant mb-1">
             Tipo
           </label>
           <select
             id="type-filter"
             value={typeFilter}
             onChange={(e) => { setTypeFilter(e.target.value as ImagingStudyType | ''); setPage(1); }}
-            className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+            className="rounded border border-outline px-2 py-1.5 text-sm"
           >
             <option value="">Todos</option>
             {Object.entries(STUDY_TYPE_LABELS).map(([value, label]) => (
@@ -92,7 +92,7 @@ export function ImagingStudyList({ patientId, onStudyClick }: ImagingStudyListPr
         </div>
 
         <div>
-          <label htmlFor="from-date" className="block text-xs font-medium text-gray-600 mb-1">
+          <label htmlFor="from-date" className="block text-xs font-medium text-on-surface-variant mb-1">
             Desde
           </label>
           <input
@@ -100,12 +100,12 @@ export function ImagingStudyList({ patientId, onStudyClick }: ImagingStudyListPr
             type="date"
             value={fromDate}
             onChange={(e) => { setFromDate(e.target.value); setPage(1); }}
-            className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+            className="rounded border border-outline px-2 py-1.5 text-sm"
           />
         </div>
 
         <div>
-          <label htmlFor="to-date" className="block text-xs font-medium text-gray-600 mb-1">
+          <label htmlFor="to-date" className="block text-xs font-medium text-on-surface-variant mb-1">
             Hasta
           </label>
           <input
@@ -113,19 +113,19 @@ export function ImagingStudyList({ patientId, onStudyClick }: ImagingStudyListPr
             type="date"
             value={toDate}
             onChange={(e) => { setToDate(e.target.value); setPage(1); }}
-            className="rounded border border-gray-300 px-2 py-1.5 text-sm"
+            className="rounded border border-outline px-2 py-1.5 text-sm"
           />
         </div>
       </div>
 
       {/* Loading state */}
       {isLoading && (
-        <div className="text-center py-8 text-gray-500">Cargando estudios...</div>
+        <div className="text-center py-8 text-on-surface-variant">Cargando estudios...</div>
       )}
 
       {/* Empty state */}
       {!isLoading && data && data.items.length === 0 && (
-        <div className="text-center py-8 text-gray-400">
+        <div className="text-center py-8 text-on-surface-variant/60">
           No hay estudios de imagenología para este paciente
         </div>
       )}
@@ -138,8 +138,8 @@ export function ImagingStudyList({ patientId, onStudyClick }: ImagingStudyListPr
               key={study.id}
               onClick={() => onStudyClick?.(study.id)}
               className={`
-                rounded border bg-white p-4 transition-shadow hover:shadow-md
-                ${study.deletedAt ? 'border-red-200 opacity-60' : 'border-gray-200 cursor-pointer'}
+                rounded border bg-surface-lowest p-4 transition-shadow hover:shadow-dropdown
+                ${study.deletedAt ? 'border-red-200 opacity-60' : 'border-outline-variant cursor-pointer'}
               `}
             >
               <div className="flex items-start justify-between gap-3">
@@ -153,20 +153,20 @@ export function ImagingStudyList({ patientId, onStudyClick }: ImagingStudyListPr
                         Eliminado
                       </span>
                     )}
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-on-surface-variant">
                       {formatDate(study.date)}
                     </span>
                   </div>
 
                   {study.description && (
-                    <p className="mt-1 text-sm text-gray-700 truncate">{study.description}</p>
+                    <p className="mt-1 text-sm text-on-surface-variant truncate">{study.description}</p>
                   )}
 
                   {study.findings && (
-                    <p className="mt-0.5 text-xs text-gray-500 truncate">{study.findings}</p>
+                    <p className="mt-0.5 text-xs text-on-surface-variant truncate">{study.findings}</p>
                   )}
 
-                  <div className="mt-1 flex items-center gap-3 text-xs text-gray-400">
+                  <div className="mt-1 flex items-center gap-3 text-xs text-on-surface-variant/60">
                     <span>{study.files?.length ?? 0} archivo{(study.files?.length ?? 0) !== 1 ? 's' : ''}</span>
                     {study.surgeryId && <span>Vinculado a cirugía</span>}
                     {study.consultationId && <span>Vinculado a consulta</span>}
@@ -202,18 +202,18 @@ export function ImagingStudyList({ patientId, onStudyClick }: ImagingStudyListPr
             type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-50"
+            className="rounded border border-outline px-3 py-1 text-sm disabled:opacity-50"
           >
             ← Anterior
           </button>
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-on-surface-variant">
             Pág. {data.page} de {data.totalPages}
           </span>
           <button
             type="button"
             onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
             disabled={page >= data.totalPages}
-            className="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-50"
+            className="rounded border border-outline px-3 py-1 text-sm disabled:opacity-50"
           >
             Siguiente →
           </button>

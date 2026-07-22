@@ -51,6 +51,11 @@ function buildTabs(patientId: string): TabDef[] {
       label: 'Reports',
       match: (pathname, href) => pathname === href || pathname.startsWith(`${href}/`),
     },
+    {
+      href: `${base}/imaging`,
+      label: 'Imaging',
+      match: (pathname, href) => pathname === href || pathname.startsWith(`${href}/`),
+    },
   ];
 }
 
@@ -61,14 +66,14 @@ export function PatientHeader({ patientId, patientName }: PatientHeaderProps) {
   const [showId] = useState(patientId);
 
   return (
-    <div className="border-b border-gray-200 bg-white">
+    <div className="border-b border-outline-variant bg-surface-lowest">
       <div className="mx-auto max-w-7xl px-4">
         <div className="flex items-baseline justify-between py-3">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-xl font-semibold text-on-surface">
               {patientName ?? 'Patient'}
             </h1>
-            <p className="text-xs text-gray-400">ID: {showId}</p>
+            <p className="text-xs text-on-surface-variant/60">ID: {showId}</p>
           </div>
         </div>
         <nav className="flex gap-1" aria-label="Patient sections">
@@ -81,7 +86,7 @@ export function PatientHeader({ patientId, patientName }: PatientHeaderProps) {
                 className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
                   active
                     ? 'border-primary text-primary'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    : 'border-transparent text-on-surface-variant hover:border-outline hover:text-on-surface-variant'
                 }`}
               >
                 {tab.label}

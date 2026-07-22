@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { useConsultations } from '@/hooks/useConsultations';
 import type { ConsultationType } from '@medicore/contracts';
 
@@ -34,7 +35,7 @@ export function ConsultationList({ patientId }: ConsultationListProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-primary" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-outline-variant border-t-primary" />
       </div>
     );
   }
@@ -52,18 +53,18 @@ export function ConsultationList({ patientId }: ConsultationListProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Consultations</h2>
-        <button
+        <h2 className="text-lg font-semibold text-on-surface">Consultations</h2>
+        <Button
+          size="sm"
           onClick={() => router.push(`/patients/${patientId}/consultations/new`)}
-          className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
         >
           New Consultation
-        </button>
+        </Button>
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-          <p className="text-sm text-gray-500">No consultations recorded yet</p>
+        <div className="rounded-lg border border-outline-variant bg-surface-lowest p-8 text-center">
+          <p className="text-sm text-on-surface-variant">No consultations recorded yet</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -71,12 +72,12 @@ export function ConsultationList({ patientId }: ConsultationListProps) {
             <div
               key={consultation.id}
               onClick={() => router.push(`/patients/${patientId}/consultations/${consultation.id}`)}
-              className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 hover:bg-gray-50 transition-colors"
+              className="cursor-pointer rounded-lg border border-outline-variant bg-surface-lowest p-4 hover:bg-surface-low transition-colors"
             >
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-on-surface">
                       {new Date(consultation.date).toLocaleDateString(undefined, {
                         year: 'numeric',
                         month: 'short',
@@ -91,11 +92,11 @@ export function ConsultationList({ patientId }: ConsultationListProps) {
                       {TYPE_LABEL[consultation.type]}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600 line-clamp-2">
+                  <p className="text-sm text-on-surface-variant line-clamp-2">
                     {consultation.chiefComplaint}
                   </p>
                   {consultation.physicianName && (
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-on-surface-variant/60">
                       Physician: {consultation.physicianName}
                     </p>
                   )}
