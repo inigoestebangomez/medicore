@@ -223,3 +223,324 @@ export const ListResearchQueriesQuerySchema = z.object({
 export type ListResearchQueriesQuery = z.infer<
   typeof ListResearchQueriesQuerySchema
 >;
+
+// ─────────────────────────────────────────────
+// RESEARCH ENGINE V2 — Dashboard + Widget (design AD-2)
+// Definition order matters: DashboardWidget references ResearchQuery by ID.
+// ─────────────────────────────────────────────
+
+/** Chart types a widget can render (design: live-reference) */
+export const WidgetChartTypeSchema = z.enum([
+  'bar_chart',
+  'line_chart',
+  'scatter',
+  'stats',
+  'kaplan_meier',
+  'cross_tab',
+]);
+export type WidgetChartType = z.infer<typeof WidgetChartTypeSchema>;
+
+/** Widget grid position (reactable layout grid) */
+export const WidgetPositionSchema = z.object({
+  x: z.number().int().min(0),
+  y: z.number().int().min(0),
+  w: z.number().int().min(1).max(12),
+  h: z.number().int().min(1),
+});
+export type WidgetPosition = z.infer<typeof WidgetPositionSchema>;
+
+/** Display config embedded per-widget: which fields, which breakdown */
+export const WidgetDisplayConfigSchema = z.object({
+  displayFields: z.array(z.string()).default([]),
+  groupBy: z.string().optional(),
+  /** Extra stats request for stats widgets */
+  statsMode: z.enum(['descriptive', 'inferential']).default('descriptive'),
+}).catchall(z.unknown());
+export type WidgetDisplayConfig = z.infer<typeof WidgetDisplayConfigSchema>;
+
+export const DashboardWidgetSchema = z.object({
+  id: z.string().uuid(),
+  queryId: z.string().uuid(),
+  chartType: WidgetChartTypeSchema,
+  position: WidgetPositionSchema,
+  displayConfig: WidgetDisplayConfigSchema.default({}),
+  title: z.string().optional(),
+});
+export type DashboardWidget = z.infer<typeof DashboardWidgetSchema>;
+
+export const DashboardLayoutSchema = z
+  .object({
+    /** Compact density: "comfortable" | "compact" */
+    density: z.enum(['comfortable', 'compact']).default('comfortable'),
+    background: z.string().optional(),
+  })
+  .catchall(z.unknown())
+  .default({});
+export type DashboardLayout = z.infer<typeof DashboardLayoutSchema>;
+
+export const DashboardInputSchema = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().max(2000).optional(),
+  widgets: z.array(DashboardWidgetSchema).default([]),
+  layout: DashboardLayoutSchema,
+});
+export type DashboardInput = z.infer<typeof DashboardInputSchema>;
+
+export const DashboardResponseSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  createdBy: z.string().uuid(),
+  name: z.string(),
+  description: z.string().nullable(),
+  widgets: z.array(DashboardWidgetSchema).default([]),
+  layout: DashboardLayoutSchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type DashboardResponse = z.infer<typeof DashboardResponseSchema>;
+
+export const AddWidgetInputSchema = DashboardWidgetSchema;
+export type AddWidgetInput = z.infer<typeof AddWidgetInputSchema>;
+
+// ─────────────────────────────────────────────
+// RESEARCH V2 — Field Discovery (spec §5)
+// ─────────────────────────────────────────────
+
+export const FieldTypeSchema = z.enum(['string', 'number', 'date', 'boolean']);
+export type FieldType = z.infer<typeof FieldTypeSchema>;
+
+export const FieldSourceV2Schema = z.enum(['standard', 'imported']);
+export type FieldSourceV2 = z.infer<typeof FieldSourceV2Schema>;
+
+export const FieldCatalogEntrySchema = z.object({
+  field: z.string().min(1),
+  source: FieldSourceV2Schema,
+  type: FieldTypeSchema,
+  /** Count of non-null values observed across the org */
+  nonNullCount: z.number().int().min(0),
+  examples: z.array(z.unknown()).max(5).default([]),
+});
+export type FieldCatalogEntry = z.infer<typeof FieldCatalogEntrySchema>;
+
+export const FieldCatalogResponseSchema = z.object({
+  query: z.string().default(''),
+  type: FieldTypeSchema.optional(),
+  entries: z.array(FieldCatalogEntrySchema).default([]),
+});
+export type FieldCatalogResponse = z.infer<typeof FieldCatalogResponseSchema>;
+
+// ─────────────────────────────────────────────
+// RESEARCH V2 — Sharing (spec §7, BR-RES-001)
+// ─────────────────────────────────────────────
+
+export const SharePermissionSchema = z.enum(['view', 'edit']);
+export type SharePermission = z.infer<typeof SharePermissionSchema>;
+
+export const SharingSchema = z.object({
+  users: z.array(z.string().uuid()).default([]),
+  permission: SharePermissionSchema.default('view'),
+});
+export type Sharing = z.infer<typeof SharingSchema>;
+
+export const ShareInputSchema = z.object({
+  userIds: z.array(z.string().uuid()).min(1),
+  permission: SharePermissionSchema.default('view'),
+});
+export type ShareInput = z.infer<typeof ShareInputSchema>;
+
+// ─────────────────────────────────────────────
+// RESEARCH V2 — Ad-hoc execution + cursor pagination (spec §8)
+// ─────────────────────────────────────────────
+
+export const ExecuteAdHocQueryInputSchema = z.object({
+  filters: z.array(FilterSchema).default([]),
+  filterLogic: FilterLogicSchema,
+  dataSource: DataSourceSchema.default('all_patients'),
+  importBatchIds: z.array(z.string().uuid()).default([]),
+  displayFields: z.array(z.string()).default([]),
+  statsMode: z.enum(['descriptive', 'inferential']).default('descriptive'),
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
+export type ExecuteAdHocQueryInput = z.infer<typeof ExecuteAdHocQueryInputSchema>;
+
+export const PaginatedResultsSchema = z.object({
+  items: z.array(QueryResultRowSchema).default([]),
+  totalRows: z.number().int(),
+  nextCursor: z.string().nullable(),
+});
+export type PaginatedResults = z.infer<typeof PaginatedResultsSchema>;
+
+// ─────────────────────────────────────────────
+// RESEARCH V2 — Statistical inference (spec §1, BR-RES-005)
+// Python microservice contract. Mirrored to Pydantic by codegen.
+// ─────────────────────────────────────────────
+
+export const InferentialTestTypeSchema = z.enum([
+  'ttest_independent',
+  'ttest_paired',
+  'mannwhitney',
+  'kruskalwallis',
+  'anova_oneway',
+  'chi_square',
+  'fisher_exact',
+  'pearson',
+  'spearman',
+  'linear_regression',
+  'logistic_regression',
+  'kaplan_meier',
+]);
+export type InferentialTestType = z.infer<typeof InferentialTestTypeSchema>;
+
+export const EffectSizeSchema = z
+  .object({
+    name: z.string(), // "cohen_d" | "odds_ratio" | "hazard_ratio" | "r"
+    value: z.number().nullable(),
+    ci95Lower: z.number().nullable(),
+    ci95Upper: z.number().nullable(),
+  })
+  .nullable();
+export type EffectSize = z.infer<typeof EffectSizeSchema>;
+
+export const AssumptionWarningSchema = z.object({
+  code: z.string(), // "normality_violated" | "variance_heterogeneous"
+  message: z.string(),
+  suggestion: z.string().optional(),
+});
+export type AssumptionWarning = z.infer<typeof AssumptionWarningSchema>;
+
+export const StatisticalTestResultSchema = z.object({
+  test: InferentialTestTypeSchema,
+  statistic: z.number().nullable(),
+  pValue: z.number().nullable(),
+  ci95Lower: z.number().nullable(),
+  ci95Upper: z.number().nullable(),
+  effectSize: EffectSizeSchema,
+  degreesFreedom: z.number().nullable(),
+  assumptionsChecked: z.array(z.string()).default([]),
+  warnings: z.array(AssumptionWarningSchema).default([]),
+});
+export type StatisticalTestResult = z.infer<typeof StatisticalTestResultSchema>;
+
+export const InferentialRequestSchema = z.object({
+  test: InferentialTestTypeSchema,
+  data: z.object({
+    group1: z.array(z.number()).default([]),
+    group2: z.array(z.number()).default([]),
+    paired: z.boolean().default(false),
+  }).catchall(z.unknown()),
+  alpha: z.number().default(0.05),
+});
+export type InferentialRequest = z.infer<typeof InferentialRequestSchema>;
+
+// ─────────────────────────────────────────────
+// RESEARCH V2 — Cross-tabulation (spec §2, BR-RES-004)
+// ─────────────────────────────────────────────
+
+export const CrossTabCellSchema = z.object({
+  count: z.number().int(),
+  suppressed: z.boolean().default(false), // BR-RES-004
+});
+export type CrossTabCell = z.infer<typeof CrossTabCellSchema>;
+
+export const CrossTabResultSchema = z.object({
+  rowField: z.string(),
+  colField: z.string(),
+  rows: z.array(z.string()),
+  cols: z.array(z.string()),
+  cells: z.array(z.array(CrossTabCellSchema)),
+  rowTotals: z.array(z.number().int()),
+  colTotals: z.array(z.number().int()),
+  grandTotal: z.number().int(),
+  chiSquare: z.number().nullable(),
+  chiSquareP: z.number().nullable(),
+  fisherExactP: z.number().nullable(),
+  oddsRatio: z.number().nullable(),
+  oddsRatioCi95: z.tuple([z.number(), z.number()]).nullable(),
+  warnings: z.array(z.string()).default([]),
+});
+export type CrossTabResult = z.infer<typeof CrossTabResultSchema>;
+
+export const CrossTabRequestSchema = z.object({
+  rowField: z.string(),
+  colField: z.string(),
+  queryId: z.string().uuid().optional(),
+});
+export type CrossTabRequest = z.infer<typeof CrossTabRequestSchema>;
+
+// ─────────────────────────────────────────────
+// RESEARCH V2 — Time-series (spec §3)
+// ─────────────────────────────────────────────
+
+export const TimeSeriesPeriodSchema = z.enum(['month', 'quarter', 'year']);
+export type TimeSeriesPeriod = z.infer<typeof TimeSeriesPeriodSchema>;
+
+export const TimeSeriesPointSchema = z.object({
+  period: z.string(),
+  count: z.number().int(),
+});
+export type TimeSeriesPoint = z.infer<typeof TimeSeriesPointSchema>;
+
+export const TimeSeriesResultSchema = z.object({
+  metric: z.string(),
+  period: TimeSeriesPeriodSchema,
+  points: z.array(TimeSeriesPointSchema),
+  trendSlope: z.number().nullable(),
+});
+export type TimeSeriesResult = z.infer<typeof TimeSeriesResultSchema>;
+
+export const TimeSeriesRequestSchema = z.object({
+  queryId: z.string().uuid().optional(),
+  metric: z.string(), // "consultations" | "surgeries" | imported event field
+  period: TimeSeriesPeriodSchema.default('month'),
+  dateField: z.string().optional(),
+});
+export type TimeSeriesRequest = z.infer<typeof TimeSeriesRequestSchema>;
+
+// ─────────────────────────────────────────────
+// RESEARCH V2 — Survival (spec §1 Kaplan-Meier)
+// ─────────────────────────────────────────────
+
+export const SurvivalCurvePointSchema = z.object({
+  time: z.number(),
+  survival: z.number(),
+  ciLower: z.number().nullable(),
+  ciUpper: z.number().nullable(),
+  nAtRisk: z.number().int(),
+  nEvents: z.number().int(),
+});
+export type SurvivalCurvePoint = z.infer<typeof SurvivalCurvePointSchema>;
+
+export const SurvivalResultSchema = z.object({
+  timePoints: z.array(z.number()),
+  survival: z.array(z.number()),
+  ciLower: z.array(z.number()),
+  ciUpper: z.array(z.number()),
+  riskTable: z.array(SurvivalCurvePointSchema),
+  logRankP: z.number().nullable(),
+  medianSurvival: z.number().nullable(),
+  warnings: z.array(z.string()).default([]),
+});
+export type SurvivalResult = z.infer<typeof SurvivalResultSchema>;
+
+// ─────────────────────────────────────────────
+// RESEARCH V2 — Export V2 (spec §6, BR-RES-002)
+// ─────────────────────────────────────────────
+
+export const ExportV2StyleSchema = z.enum(['apa', 'vancouver']);
+export type ExportV2Style = z.infer<typeof ExportV2StyleSchema>;
+
+export const ExportV2RequestSchema = z.object({
+  queryId: z.string().uuid().optional(),
+  dashboardId: z.string().uuid().optional(),
+  includeFigures: z.boolean().default(true),
+  includeCrossTabs: z.boolean().default(true),
+  style: ExportV2StyleSchema.default('apa'),
+});
+export type ExportV2Request = z.infer<typeof ExportV2RequestSchema>;
+
+export const ExportV2ResponseSchema = z.object({
+  jobId: z.string().uuid(),
+  status: z.enum(['queued', 'processing', 'completed', 'failed']),
+});
+export type ExportV2Response = z.infer<typeof ExportV2ResponseSchema>;

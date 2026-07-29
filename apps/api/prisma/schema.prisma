@@ -20,44 +20,45 @@ model User {
   email         String   @unique
   name          String
   avatarUrl     String?
-  oauthProvider String   // "google" | "microsoft" | "credentials"
-  oauthSub      String?  // Subject claim del proveedor OAuth
+  oauthProvider String // "google" | "microsoft" | "credentials"
+  oauthSub      String? // Subject claim del proveedor OAuth
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  memberships   OrganizationMember[]
-  auditLogs     AuditLog[]
+  memberships OrganizationMember[]
+  auditLogs   AuditLog[]
 
   @@index([email])
   @@map("users")
 }
 
 model Organization {
-  id          String           @id @default(uuid())
-  name        String
-  slug        String           @unique  // para URLs amigables: app.medicore.com/[slug]
-  type        OrganizationType @default(SOLO_PRACTICE)
-  plan        PlanType         @default(FREE)
-  subscriptionStatus      SubscriptionStatus @default(ACTIVE)
-  subscriptionExpiresAt   DateTime?
-  stripeCustomerId        String?
-  stripeSubscriptionId    String?
-  billingInterval         BillingInterval?  // monthly | yearly; null for FREE orgs
-  settings    Json             @default("{}")  // configuración del workspace
-  logoUrl     String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  deletedAt   DateTime?        // soft delete
+  id                    String             @id @default(uuid())
+  name                  String
+  slug                  String             @unique // para URLs amigables: app.medicore.com/[slug]
+  type                  OrganizationType   @default(SOLO_PRACTICE)
+  plan                  PlanType           @default(FREE)
+  subscriptionStatus    SubscriptionStatus @default(ACTIVE)
+  subscriptionExpiresAt DateTime?
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
+  billingInterval       BillingInterval? // monthly | yearly; null for FREE orgs
+  settings              Json               @default("{}") // configuración del workspace
+  logoUrl               String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  deletedAt             DateTime? // soft delete
 
-  members     OrganizationMember[]
-  patients    Patient[]
-  auditLogs   AuditLog[]
-  consents    ConsentRecord[]
-  invitations Invitation[]
-  aiReportUsages AiReportUsage[]
-  importBatches ImportBatch[]
-  researchQueries ResearchQuery[]
-  patientCollections PatientCollection[]
+  members             OrganizationMember[]
+  patients            Patient[]
+  auditLogs           AuditLog[]
+  consents            ConsentRecord[]
+  invitations         Invitation[]
+  aiReportUsages      AiReportUsage[]
+  importBatches       ImportBatch[]
+  researchQueries     ResearchQuery[]
+  researchDashboards  Dashboard[]
+  patientCollections  PatientCollection[]
   billingTransactions BillingTransaction[]
   doctorSchedules     DoctorSchedule[]
   pharmaContacts      PharmaContact[]
@@ -68,18 +69,18 @@ model Organization {
 }
 
 model OrganizationMember {
-  id             String           @id @default(uuid())
+  id             String     @id @default(uuid())
   organizationId String
   userId         String
-  role           MemberRole       @default(PHYSICIAN)
-  invitedBy      String?          // userId del que invitó
-  joinedAt       DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  role           MemberRole @default(PHYSICIAN)
+  invitedBy      String? // userId del que invitó
+  joinedAt       DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([organizationId, userId])  // un usuario solo puede tener un rol por organización
+  @@unique([organizationId, userId]) // un usuario solo puede tener un rol por organización
   @@index([organizationId])
   @@index([userId])
   @@map("organization_members")
@@ -90,9 +91,9 @@ model OrganizationMember {
 // ─────────────────────────────────────────────
 
 enum OrganizationType {
-  CLINIC           // Clínica con varios médicos
-  SOLO_PRACTICE    // Médico liberal autónomo
-  HOSPITAL_DEPT    // Unidad hospitalaria
+  CLINIC // Clínica con varios médicos
+  SOLO_PRACTICE // Médico liberal autónomo
+  HOSPITAL_DEPT // Unidad hospitalaria
 }
 
 enum PlanType {
@@ -146,17 +147,17 @@ enum MemberRole {
 }
 
 model Invitation {
-  id             String        @id @default(uuid())
+  id             String     @id @default(uuid())
   email          String
-  tokenHash      String        @unique  // SHA-256 of the invitation token
+  tokenHash      String     @unique // SHA-256 of the invitation token
   role           MemberRole
   organizationId String
   invitedBy      String
   expiresAt      DateTime
   usedAt         DateTime?
-  createdAt      DateTime      @default(now())
+  createdAt      DateTime   @default(now())
 
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([tokenHash])
   @@index([organizationId])
@@ -203,11 +204,11 @@ enum AllergyStatus {
 }
 
 enum ConsultationType {
-  FIRST_VISIT       // Primera consulta
-  FOLLOW_UP         // Revisión
-  URGENCY           // Urgencia
-  POST_OP           // Postoperatoria
-  TELECONSULTATION  // Teleconsulta
+  FIRST_VISIT // Primera consulta
+  FOLLOW_UP // Revisión
+  URGENCY // Urgencia
+  POST_OP // Postoperatoria
+  TELECONSULTATION // Teleconsulta
 }
 
 enum SurgeryStatus {
@@ -227,18 +228,18 @@ enum AsaClassification {
 }
 
 enum ImagingStudyType {
-  CT_SCAN             // TAC
-  MRI                 // Resonancia magnética
-  XRAY                // Radiografía
-  ENDOSCOPY           // Endoscopia
-  NASOFIBROSCOPY      // Nasofibroscopia
-  LARYNGOSCOPY        // Laringoscopia
-  AUDIOGRAM           // Audiometría
-  TYMPANOGRAM         // Impedanciometría
-  ABR                 // Potenciales evocados auditivos
+  CT_SCAN // TAC
+  MRI // Resonancia magnética
+  XRAY // Radiografía
+  ENDOSCOPY // Endoscopia
+  NASOFIBROSCOPY // Nasofibroscopia
+  LARYNGOSCOPY // Laringoscopia
+  AUDIOGRAM // Audiometría
+  TYMPANOGRAM // Impedanciometría
+  ABR // Potenciales evocados auditivos
   VIDEONYSTAGMOGRAPHY // Videonistagmografía
-  VHIT                // Video Head Impulse Test
-  ULTRASOUND          // Ecografía
+  VHIT // Video Head Impulse Test
+  ULTRASOUND // Ecografía
   OTHER
 }
 
@@ -250,46 +251,46 @@ enum MedicationStatus {
 }
 
 enum ReportType {
-  DISCHARGE_SUMMARY       // Informe de alta
-  SURGICAL_REPORT         // Informe quirúrgico
-  REFERRAL_LETTER         // Carta de derivación
-  MEDICAL_CERTIFICATE     // Certificado médico
-  FOLLOW_UP_REPORT        // Informe de revisión
-  PATHOLOGY_REPORT        // Informe de anatomía patológica
+  DISCHARGE_SUMMARY // Informe de alta
+  SURGICAL_REPORT // Informe quirúrgico
+  REFERRAL_LETTER // Carta de derivación
+  MEDICAL_CERTIFICATE // Certificado médico
+  FOLLOW_UP_REPORT // Informe de revisión
+  PATHOLOGY_REPORT // Informe de anatomía patológica
 }
 
 enum ReportStatus {
-  DRAFT         // Generado por IA, pendiente de revisión
-  REVIEWED      // Revisado por el médico
-  SIGNED        // Firmado (estado final)
+  DRAFT // Generado por IA, pendiente de revisión
+  REVIEWED // Revisado por el médico
+  SIGNED // Firmado (estado final)
 }
 
 enum ImportStatus {
-  PENDING       // análisis en curso
-  CONFIRMING    // esperando confirmación del médico
-  PROCESSING    // importando datos
-  COMPLETED     // importación finalizada
-  FAILED        // error durante la importación
+  PENDING // análisis en curso
+  CONFIRMING // esperando confirmación del médico
+  PROCESSING // importando datos
+  COMPLETED // importación finalizada
+  FAILED // error durante la importación
 }
 
 enum ClinicalScaleType {
-  SNOT_22           // Sino-Nasal Outcome Test (rinosinusitis)
-  VAS_TINNITUS      // Escala visual analógica para acúfenos
-  DHI               // Dizziness Handicap Inventory (vértigo)
-  VHI               // Voice Handicap Index (disfonía)
-  RSI               // Reflux Symptom Index
-  OSA_EPWORTH       // Escala de somnolencia de Epworth (SAOS)
-  STOPBANG          // Cuestionario STOP-BANG (apnea del sueño)
-  NOSE              // Nasal Obstruction Symptom Evaluation
-  CUSTOM            // Escala personalizada del médico
+  SNOT_22 // Sino-Nasal Outcome Test (rinosinusitis)
+  VAS_TINNITUS // Escala visual analógica para acúfenos
+  DHI // Dizziness Handicap Inventory (vértigo)
+  VHI // Voice Handicap Index (disfonía)
+  RSI // Reflux Symptom Index
+  OSA_EPWORTH // Escala de somnolencia de Epworth (SAOS)
+  STOPBANG // Cuestionario STOP-BANG (apnea del sueño)
+  NOSE // Nasal Obstruction Symptom Evaluation
+  CUSTOM // Escala personalizada del médico
 }
 
 enum ConsentType {
-  TREATMENT         // Consentimiento de tratamiento general
-  SURGERY           // Consentimiento quirúrgico específico
-  DATA_PROCESSING   // Consentimiento RGPD tratamiento de datos
-  PHOTOGRAPHY       // Consentimiento para fotografías/vídeos clínicos
-  RESEARCH          // Consentimiento para uso en investigación
+  TREATMENT // Consentimiento de tratamiento general
+  SURGERY // Consentimiento quirúrgico específico
+  DATA_PROCESSING // Consentimiento RGPD tratamiento de datos
+  PHOTOGRAPHY // Consentimiento para fotografías/vídeos clínicos
+  RESEARCH // Consentimiento para uso en investigación
 }
 
 // ─────────────────────────────────────────────
@@ -297,55 +298,55 @@ enum ConsentType {
 // ─────────────────────────────────────────────
 
 model Patient {
-  id             String         @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
-  nhc            String         // Nº Historia Clínica — único por organización
+  nhc            String // Nº Historia Clínica — único por organización
 
   // Datos demográficos
-  firstName      String
-  lastName       String
-  birthDate      DateTime?     // nullable: imported records may lack birth date (no 1900-01-01 fallback)
-  sex            Sex
-  idDocument     String?        // Número del documento de identidad
-  idDocType      IdDocumentType @default(DNI)
+  firstName  String
+  lastName   String
+  birthDate  DateTime? // nullable: imported records may lack birth date (no 1900-01-01 fallback)
+  sex        Sex
+  idDocument String? // Número del documento de identidad
+  idDocType  IdDocumentType @default(DNI)
 
   // Contacto
-  phone          String?
-  email          String?
-  address        Json?          // { street, city, province, postalCode, country }
-  emergencyContact Json?        // { name, relationship, phone }
+  phone            String?
+  email            String?
+  address          Json? // { street, city, province, postalCode, country }
+  emergencyContact Json? // { name, relationship, phone }
 
   // Clínico
-  bloodType      BloodType      @default(UNKNOWN)
-  notes          String?        // Notas libres del médico sobre el paciente
+  bloodType BloodType @default(UNKNOWN)
+  notes     String? // Notas libres del médico sobre el paciente
 
   // Datos de importación (Phase 11)
-  importedData   Json?          // { "batch-uuid": { _batchName, _importedAt, ...customFields } }
-  importSource   String?        // "xlsx" | "csv" | "tsv" | "manual" (null = registro manual)
-  importBatchId  String?        // último batch que creó o enriqueció esta ficha
+  importedData  Json? // { "batch-uuid": { _batchName, _importedAt, ...customFields } }
+  importSource  String? // "xlsx" | "csv" | "tsv" | "manual" (null = registro manual)
+  importBatchId String? // último batch que creó o enriqueció esta ficha
 
   // Metadata
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  deletedAt      DateTime?
-  createdBy      String         // userId
-  updatedBy      String?        // userId
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String // userId
+  updatedBy String? // userId
 
   // Relaciones
-  organization   Organization   @relation(fields: [organizationId], references: [id])
-  allergies      Allergy[]
-  importBatch    ImportBatch?   @relation(fields: [importBatchId], references: [id])
-  consultations  Consultation[]
-  surgeries      Surgery[]
-  imagingStudies ImagingStudy[]
-  medications    MedicationPrescription[]
-  reports        Report[]
-  scales         ClinicalScale[]
-  consents       ConsentRecord[]
+  organization          Organization              @relation(fields: [organizationId], references: [id])
+  allergies             Allergy[]
+  importBatch           ImportBatch?              @relation(fields: [importBatchId], references: [id])
+  consultations         Consultation[]
+  surgeries             Surgery[]
+  imagingStudies        ImagingStudy[]
+  medications           MedicationPrescription[]
+  reports               Report[]
+  scales                ClinicalScale[]
+  consents              ConsentRecord[]
   collectionMemberships PatientCollectionMember[]
-  billingTransactions BillingTransaction[]
+  billingTransactions   BillingTransaction[]
 
-  @@unique([organizationId, nhc])         // El NHC es único dentro de la organización
+  @@unique([organizationId, nhc]) // El NHC es único dentro de la organización
   @@index([organizationId])
   @@index([organizationId, lastName, firstName])
   @@index([organizationId, birthDate])
@@ -359,48 +360,48 @@ model Patient {
 // ─────────────────────────────────────────────
 
 model ImportBatch {
-  id              String       @id @default(uuid())
-  organizationId  String
-  createdBy       String       // userId del médico que importó
+  id             String @id @default(uuid())
+  organizationId String
+  createdBy      String // userId del médico que importó
 
   // Metadata del archivo original
-  fileName        String
-  fileSize        Int          // bytes
-  fileHash        String       // SHA-256 para auditoría/dedup
-  originalFormat  String       // "xlsx" | "csv" | "tsv"
+  fileName       String
+  fileSize       Int // bytes
+  fileHash       String // SHA-256 para auditoría/dedup
+  originalFormat String // "xlsx" | "csv" | "tsv"
 
   // Muestra del archivo y resultado del análisis IA
-  sample          Json         // { columns, rows } primeras 20 filas para UI
-  columnMapping   Json         // { "Nº HISTORIA": "nhc", "Edad": "age", ... }
-  customFieldNames Json        @default("{}") // { "NombreColumnaOriginal": "nombre legible" }
-  junkRowIndices  Int[]        // índices de filas basura detectadas
-  aiConfidence    Float?       // 0.0 - 1.0
-  aiProvider      String?      // "heuristic" | "groq" | "claude"
-  issues          String[]     @default([])
-  notes           String?
+  sample           Json // { columns, rows } primeras 20 filas para UI
+  columnMapping    Json // { "Nº HISTORIA": "nhc", "Edad": "age", ... }
+  customFieldNames Json     @default("{}") // { "NombreColumnaOriginal": "nombre legible" }
+  junkRowIndices   Int[] // índices de filas basura detectadas
+  aiConfidence     Float? // 0.0 - 1.0
+  aiProvider       String? // "heuristic" | "groq" | "claude"
+  issues           String[] @default([])
+  notes            String?
 
   // Resultado del análisis (para la UI)
-  totalRows       Int          @default(0)
+  totalRows    Int @default(0)
   // Resultado de la importación
-  importedRows    Int          @default(0)
-  enrichedRows    Int          @default(0)
-  createdRows     Int          @default(0)
-  skippedRows     Int          @default(0)
-  pendingRows     Int          @default(0)
+  importedRows Int @default(0)
+  enrichedRows Int @default(0)
+  createdRows  Int @default(0)
+  skippedRows  Int @default(0)
+  pendingRows  Int @default(0)
 
   // Snapshot pre-import para revert (BR-IMP-005)
-  snapshot        Json?
+  snapshot Json?
 
   // Estado
-  status          ImportStatus @default(PENDING)
-  errorMessage    String?
+  status       ImportStatus @default(PENDING)
+  errorMessage String?
 
-  createdAt       DateTime     @default(now())
-  completedAt     DateTime?
-  deletedAt       DateTime?    // soft delete (revert)
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  deletedAt   DateTime? // soft delete (revert)
 
-  organization    Organization @relation(fields: [organizationId], references: [id])
-  patients        Patient[]    // pacientes creados o enriquecidos en este batch
+  organization Organization @relation(fields: [organizationId], references: [id])
+  patients     Patient[] // pacientes creados o enriquecidos en este batch
 
   @@index([organizationId])
   @@index([organizationId, createdAt])
@@ -413,64 +414,106 @@ model ImportBatch {
 // ─────────────────────────────────────────────
 
 model ResearchQuery {
-  id              String   @id @default(uuid())
-  organizationId  String   @map("organization_id")
-  createdBy       String   @map("created_by")
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  createdBy      String @map("created_by")
 
-  name            String
-  description     String?
+  name        String
+  description String?
 
   // Source of data
-  dataSource      String   @default("all_patients")   // "all_patients" | "import_batch" | "manual_only" | "imported_only"
-  importBatchIds  String[] @default([])
+  dataSource     String   @default("all_patients") // "all_patients" | "import_batch" | "manual_only" | "imported_only"
+  importBatchIds String[] @default([])
 
   // Filters (AND/OR by filterLogic)
-  filters         Json     @default("[]")    // Filter[]
-  filterLogic     String   @default("AND")   // "AND" | "OR"
+  filters     Json   @default("[]") // Filter[]
+  filterLogic String @default("AND") // "AND" | "OR"
 
   // Display config
-  displayFields   String[] @default([])
-  visualizations  String[] @default([])      // "table" | "bar_chart" | "line_chart" | "scatter" | "stats"
+  displayFields  String[] @default([])
+  visualizations String[] @default([]) // "table" | "bar_chart" | "line_chart" | "scatter" | "stats"
 
   // Privacy (BR-RES-001: private by default)
-  sharedWith      String[] @default([])
+  sharedWith String[] @default([])
+
+  // Research Engine V2 — sharing (view|edit permissions) kept alongside v1
+  // sharedWith String[] for backward compatibility (AD-2).
+  sharing Json @default("{\"users\":[],\"permission\":\"view\"}")
+
+  // Research Engine V2 — optional link to a Dashboard (widget reference).
+  dashboardId String? @map("dashboard_id")
 
   // Last execution
-  lastRunAt       DateTime?
-  lastRunCount    Int?
+  lastRunAt    DateTime?
+  lastRunCount Int?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  deletedAt       DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  organization    Organization     @relation(fields: [organizationId], references: [id])
-  collections     PatientCollection[]
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  collections  PatientCollection[]
+  dashboard    Dashboard?          @relation("DashboardWidgets", fields: [dashboardId], references: [id])
 
   @@index([organizationId])
   @@index([organizationId, createdBy])
   @@index([organizationId, createdAt])
+  @@index([dashboardId])
   @@map("research_queries")
 }
 
-model PatientCollection {
-  id              String   @id @default(uuid())
-  organizationId  String   @map("organization_id")
-  createdBy       String   @map("created_by")
+// ─────────────────────────────────────────────
+// RESEARCH V2 — DASHBOARD (multi-widget research view)
+// A Dashboard owns widgets; each widget references a ResearchQuery by ID plus
+// a display config (chart type, position, display fields). Design AD-2: widget
+// references ResearchQuery by ID + display config (live-reference, no snapshot).
+// ─────────────────────────────────────────────
+model Dashboard {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  createdBy      String @map("created_by")
 
-  name            String
-  description     String?
-  queryId         String?  @map("query_id")
+  name        String
+  description String?
+
+  // Widgets embedded as JSON array of DashboardWidget (AD-2):
+  // { id, queryId, chartType, position {x,y,w,h}, displayConfig }
+  widgets Json @default("[]")
+
+  // Layout metadata (background, grid density, theme) — sticky, non-substantive.
+  layout Json @default("{}")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  widgetsQueries ResearchQuery[] @relation("DashboardWidgets")
+
+  @@index([organizationId])
+  @@index([organizationId, createdBy])
+  @@map("research_dashboards")
+}
+
+model PatientCollection {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  createdBy      String @map("created_by")
+
+  name        String
+  description String?
+  queryId     String? @map("query_id")
 
   // BR-RES-003: locked collections are immutable (published study cohort)
-  isLocked        Boolean  @default(false) @map("is_locked")
+  isLocked Boolean @default(false) @map("is_locked")
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  deletedAt       DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  organization    Organization     @relation(fields: [organizationId], references: [id])
-  query           ResearchQuery?   @relation(fields: [queryId], references: [id])
-  members         PatientCollectionMember[]
+  organization Organization              @relation(fields: [organizationId], references: [id])
+  query        ResearchQuery?            @relation(fields: [queryId], references: [id])
+  members      PatientCollectionMember[]
 
   @@index([organizationId])
   @@index([organizationId, createdBy])
@@ -482,14 +525,14 @@ model PatientCollection {
 // ─────────────────────────────────────────────
 
 model PatientCollectionMember {
-  collectionId  String   @map("collection_id")
-  patientId    String    @map("patient_id")
-  addedAt      DateTime  @default(now()) @map("added_at")
-  addedBy      String    @map("added_by")
+  collectionId String   @map("collection_id")
+  patientId    String   @map("patient_id")
+  addedAt      DateTime @default(now()) @map("added_at")
+  addedBy      String   @map("added_by")
   notes        String?
 
-  collection    PatientCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
-  patient       Patient          @relation(fields: [patientId], references: [id])
+  collection PatientCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  patient    Patient           @relation(fields: [patientId], references: [id])
 
   @@id([collectionId, patientId])
   @@index([collectionId])
@@ -498,67 +541,67 @@ model PatientCollectionMember {
 }
 
 model Allergy {
-  id             String          @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   patientId      String
 
-  substance      String          // Nombre del alérgeno (ej: "Amoxicilina", "Látex")
-  substanceCode  String?         // Código SNOMED CT del alérgeno si disponible
-  reaction       String?         // Descripción de la reacción
-  severity       AllergySeverity @default(MODERATE)
-  status         AllergyStatus   @default(ACTIVE)
-  onsetDate      DateTime?
-  notes          String?
+  substance     String // Nombre del alérgeno (ej: "Amoxicilina", "Látex")
+  substanceCode String? // Código SNOMED CT del alérgeno si disponible
+  reaction      String? // Descripción de la reacción
+  severity      AllergySeverity @default(MODERATE)
+  status        AllergyStatus   @default(ACTIVE)
+  onsetDate     DateTime?
+  notes         String?
 
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  deletedAt      DateTime?
-  createdBy      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String
 
-  patient        Patient         @relation(fields: [patientId], references: [id])
+  patient Patient @relation(fields: [patientId], references: [id])
 
   @@index([organizationId, patientId])
   @@map("allergies")
 }
 
 model Consultation {
-  id             String           @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   patientId      String
 
-  date           DateTime
-  type           ConsultationType @default(FIRST_VISIT)
-  physicianId    String           // userId del médico que realiza la consulta
+  date        DateTime
+  type        ConsultationType @default(FIRST_VISIT)
+  physicianId String // userId del médico que realiza la consulta
 
   // Contenido clínico
-  chiefComplaint String           // Motivo de consulta
-  currentIllness String?          // Enfermedad actual / anamnesis
+  chiefComplaint String // Motivo de consulta
+  currentIllness String? // Enfermedad actual / anamnesis
 
   // Exploración física ORL (JSONB flexible)
-  physicalExam   Json?
+  physicalExam Json?
 
   // Diagnóstico
-  assessment     String?          // Impresión diagnóstica en texto libre
-  diagnosisCodes Json?            // [{ system: "ICD10"|"SNOMED", code, description, type: "primary"|"secondary" }]
+  assessment     String? // Impresión diagnóstica en texto libre
+  diagnosisCodes Json? // [{ system: "ICD10"|"SNOMED", code, description, type: "primary"|"secondary" }]
 
   // Plan
-  plan           String?          // Plan de tratamiento en texto libre
-  procedureCodes Json?            // [{ system: "ICD10PCS"|"SNOMED", code, description }]
+  plan           String? // Plan de tratamiento en texto libre
+  procedureCodes Json? // [{ system: "ICD10PCS"|"SNOMED", code, description }]
 
   // Follow-up
-  followUpDate   DateTime?
-  followUpNotes  String?
+  followUpDate  DateTime?
+  followUpNotes String?
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  deletedAt      DateTime?
-  createdBy      String
-  updatedBy      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String
+  updatedBy String?
 
-  patient        Patient          @relation(fields: [patientId], references: [id])
-  scales         ClinicalScale[]
-  reports        Report[]
-  imagingStudies ImagingStudy[]
+  patient             Patient              @relation(fields: [patientId], references: [id])
+  scales              ClinicalScale[]
+  reports             Report[]
+  imagingStudies      ImagingStudy[]
   billingTransactions BillingTransaction[]
 
   @@index([organizationId])
@@ -569,80 +612,80 @@ model Consultation {
 }
 
 model ClinicalScale {
-  id             String           @id @default(uuid())
+  id             String  @id @default(uuid())
   organizationId String
   patientId      String
-  consultationId String?          // Opcional: puede existir sin consulta asociada
+  consultationId String? // Opcional: puede existir sin consulta asociada
 
-  scaleType      ClinicalScaleType
-  date           DateTime         @default(now())
+  scaleType ClinicalScaleType
+  date      DateTime          @default(now())
 
   // Puntuaciones específicas de la escala (JSONB)
-  scores         Json
+  scores Json
 
-notes          String?
-   total          Int               // Server-calculated total (BR-SCA-002: never trust client-sent total)
-   createdAt      DateTime         @default(now())
-   updatedAt      DateTime         @updatedAt
-   createdBy      String
-   updatedBy      String?          // userId who last modified the scale
-   auditLog       Json?
-   deletedAt      DateTime?        // Soft delete
+  notes     String?
+  total     Int // Server-calculated total (BR-SCA-002: never trust client-sent total)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String
+  updatedBy String? // userId who last modified the scale
+  auditLog  Json?
+  deletedAt DateTime? // Soft delete
 
-   patient        Patient          @relation(fields: [patientId], references: [id])
-   consultation   Consultation?    @relation(fields: [consultationId], references: [id])
+  patient      Patient       @relation(fields: [patientId], references: [id])
+  consultation Consultation? @relation(fields: [consultationId], references: [id])
 
-   @@index([organizationId, patientId])
-   @@index([organizationId, patientId, scaleType])
-   @@map("clinical_scales")
+  @@index([organizationId, patientId])
+  @@index([organizationId, patientId, scaleType])
+  @@map("clinical_scales")
 }
 
 model Surgery {
-  id             String           @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   patientId      String
-  physicianId    String           // userId del cirujano principal
+  physicianId    String // userId del cirujano principal
 
   // Datos del procedimiento
   date           DateTime
-  status         SurgeryStatus    @default(SCHEDULED)
-  procedureType  String           // Nombre del procedimiento (ej: "Septoplastia + CENS bilateral")
-  procedureCodes Json?            // [{ system: "ICD10PCS"|"SNOMED", code, description }]
+  status         SurgeryStatus @default(SCHEDULED)
+  procedureType  String // Nombre del procedimiento (ej: "Septoplastia + CENS bilateral")
+  procedureCodes Json? // [{ system: "ICD10PCS"|"SNOMED", code, description }]
 
   // Clasificación anestésica
   asa            AsaClassification?
-  anesthesiaType String?          // "General" | "Local" | "Sedación" | "Regional"
+  anesthesiaType String? // "General" | "Local" | "Sedación" | "Regional"
 
   // Pre-operatorio
   preOpNotes     String?
-  preOpChecklist Json?            // { bloodwork: bool, consent: bool, fasting: bool, ... }
+  preOpChecklist Json? // { bloodwork: bool, consent: bool, fasting: bool, ... }
 
   // Intraoperatorio
-  duration       Int?             // Duración en minutos
-  technique      Json?            // Notas de técnica quirúrgica (JSONB flexible por tipo de cirugía)
-  findings       String?          // Hallazgos intraoperatorios
-  complications  String?
+  duration      Int? // Duración en minutos
+  technique     Json? // Notas de técnica quirúrgica (JSONB flexible por tipo de cirugía)
+  findings      String? // Hallazgos intraoperatorios
+  complications String?
 
   // Post-operatorio
   postOpNotes    String?
-  postOpProtocol Json?            // Protocolo de revisiones postoperatorias
+  postOpProtocol Json? // Protocolo de revisiones postoperatorias
 
   // Outcome
-  outcome        String?
+  outcome String?
 
   // Audit
-  editReason    String?           // Required for edits in terminal states
-  auditLog      Json?             // [{ action, performedBy, performedAt, details, fieldDiffs }]
+  editReason String? // Required for edits in terminal states
+  auditLog   Json? // [{ action, performedBy, performedAt, details, fieldDiffs }]
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  deletedAt      DateTime?
-  createdBy      String
-  updatedBy      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String
+  updatedBy String?
 
-  patient        Patient          @relation(fields: [patientId], references: [id])
-  imagingStudies ImagingStudy[]
-  reports        Report[]
+  patient             Patient              @relation(fields: [patientId], references: [id])
+  imagingStudies      ImagingStudy[]
+  reports             Report[]
   billingTransactions BillingTransaction[]
 
   @@index([organizationId])
@@ -653,31 +696,31 @@ model Surgery {
 }
 
 model ImagingStudy {
-  id             String           @id @default(uuid())
+  id             String  @id @default(uuid())
   organizationId String
   patientId      String
-  surgeryId      String?          // Opcional: puede vincularse a una cirugía
-  consultationId String?          // Opcional: puede vincularse a una consulta
+  surgeryId      String? // Opcional: puede vincularse a una cirugía
+  consultationId String? // Opcional: puede vincularse a una consulta
 
-  type           ImagingStudyType
-  date           DateTime
-  description    String?
+  type        ImagingStudyType
+  date        DateTime
+  description String?
 
   // Anotaciones clínicas sobre el estudio
-  findings       String?
-  labels         Json?            // [{ label: string, coordinates?: {...} }]
+  findings String?
+  labels   Json? // [{ label: string, coordinates?: {...} }]
 
   // Archivo(s) almacenados en R2
-  files          Json             @default("[]")
+  files Json @default("[]")
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  deletedAt      DateTime?
-  createdBy      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String
 
-  patient        Patient          @relation(fields: [patientId], references: [id])
-  surgery        Surgery?         @relation(fields: [surgeryId], references: [id])
-  consultation   Consultation?   @relation(fields: [consultationId], references: [id])
+  patient      Patient       @relation(fields: [patientId], references: [id])
+  surgery      Surgery?      @relation(fields: [surgeryId], references: [id])
+  consultation Consultation? @relation(fields: [consultationId], references: [id])
 
   @@index([organizationId, patientId])
   @@index([organizationId, type])
@@ -687,13 +730,13 @@ model ImagingStudy {
 model PendingDeletion {
   id             String    @id @default(uuid())
   organizationId String
-  entityType     String    // "ImagingStudy" — polymorphic
-  entityId       String    // ID of the ImagingStudy
-  fileKey        String    // R2 key of the file to delete
-  scheduledAt    DateTime  @default(now())  // now() + retention period (10 years)
+  entityType     String // "ImagingStudy" — polymorphic
+  entityId       String // ID of the ImagingStudy
+  fileKey        String // R2 key of the file to delete
+  scheduledAt    DateTime  @default(now()) // now() + retention period (10 years)
   processedAt    DateTime? // Set when physical deletion completes
 
-  createdAt      DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([organizationId])
   @@index([scheduledAt])
@@ -702,37 +745,37 @@ model PendingDeletion {
 }
 
 model MedicationPrescription {
-  id             String           @id @default(uuid())
+  id             String  @id @default(uuid())
   organizationId String
   patientId      String
-  consultationId String?          // Consulta en la que se prescribió
+  consultationId String? // Consulta en la que se prescribió
   physicianId    String
 
-  drugName       String           // Nombre del medicamento
-  drugCode       String?          // Código ATC o CN (Código Nacional)
-  activeIngredient String?        // Principio activo
-  dosage         String           // Ej: "500mg"
-  frequency      String           // Ej: "cada 8 horas"
-  route          String?          // Ej: "oral", "tópico nasal", "IV"
-  form           String?          // Ej: "comprimidos", "spray nasal"
+  drugName         String // Nombre del medicamento
+  drugCode         String? // Código ATC o CN (Código Nacional)
+  activeIngredient String? // Principio activo
+  dosage           String // Ej: "500mg"
+  frequency        String // Ej: "cada 8 horas"
+  route            String? // Ej: "oral", "tópico nasal", "IV"
+  form             String? // Ej: "comprimidos", "spray nasal"
 
-  startDate      DateTime
-  endDate        DateTime?        // null = tratamiento crónico
-  duration       String?          // Descripción textual: "10 días", "3 meses"
+  startDate DateTime
+  endDate   DateTime? // null = tratamiento crónico
+  duration  String? // Descripción textual: "10 días", "3 meses"
 
-status              MedicationStatus @default(ACTIVE)
-   instructions        String?          // Instrucciones especiales para el paciente
-   reason              String?          // Indicación / diagnóstico que motiva la prescripción
-   discontinuationReason String?       // BR-MED-003: Required when transitioning to DISCONTINUED
+  status                MedicationStatus @default(ACTIVE)
+  instructions          String? // Instrucciones especiales para el paciente
+  reason                String? // Indicación / diagnóstico que motiva la prescripción
+  discontinuationReason String? // BR-MED-003: Required when transitioning to DISCONTINUED
 
-   createdAt      DateTime         @default(now())
-   updatedAt      DateTime         @updatedAt
-   deletedAt      DateTime?
-   createdBy      String
-   updatedBy      String?          // userId who last modified the prescription
-   auditLog       Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String
+  updatedBy String? // userId who last modified the prescription
+  auditLog  Json?
 
-  patient        Patient          @relation(fields: [patientId], references: [id])
+  patient Patient @relation(fields: [patientId], references: [id])
 
   @@index([organizationId, patientId])
   @@index([organizationId, patientId, status])
@@ -740,48 +783,48 @@ status              MedicationStatus @default(ACTIVE)
 }
 
 model Report {
-  id             String       @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   patientId      String
   physicianId    String
 
-  type           ReportType
-  status         ReportStatus @default(DRAFT)
+  type   ReportType
+  status ReportStatus @default(DRAFT)
 
   // Fuente del informe (polimórfico)
-  sourceType     String?      // "consultation" | "surgery" | "manual"
-  sourceId       String?      // ID de la consulta o cirugía origen
+  sourceType String? // "consultation" | "surgery" | "manual"
+  sourceId   String? // ID de la consulta o cirugía origen
 
   // Contenido
-  title          String
-  content        String       // Texto del informe (Markdown o texto plano)
+  title   String
+  content String // Texto del informe (Markdown o texto plano)
 
   // Codificación clínica incluida en el informe
-  diagnosisCodes Json?        // [{ system, code, description, type }]
-  procedureCodes Json?        // [{ system, code, description }]
+  diagnosisCodes Json? // [{ system, code, description, type }]
+  procedureCodes Json? // [{ system, code, description }]
 
   // Generación IA
-  aiGenerated    Boolean      @default(false)
-  aiModel        String?      // "claude-sonnet-4-20250514"
-  aiPromptHash   String?      // Hash del prompt usado (para reproducibilidad y auditoría)
+  aiGenerated  Boolean @default(false)
+  aiModel      String? // "claude-sonnet-4-20250514"
+  aiPromptHash String? // Hash del prompt usado (para reproducibilidad y auditoría)
 
   // PDF generado
-  pdfUrl         String?      // URL firmada del PDF en R2
+  pdfUrl         String? // URL firmada del PDF en R2
   pdfGeneratedAt DateTime?
 
   // Firma
-  signedAt       DateTime?
-  signedBy       String?      // userId
+  signedAt DateTime?
+  signedBy String? // userId
 
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  deletedAt      DateTime?
-  createdBy      String
-  updatedBy      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String
+  updatedBy String?
 
-  patient        Patient      @relation(fields: [patientId], references: [id])
-  consultation   Consultation? @relation(fields: [sourceId], references: [id], map: "report_consultation_fk")
-  surgery        Surgery?     @relation(fields: [sourceId], references: [id], map: "report_surgery_fk")
+  patient      Patient       @relation(fields: [patientId], references: [id])
+  consultation Consultation? @relation(fields: [sourceId], references: [id], map: "report_consultation_fk")
+  surgery      Surgery?      @relation(fields: [sourceId], references: [id], map: "report_surgery_fk")
 
   @@index([organizationId])
   @@index([organizationId, patientId])
@@ -794,26 +837,26 @@ model Report {
 // ─────────────────────────────────────────────
 
 model AuditLog {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   userId         String
 
-  action         String   // "CREATE" | "UPDATE" | "DELETE" | "VIEW" | "EXPORT" | "LOGIN"
-  entityType     String   // "Patient" | "Consultation" | "Surgery" | etc.
-  entityId       String?  // ID del registro afectado
+  action     String // "CREATE" | "UPDATE" | "DELETE" | "VIEW" | "EXPORT" | "LOGIN"
+  entityType String // "Patient" | "Consultation" | "Surgery" | etc.
+  entityId   String? // ID del registro afectado
 
   // Cambios realizados (para UPDATE)
-  changes        Json?
+  changes Json?
 
   // Contexto de la petición
-  ipAddress      String?
-  userAgent      String?
-  requestId      String?  // Para correlación de logs
+  ipAddress String?
+  userAgent String?
+  requestId String? // Para correlación de logs
 
-  timestamp      DateTime @default(now())
+  timestamp DateTime @default(now())
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  user           User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
 
   // Audit log NUNCA tiene soft delete — es inmutable por definición
   @@index([organizationId, timestamp])
@@ -823,25 +866,25 @@ model AuditLog {
 }
 
 model ConsentRecord {
-  id             String      @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   patientId      String
 
-  consentType    ConsentType
-  grantedAt      DateTime    @default(now())
-  revokedAt      DateTime?   // null = consentimiento activo
+  consentType ConsentType
+  grantedAt   DateTime    @default(now())
+  revokedAt   DateTime? // null = consentimiento activo
 
   // Documento firmado (almacenado en R2)
-  documentUrl    String?
-  signatureData  Json?       // { method: "digital"|"ink", hash: string, ip: string }
+  documentUrl   String?
+  signatureData Json? // { method: "digital"|"ink", hash: string, ip: string }
 
   // Quién recogió el consentimiento
-  collectedBy    String      // userId
+  collectedBy String // userId
 
-  notes          String?
+  notes String?
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  patient        Patient      @relation(fields: [patientId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  patient      Patient      @relation(fields: [patientId], references: [id])
 
   @@index([organizationId, patientId])
   @@index([organizationId, patientId, consentType])
@@ -857,12 +900,12 @@ model ConsentRecord {
 model AiReportUsage {
   id             String   @id @default(uuid())
   organizationId String
-  yearMonth      String   // "2026-07"
+  yearMonth      String // "2026-07"
   count          Int      @default(0)
   updatedAt      DateTime @updatedAt
   createdAt      DateTime @default(now())
 
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, yearMonth])
   @@index([organizationId])
@@ -884,24 +927,24 @@ model ProcessedStripeEvent {
 // ─────────────────────────────────────────────
 
 model BillingTransaction {
-  id              String         @id @default(uuid())
-  organizationId  String
-  patientId       String?
-  consultationId  String?
-  surgeryId       String?
-  amount          Float
-  type            BillingType    @default(OTHER)
-  status          BillingStatus  @default(PENDING)
-  description     String?
-  date            DateTime       @default(now())
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  deletedAt       DateTime?
+  id             String        @id @default(uuid())
+  organizationId String
+  patientId      String?
+  consultationId String?
+  surgeryId      String?
+  amount         Float
+  type           BillingType   @default(OTHER)
+  status         BillingStatus @default(PENDING)
+  description    String?
+  date           DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
 
-  organization    Organization   @relation(fields: [organizationId], references: [id])
-  patient         Patient?       @relation(fields: [patientId], references: [id])
-  consultation    Consultation?  @relation(fields: [consultationId], references: [id])
-  surgery         Surgery?       @relation(fields: [surgeryId], references: [id])
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  patient      Patient?      @relation(fields: [patientId], references: [id])
+  consultation Consultation? @relation(fields: [consultationId], references: [id])
+  surgery      Surgery?      @relation(fields: [surgeryId], references: [id])
 
   @@index([organizationId, date])
   @@index([organizationId, status])
@@ -913,18 +956,18 @@ model BillingTransaction {
 // ─────────────────────────────────────────────
 
 model DoctorSchedule {
-  id              String    @id @default(uuid())
-  organizationId  String
-  userId          String
-  dayOfWeek       Int       // 0=Sun..6=Sat
-  startTime       String    // "09:00"
-  endTime         String    // "17:00"
-  slotDuration    Int       @default(30)
-  isActive        Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  dayOfWeek      Int // 0=Sun..6=Sat
+  startTime      String // "09:00"
+  endTime        String // "17:00"
+  slotDuration   Int      @default(30)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization    Organization @relation(fields: [organizationId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([organizationId, userId, dayOfWeek])
   @@index([organizationId, userId])
@@ -936,22 +979,22 @@ model DoctorSchedule {
 // ─────────────────────────────────────────────
 
 model PharmaContact {
-  id              String    @id @default(uuid())
-  organizationId  String
-  name            String
-  company         String
-  role            String?
-  email           String?
-  phone           String?
-  notes           String?
-  lastContactAt   DateTime?
-  nextFollowUpAt  DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  id             String    @id @default(uuid())
+  organizationId String
+  name           String
+  company        String
+  role           String?
+  email          String?
+  phone          String?
+  notes          String?
+  lastContactAt  DateTime?
+  nextFollowUpAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
 
-  organization    Organization @relation(fields: [organizationId], references: [id])
-  interactions    PharmaInteraction[]
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  interactions PharmaInteraction[]
 
   @@index([organizationId])
   @@index([organizationId, company])
@@ -959,17 +1002,17 @@ model PharmaContact {
 }
 
 model PharmaInteraction {
-  id              String           @id @default(uuid())
-  organizationId  String
-  contactId       String
-  date            DateTime         @default(now())
-  type            InteractionType  @default(OTHER)
-  notes           String?
-  followUpNeeded  Boolean          @default(false)
-  createdAt       DateTime         @default(now())
+  id             String          @id @default(uuid())
+  organizationId String
+  contactId      String
+  date           DateTime        @default(now())
+  type           InteractionType @default(OTHER)
+  notes          String?
+  followUpNeeded Boolean         @default(false)
+  createdAt      DateTime        @default(now())
 
-  organization    Organization     @relation(fields: [organizationId], references: [id])
-  contact         PharmaContact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  contact      PharmaContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
   @@index([contactId, date])
   @@index([organizationId, date])

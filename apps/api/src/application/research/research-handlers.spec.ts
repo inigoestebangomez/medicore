@@ -121,6 +121,15 @@ class InMemoryQueryRepo implements IResearchQueryRepository {
     this.store.set(id, new ResearchQuery({ ...q, deletedAt: new Date() }));
     return this.store.get(id)!;
   }
+  async updateSharing(id: string, _org: string, sharing: any) {
+    const q = this.store.get(id)!;
+    const next = q.setSharing(sharing.users ?? [], sharing.permission ?? 'view');
+    this.store.set(id, next);
+    return next;
+  }
+  async findSharedWithMe(_org: string, _userId: string) {
+    return [];
+  }
 }
 
 class StubExecuteHandler extends ExecuteResearchQueryHandler {

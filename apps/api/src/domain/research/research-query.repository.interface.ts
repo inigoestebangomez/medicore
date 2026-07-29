@@ -5,6 +5,8 @@ import type {
   FilterLogic,
   DataSource,
   VisualizationType,
+  Sharing,
+  SharePermission,
 } from '@medicore/contracts';
 
 export interface SaveResearchQueryInput {
@@ -20,6 +22,19 @@ export interface SaveResearchQueryInput {
   displayFields: string[];
   visualizations: VisualizationType[];
   sharedWith?: string[];
+  /** Research V2: structured sharing (users + permission) */
+  sharing?: Sharing;
+  /** Research V2: optional owning dashboard */
+  dashboardId?: string | null;
+}
+
+export interface SharedQueryRow {
+  id: string;
+  name: string;
+  description: string | null;
+  createdBy: string;
+  permission: SharePermission;
+  updatedAt: Date;
 }
 
 export interface IResearchQueryRepository {
@@ -43,4 +58,16 @@ export interface IResearchQueryRepository {
   shareWith(id: string, organizationId: string, userId: string): Promise<ResearchQuery>;
   unshareWith(id: string, organizationId: string, userId: string): Promise<ResearchQuery>;
   softDelete(id: string, organizationId: string): Promise<ResearchQuery>;
+  // ── Research Engine V2 (sharing) ──
+  /** Replace the structured sharing config (users + permission) — spec §7. */
+  updateSharing(
+    id: string,
+    organizationId: string,
+    sharing: Sharing,
+  ): Promise<ResearchQuery>;
+  /** List queries shared with a user (with permission), excluding their own. */
+  findSharedWithMe(
+    organizationId: string,
+    userId: string,
+  ): Promise<SharedQueryRow[]>;
 }

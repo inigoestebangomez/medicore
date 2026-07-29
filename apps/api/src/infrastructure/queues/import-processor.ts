@@ -17,6 +17,7 @@ import type { IPatientRepository, CreatePatientInput } from '@/domain/patient/pa
 import { DataCleanerService } from '@/application/import/services/data-cleaner.service';
 import { buildPatientInputFromRow } from '@/application/import/services/patient-input-builder';
 import type { IParsedFileCache } from '@/application/import/ports/parsed-file-cache.port';
+import type { FieldCatalogCachePort } from '@/application/research/ports/field-catalog-cache.port';
 import { ImportBatchNotFoundError } from '@/domain/import/errors/import-batch-not-found.error';
 
 export const IMPORT_QUEUE_NAME = 'import';
@@ -39,6 +40,11 @@ export class ImportProcessor {
     @Inject('IPatientRepository') private readonly patientRepo: IPatientRepository,
     private readonly cleaner: DataCleanerService,
     @Inject('IParsedFileCache') private readonly cache: IParsedFileCache,
+    // Research Engine V2 — invalidate the field catalog cache on import
+    // completion so newly imported fields appear in field-discovery autocomplete
+    // (design AD-3). Optional: guarded so the import queue keeps working even
+    // when the research module is not wired in this deployment.
+    @Inject('FieldCatalogCachePort') private readonly fieldCache?: FieldCatalogCachePort,
   ) {}
 
   @Process('finalize')
@@ -98,6 +104,9 @@ export class ImportProcessor {
           ...(row.diagnosis ? { diagnosis: row.diagnosis } : {}),
           ...(row.procedure ? { procedure: row.procedure } : {}),
           ...(row.admissionDate ? { admissionDate: row.admissionDate } : {}),
+          ...(row.testType ? { testType: row.testType } : {}),
+          ...(row.requestDate ? { requestDate: row.requestDate } : {}),
+          ...(row.completionDate ? { completionDate: row.completionDate } : {}),
         };
 
         if (decision === 'new') {
@@ -201,6 +210,14 @@ export class ImportProcessor {
       }
       await this.batchRepo.updateStatus(batchId, organizationId, 'COMPLETED');
       await this.cache.delete(batchId, organizationId);
+
+      // Research V2 (AD-3): invalidate the field catalog cache so the next
+      // field-discovery request regenerates it with the new imported fields.
+      try {
+        if (this.fieldCache) await this.fieldCache.invalidate(organizationId);
+      } catch (err) {
+        this.logger.warn(`Field catalog invalidation failed for org ${organizationId}: ${(err as Error).message}`);
+      }
 
       this.logger.log(`Import batch ${batchId} complete: ${created} new, ${enriched} enriched, ${skipped} skipped`);
       return { created, enriched, skipped };

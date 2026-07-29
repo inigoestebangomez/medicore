@@ -5,12 +5,16 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bull';
 import { ImportProcessor, IMPORT_QUEUE_NAME } from './import-processor';
+import { FieldCatalogCacheModule } from '@/infrastructure/research/field-catalog-cache.module';
 
 @Module({
-  imports: [BullModule.registerQueue({
-    name: IMPORT_QUEUE_NAME,
-    redis: { maxRetriesPerRequest: null },
-  })],
+  imports: [
+    BullModule.registerQueue({
+      name: IMPORT_QUEUE_NAME,
+      redis: { maxRetriesPerRequest: null },
+    }),
+    FieldCatalogCacheModule,
+  ],
   providers: [ImportProcessor],
   exports: [BullModule],
 })

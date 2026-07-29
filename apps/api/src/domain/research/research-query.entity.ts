@@ -8,6 +8,8 @@ import type {
   FilterLogic,
   DataSource,
   VisualizationType,
+  Sharing,
+  SharePermission,
 } from '@medicore/contracts';
 
 export interface ResearchQueryProps {
@@ -23,12 +25,18 @@ export interface ResearchQueryProps {
   displayFields: string[];
   visualizations: VisualizationType[];
   sharedWith?: string[];
+  /** Research V2: structured sharing (users + permission) — BR-RES-001 */
+  sharing?: Sharing;
+  /** Research V2: optional owning Dashboard id (design AD-2) */
+  dashboardId?: string | null;
   lastRunAt?: Date | null;
   lastRunCount?: number | null;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
 }
+
+const DEFAULT_SHARING: Sharing = { users: [], permission: 'view' };
 
 export class ResearchQuery {
   readonly id: string;
@@ -43,6 +51,8 @@ export class ResearchQuery {
   readonly displayFields: string[];
   readonly visualizations: VisualizationType[];
   readonly sharedWith: string[];
+  readonly sharing: Sharing;
+  readonly dashboardId: string | null;
   readonly lastRunAt: Date | null;
   readonly lastRunCount: number | null;
   readonly createdAt: Date;
@@ -62,6 +72,8 @@ export class ResearchQuery {
     this.displayFields = props.displayFields ?? [];
     this.visualizations = props.visualizations ?? [];
     this.sharedWith = props.sharedWith ?? [];
+    this.sharing = props.sharing ?? DEFAULT_SHARING;
+    this.dashboardId = props.dashboardId ?? null;
     this.lastRunAt = props.lastRunAt ?? null;
     this.lastRunCount = props.lastRunCount ?? null;
     this.createdAt = props.createdAt ?? new Date();
@@ -107,7 +119,11 @@ export class ResearchQuery {
   // ─────────────────────────────────────────────
 
   isVisibleTo(userId: string): boolean {
-    return this.createdBy === userId || this.sharedWith.includes(userId);
+    return (
+      this.createdBy === userId ||
+      this.sharedWith.includes(userId) ||
+      this.sharing.users.includes(userId)
+    );
   }
 
   /**
@@ -128,6 +144,47 @@ export class ResearchQuery {
       ...this,
       sharedWith: this.sharedWith.filter((id) => id !== userId),
     });
+  }
+
+  // ─────────────────────────────────────────────
+  // V2 structured sharing (spec §7, BR-RES-001)
+  // ─────────────────────────────────────────────
+
+  /**
+   * Replace the structured sharing config (users + permission). Keeps the v1
+   * `sharedWith` array in sync for backward compatibility (AD-2).
+   */
+  setSharing(userIds: string[], permission: SharePermission): ResearchQuery {
+    const sharing: Sharing = { users: userIds, permission };
+    const users = Array.from(new Set(userIds));
+    // keep v1 sharedWith consistent (union of new users)
+    return new ResearchQuery({
+      ...this,
+      sharing,
+      sharedWith: users.length > 0 ? users : this.sharedWith,
+      updatedAt: new Date(),
+    });
+  }
+
+  revokeSharing(): ResearchQuery {
+    return new ResearchQuery({
+      ...this,
+      sharing: { ...DEFAULT_SHARING },
+      sharedWith: this.createdBy ? [this.createdBy] : [],
+      updatedAt: new Date(),
+    });
+  }
+
+  /** Permission a given user has over this query; null = none. */
+  permissionFor(userId: string): SharePermission | null {
+    if (this.createdBy === userId) return 'edit';
+    if (this.sharing.users.includes(userId)) return this.sharing.permission;
+    if (this.sharedWith.includes(userId)) return 'view'; // v1 fallback
+    return null;
+  }
+
+  isSharedWith(userId: string): boolean {
+    return this.permissionFor(userId) !== null;
   }
 
   // ─────────────────────────────────────────────

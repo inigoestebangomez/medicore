@@ -4,5 +4,5 @@
 -- so replace every remaining placeholder with a real NULL.
 --
 -- Idempotent: safe to re-run (matches the placeholder by value).
-UPDATE "Patient" SET "birthDate" = NULL
+UPDATE "patients" SET "birthDate" = NULL
 WHERE "birthDate" = '1900-01-01T00:00:00.000Z'::timestamp;

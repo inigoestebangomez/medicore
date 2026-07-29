@@ -6,11 +6,12 @@
 // ejecutar" saves the query (BR-RES-001: private by default) and navigates to
 // the results page.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { FilterBuilder } from '@/components/research/filter-builder';
+import { FilterBuilderV2 } from '@/components/research/FilterBuilderV2';
 import { useSaveQuery } from '@/hooks/useResearch';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import type { Filter, FilterLogic, DataSource, VisualizationType } from '@medicore/contracts';
 
 const SUGGESTED_DISPLAY = ['nhc', 'age', 'sex', 'birthDate'];
@@ -19,6 +20,7 @@ const DEFAULT_VIZ: VisualizationType[] = ['table', 'stats'];
 export default function NewResearchQueryPage() {
   const router = useRouter();
   const save = useSaveQuery();
+  const fieldDiscoveryEnabled = useFeatureFlag('RESEARCH_V2_FIELD_DISCOVERY');
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -28,6 +30,20 @@ export default function NewResearchQueryPage() {
   const [visualizations, setVisualizations] = useState<VisualizationType[]>(DEFAULT_VIZ);
   const [filters, setFilters] = useState<Filter[]>([]);
   const [logic, setLogic] = useState<FilterLogic>('AND');
+
+  // Parse the raw text inputs into typed arrays for both the save flow and the
+  // FilterBuilderV2 live preview (which needs importBatchIds + previewFields).
+  const importBatchIdsArr = useMemo(
+    () =>
+      importBatchIds.trim()
+        ? importBatchIds.split(',').map((s) => s.trim()).filter(Boolean)
+        : undefined,
+    [importBatchIds],
+  );
+  const previewFieldsArr = useMemo(
+    () => displayFields.split(',').map((s) => s.trim()).filter(Boolean),
+    [displayFields],
+  );
 
   const toggleViz = (v: VisualizationType) =>
     setVisualizations((prev) =>
@@ -40,12 +56,10 @@ export default function NewResearchQueryPage() {
       name: name.trim(),
       description: description.trim() || undefined,
       dataSource,
-      importBatchIds: importBatchIds.trim()
-        ? importBatchIds.split(',').map((s) => s.trim()).filter(Boolean)
-        : undefined,
+      importBatchIds: importBatchIdsArr,
       filters,
       filterLogic: logic,
-      displayFields: displayFields.split(',').map((s) => s.trim()).filter(Boolean),
+      displayFields: previewFieldsArr,
       visualizations,
     });
     router.push(`/research/${saved.id}`);
@@ -139,7 +153,15 @@ export default function NewResearchQueryPage() {
 
       <div className="rounded-md border border-outline-variant p-4">
         <h2 className="mb-2 text-sm font-semibold text-on-surface-variant">Filtros</h2>
-        <FilterBuilder filters={filters} logic={logic} onChange={(f, l) => { setFilters(f); setLogic(l); }} />
+        <FilterBuilderV2
+          filters={filters}
+          logic={logic}
+          onChange={(f, l) => { setFilters(f); setLogic(l); }}
+          dataSource={dataSource}
+          importBatchIds={importBatchIdsArr}
+          previewFields={previewFieldsArr}
+          disabled={!fieldDiscoveryEnabled}
+        />
       </div>
 
       <div className="flex items-center gap-3">
