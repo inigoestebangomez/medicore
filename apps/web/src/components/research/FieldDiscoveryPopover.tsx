@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFieldCatalog } from '@/hooks/useResearchV2';
 import type { FieldCatalogEntry, FieldType, FieldSourceV2 } from '@medicore/contracts';
 import { clinicalColors } from '../../../tokens/clinical';
+import { groupBySection } from './clinical-sections.registry';
 
 export interface FieldDiscoveryPopoverProps {
   /** Currently selected field name (controlled). */
@@ -58,6 +59,7 @@ export function FieldDiscoveryPopover({
 }: FieldDiscoveryPopoverProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value ?? '');
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const { data, isLoading } = useFieldCatalog(query, type, open);
 
@@ -79,6 +81,9 @@ export function FieldDiscoveryPopover({
     const list = data?.entries ?? [];
     return (source ? list.filter((e) => e.source === source) : list).slice(0, 50);
   }, [data, source]);
+
+  // Group entries by clinical section (M1) — collapsible groups.
+  const sections = useMemo(() => groupBySection(entries), [entries]);
 
   function handlePick(entry: FieldCatalogEntry) {
     setQuery(entry.field);
@@ -116,36 +121,52 @@ export function FieldDiscoveryPopover({
             </div>
           )}
 
-          {entries.map((entry) => {
-            const badge = TYPE_BADGE[entry.type];
+          {sections.map(({ section, entries: sectionEntries }) => {
+            const isCollapsed = collapsed[section];
             return (
-              <button
-                key={`${entry.source}:${entry.field}`}
-                type="button"
-                role="option"
-                aria-selected={entry.field === value}
-                onClick={() => handlePick(entry)}
-                className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-surface-low"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-medium text-on-surface">{entry.field}</span>
-                    <span
-                      className="rounded px-1 text-[10px] font-bold uppercase"
-                      style={{ color: badge.color }}
-                    >
-                      {badge.label}
-                    </span>
-                    <span className="rounded bg-surface-low px-1 text-[10px] uppercase text-on-surface-variant">
-                      {entry.source === 'imported' ? 'import' : 'std'}
-                    </span>
-                  </div>
-                  <div className="mt-0.5 truncate text-xs text-on-surface-variant">
-                    {entry.nonNullCount.toLocaleString()} no nulos · ej:{' '}
-                    {entry.examples.slice(0, 5).map(formatExample).join(', ')}
-                  </div>
-                </div>
-              </button>
+              <div key={section}>
+                <button
+                  type="button"
+                  onClick={() => setCollapsed((c) => ({ ...c, [section]: !c[section] }))}
+                  className="flex w-full items-center justify-between bg-surface-low px-3 py-1 text-left text-[11px] font-bold uppercase tracking-wide text-on-surface-variant"
+                >
+                  <span>{section}</span>
+                  <span aria-hidden>{isCollapsed ? '▸' : '▾'}</span>
+                </button>
+                {!isCollapsed &&
+                  sectionEntries.map((entry) => {
+                    const badge = TYPE_BADGE[entry.type];
+                    return (
+                      <button
+                        key={`${entry.source}:${entry.field}`}
+                        type="button"
+                        role="option"
+                        aria-selected={entry.field === value}
+                        onClick={() => handlePick(entry)}
+                        className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-surface-low"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-sm font-medium text-on-surface">{entry.field}</span>
+                            <span
+                              className="rounded px-1 text-[10px] font-bold uppercase"
+                              style={{ color: badge.color }}
+                            >
+                              {badge.label}
+                            </span>
+                            <span className="rounded bg-surface-low px-1 text-[10px] uppercase text-on-surface-variant">
+                              {entry.source === 'imported' ? 'import' : 'std'}
+                            </span>
+                          </div>
+                          <div className="mt-0.5 truncate text-xs text-on-surface-variant">
+                            {entry.nonNullCount.toLocaleString()} no nulos · ej:{' '}
+                            {entry.examples.slice(0, 5).map(formatExample).join(', ')}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+              </div>
             );
           })}
         </div>

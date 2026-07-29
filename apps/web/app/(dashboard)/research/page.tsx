@@ -4,12 +4,26 @@
 // Research landing — saved queries list with last-run info (BR-RES-001: only
 // the caller's own + shared queries are returned). Buttons: new query, open,
 // delete.
+//
+// V3: when RESEARCH_V3_STUDIES flag is ON, redirect to the Studies dashboard.
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useQueryHistory, useDeleteQuery } from '@/hooks/useResearch';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 export default function ResearchPage() {
+  const isV3Studies = useFeatureFlag('RESEARCH_V3_STUDIES');
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isV3Studies) router.replace('/research/studies');
+  }, [isV3Studies, router]);
+  if (isV3Studies) {
+    return <p className="text-sm text-on-surface-variant">Redirigiendo a estudios…</p>;
+  }
   const { data, isLoading } = useQueryHistory(1, 50);
   const del = useDeleteQuery();
 
