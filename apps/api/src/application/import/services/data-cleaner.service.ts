@@ -23,7 +23,10 @@ export interface CleanedRow {
   admissionDate: Date | null;
   diagnosis: string | null;
   procedure: string | null;
-  phone: string | null;            // SDD import-data-quality: extracted patient phone
+  testType: string | null;          // clinical test/study type (EMG, TAC, etc.)
+  requestDate: Date | null;         // when the test was ordered
+  completionDate: Date | null;      // when the test was performed
+  phone: string | null;             // SDD import-data-quality: extracted patient phone
   customFields: Record<string, unknown>;   // custom column values, keyed by custom-field name
   raw: Record<string, unknown>;             // original row preserved for audit/importedData
 }
@@ -87,6 +90,9 @@ export class DataCleanerService {
         admissionDate: null,
         diagnosis: null,
         procedure: null,
+        testType: null,
+        requestDate: null,
+        completionDate: null,
         phone: null,
         customFields: {},
         // raw preserves the original row for importedData JSONB (BR-IMP-002),
@@ -157,6 +163,21 @@ export class DataCleanerService {
           case 'procedure': {
             const v = this.normalizeDisplayText(rawValue);
             if (v !== null) cleaned.procedure = v;
+            break;
+          }
+          case 'testType': {
+            const v = this.normalizeDisplayText(rawValue);
+            if (v !== null) cleaned.testType = v;
+            break;
+          }
+          case 'requestDate': {
+            const v = this.parseDate(rawValue);
+            if (v !== null) cleaned.requestDate = v;
+            break;
+          }
+          case 'completionDate': {
+            const v = this.parseDate(rawValue);
+            if (v !== null) cleaned.completionDate = v;
             break;
           }
           case 'custom':

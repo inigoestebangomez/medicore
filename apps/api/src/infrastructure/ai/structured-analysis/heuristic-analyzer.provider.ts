@@ -43,6 +43,12 @@ const FIELD_PATTERNS: FieldPattern[] = [
   { field: 'diagnosis', patterns: [/diagn.*stico/, /sospecha/, /^dx$/, /\bdx\b/, /diagnost/] },
   // procedure
   { field: 'procedure', patterns: [/procedimiento/, /intervenci/, /\biq\b/, /t[eé]cnica.*quir/, /cirug/, /procedure/] },
+  // testType — clinical test/study type (EMG, TAC, audiometría, etc.)
+  { field: 'testType', patterns: [/^prueba$/, /\bprueba\b/, /tipo.*prueba/, /tipo.*estudio/, /exploraci/, /^estudio$/, /\bestudio\b/] },
+  // requestDate — when the test was ordered/requested
+  { field: 'requestDate', patterns: [/fecha.*solicitud/, /fecha.*petici/, /solicitud/, /fecha.*prescripci/] },
+  // completionDate — when the test was actually performed
+  { field: 'completionDate', patterns: [/fecha.*realizaci/, /fecha.*ejecuci/, /realizaci/, /fecha.*completad/] },
 ];
 
 // Phone-like columns — always mapped to 'ignore' (BR-IMP-007)

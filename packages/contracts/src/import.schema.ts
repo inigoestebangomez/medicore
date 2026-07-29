@@ -29,6 +29,7 @@ export const IMPORT_ALLOWED_TRANSITIONS: Record<ImportStatus, ImportStatus[]> = 
 export const StandardFieldSchema = z.enum([
   'nhc', 'patientName', 'birthDate', 'age', 'sex',
   'admissionDate', 'diagnosis', 'procedure',
+  'testType', 'requestDate', 'completionDate',
   'custom', 'ignore',
 ]);
 export type StandardField = z.infer<typeof StandardFieldSchema>;

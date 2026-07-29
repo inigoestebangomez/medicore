@@ -31,6 +31,7 @@ import { RevertImportHandler } from '@/application/import/handlers/revert-import
 import { GetImportHistoryHandler } from '@/application/import/handlers/get-import-history.handler';
 import { ImportProcessor, IMPORT_QUEUE, IMPORT_QUEUE_NAME } from '@/infrastructure/queues/import-processor';
 import { ImportReminderJob } from '@/infrastructure/queues/import-reminder.job';
+import { FieldCatalogCacheModule } from '@/infrastructure/research/field-catalog-cache.module';
 import { AuthModule } from '@/api/auth/auth.module';
 
 @Module({
@@ -45,6 +46,7 @@ import { AuthModule } from '@/api/auth/auth.module';
         maxRetriesPerRequest: null, // Required for Bull workers; prevents ioredis retry limit
       },
     }),
+    FieldCatalogCacheModule,
   ],
   controllers: [ImportController],
   providers: [

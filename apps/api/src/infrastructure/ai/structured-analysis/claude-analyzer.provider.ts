@@ -24,7 +24,10 @@ Recibirás las columnas y las primeras filas de un archivo Excel de un médico y
 3. Identificar filas que NO son datos de pacientes (totales, notas, medias).
 4. Proponer un mapeo de columnas a campos estándar.
 
-Campos estándar disponibles: nhc, patientName, birthDate, age, sex, admissionDate, diagnosis, procedure.
+Campos estándar disponibles: nhc, patientName, birthDate, age, sex, admissionDate, diagnosis, procedure, testType, requestDate, completionDate.
+- testType: tipo de prueba o estudio (EMG, TAC, audiometría, análisis, etc.).
+- requestDate: fecha en que se solicitó la prueba.
+- completionDate: fecha en que se realizó la prueba.
 Cualquier campo que NO sea de teléfono ni uno de los anteriores se mapea como "custom".
 Los campos de teléfono (Teléfono, Móvil, Tlf, Phone) SIEMPRE se mapean como "ignore" — RGPD.
 
@@ -92,7 +95,7 @@ export class ClaudeStructuredAnalyzer implements StructuredAnalysisProvider {
       '',
       'Devuelve un JSON con esta estructura exacta:',
       '{',
-      '  "columnMapping": { "NombreColumnaOriginal": "nhc" | "patientName" | "birthDate" | "age" | "sex" | "admissionDate" | "diagnosis" | "procedure" | "custom" | "ignore" },',
+      '  "columnMapping": { "NombreColumnaOriginal": "nhc" | "patientName" | "birthDate" | "age" | "sex" | "admissionDate" | "diagnosis" | "procedure" | "testType" | "requestDate" | "completionDate" | "custom" | "ignore" },',
       '  "customFieldNames": { "NombreColumnaOriginal": "nombre legible" },',
       '  "junkRowIndices": [índices de filas basura],',
       '  "issues": ["descripción del problema"],',

@@ -7,6 +7,7 @@
 // physician's explicit Confirm / Finalize actions.
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   useParseImportFile,
@@ -15,14 +16,17 @@ import {
   useFinalizeImport,
   type ParseFileResponse,
   type ConfirmImportResponse,
+  type FinalizeImportResponse,
 } from '@/hooks/useImports';
 import type { ColumnMapping, MatchDecision, StandardField } from '@medicore/contracts';
 
-type Step = 'upload' | 'mapping' | 'matches';
+type Step = 'upload' | 'mapping' | 'matches' | 'complete';
 
 const FIELD_OPTIONS: StandardField[] = [
   'nhc', 'patientName', 'birthDate', 'age', 'sex',
-  'admissionDate', 'diagnosis', 'procedure', 'custom', 'ignore',
+  'admissionDate', 'diagnosis', 'procedure',
+  'testType', 'requestDate', 'completionDate',
+  'custom', 'ignore',
 ];
 
 const FIELD_LABELS: Record<string, string> = {
@@ -34,16 +38,21 @@ const FIELD_LABELS: Record<string, string> = {
   admissionDate: 'Fecha de ingreso',
   diagnosis: 'Diagnóstico',
   procedure: 'Procedimiento',
+  testType: 'Prueba / Tipo de estudio',
+  requestDate: 'Fecha de solicitud',
+  completionDate: 'Fecha de realización',
   custom: 'Campo personalizado',
   ignore: 'Ignorar',
 };
 
 export function ImportWizard() {
+  const router = useRouter();
   const [step, setStep] = useState<Step>('upload');
   const [parsed, setParsed] = useState<ParseFileResponse | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping>({});
   const [resolutions, setResolutions] = useState<Record<string, MatchDecision>>({});
   const [confirmed, setConfirmed] = useState<ConfirmImportResponse | null>(null);
+  const [finalizeResult, setFinalizeResult] = useState<FinalizeImportResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const parseMut = useParseImportFile();
@@ -105,11 +114,12 @@ export function ImportWizard() {
     if (!parsed) return;
     setError(null);
     try {
-      await finalizeMut.mutateAsync({
+      const result = await finalizeMut.mutateAsync({
         batchId: parsed.batchId,
         matchResolutions: resolutions,
       });
-      reset();
+      setFinalizeResult(result);
+      setStep('complete');
     } catch (e) {
       handleErr(e);
     }
@@ -121,6 +131,7 @@ export function ImportWizard() {
     setMapping({});
     setResolutions({});
     setConfirmed(null);
+    setFinalizeResult(null);
     setError(null);
   }
 
@@ -162,6 +173,16 @@ export function ImportWizard() {
           onBack={() => setStep('mapping')}
         />
       )}
+
+      {step === 'complete' && parsed && confirmed && finalizeResult && (
+        <SuccessStep
+          fileName={parsed.fileName}
+          result={finalizeResult}
+          summary={confirmed}
+          onViewPatients={() => router.push('/patients')}
+          onNewImport={reset}
+        />
+      )}
     </div>
   );
 }
@@ -171,16 +192,21 @@ function Stepper({ step }: { step: Step }) {
     { id: 'upload', label: '1. Subir archivo' },
     { id: 'mapping', label: '2. Revisar mapeo' },
     { id: 'matches', label: '3. Resolver cruces' },
+    { id: 'complete', label: '✓ Completado' },
   ];
+  const stepOrder: Step[] = ['upload', 'mapping', 'matches', 'complete'];
+  const activeIdx = stepOrder.indexOf(step);
   return (
     <ol className="flex items-center gap-2 text-sm">
-      {steps.map((s) => (
+      {steps.map((s, i) => (
         <li
           key={s.id}
           className={
-            step === s.id
+            i === activeIdx
               ? 'rounded-md bg-blue-600 px-3 py-1 font-medium text-white'
-              : 'rounded-md bg-surface-container px-3 py-1 text-on-surface-variant'
+              : i < activeIdx
+                ? 'rounded-md bg-green-100 px-3 py-1 text-green-700'
+                : 'rounded-md bg-surface-container px-3 py-1 text-on-surface-variant'
           }
         >
           {s.label}
@@ -386,7 +412,7 @@ function MatchesStep({
 
       {pending.length === 0 ? (
         <p className="text-sm text-on-surface-variant">
-          Todos los cruces están resueltos. Podés finalizar la importación.
+          Todos los cruces están resueltos. Puedes finalizar la importación.
         </p>
       ) : (
         <div className="space-y-2">
@@ -465,6 +491,66 @@ function MatchesStep({
           className="bg-green-600 hover:bg-green-700 text-white"
         >
           {finalizing ? 'Importando…' : 'Finalizar importación'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SuccessStep({
+  fileName,
+  result,
+  summary,
+  onViewPatients,
+  onNewImport,
+}: {
+  fileName: string;
+  result: FinalizeImportResponse;
+  summary: ConfirmImportResponse;
+  onViewPatients: () => void;
+  onNewImport: () => void;
+}) {
+  return (
+    <div className="space-y-6 rounded-lg border border-green-200 bg-green-50/50 p-6">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-green-600 text-lg text-white">
+          ✓
+        </span>
+        <div>
+          <h2 className="text-lg font-semibold text-green-800">Importación completada</h2>
+          <p className="text-sm text-green-700">{result.message}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 rounded-md border border-green-200 bg-white p-4 sm:grid-cols-4">
+        <div>
+          <p className="text-xs text-on-surface-variant">Archivo</p>
+          <p className="text-sm font-medium text-on-surface">{fileName}</p>
+        </div>
+        <div>
+          <p className="text-xs text-on-surface-variant">Filas procesadas</p>
+          <p className="text-sm font-medium text-on-surface">{summary.cleanedRowCount}</p>
+        </div>
+        <div>
+          <p className="text-xs text-on-surface-variant">Nuevos pacientes</p>
+          <p className="text-sm font-medium text-on-surface">{summary.newPatientCount}</p>
+        </div>
+        <div>
+          <p className="text-xs text-on-surface-variant">Enriquecidos</p>
+          <p className="text-sm font-medium text-on-surface">{summary.autoMatchCount}</p>
+        </div>
+      </div>
+
+      <div className="flex justify-between">
+        <Button variant="outline" size="sm" onClick={onNewImport}>
+          Nueva importación
+        </Button>
+        <Button
+          size="sm"
+          onClick={onViewPatients}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          Ver pacientes
         </Button>
       </div>
     </div>

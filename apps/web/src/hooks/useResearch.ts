@@ -36,6 +36,30 @@ export interface SaveQueryResponse {
   data: { id: string; name: string; createdAt: string; updatedAt: string };
 }
 
+/**
+ * Full saved-query payload (mirrors the ResearchQuery entity serialized by
+ * `GET /v1/research/queries/:id`). Used by the explore page to hydrate the
+ * FilterBuilderV2 from the real saved query instead of a hardcoded mock.
+ */
+export interface SavedQuery {
+  id: string;
+  name: string;
+  description: string | null;
+  dataSource: DataSource;
+  importBatchIds: string[];
+  filters: Filter[];
+  filterLogic: FilterLogic;
+  displayFields: string[];
+  visualizations: VisualizationType[];
+  sharedWith: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SavedQueryResponse {
+  data: SavedQuery;
+}
+
 export interface ResultRow {
   patientId: string;
   nhc: string;
@@ -117,6 +141,7 @@ export interface ExportResponse {
 export const researchKeys = {
   all: ['research'] as const,
   queries: (page: number) => ['research', 'queries', page] as const,
+  savedQuery: (id: string) => ['research', 'savedQuery', id] as const,
   execute: (id: string) => ['research', 'execute', id] as const,
   collections: (page: number) => ['research', 'collections', page] as const,
 };
@@ -162,6 +187,23 @@ export function useSaveQuery() {
       return res.data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: researchKeys.all }),
+  });
+}
+
+/**
+ * Fetch a single saved query by id (spec fix-research-new-v2-migration:
+ * "useGetSavedQuery Hook"). Wraps `GET /v1/research/queries/:id` so the
+ * explore page hydrates from real data instead of a hardcoded empty mock.
+ */
+export function useGetSavedQuery(queryId: string | null) {
+  return useQuery({
+    queryKey: researchKeys.savedQuery(queryId ?? 'none'),
+    queryFn: async (): Promise<SavedQuery> => {
+      const res = await apiFetch<SavedQueryResponse>(`${API_BASE}/queries/${queryId}`);
+      return res.data;
+    },
+    enabled: !!queryId,
+    staleTime: 30_000,
   });
 }
 

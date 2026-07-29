@@ -9,12 +9,14 @@ import { ResearchQuery } from '@/domain/research/research-query.entity';
 import type {
   IResearchQueryRepository,
   SaveResearchQueryInput,
+  SharedQueryRow,
 } from '@/domain/research/research-query.repository.interface';
 import type {
   Filter,
   FilterLogic,
   DataSource,
   VisualizationType,
+  Sharing,
 } from '@medicore/contracts';
 
 @Injectable()
@@ -141,6 +143,65 @@ export class PrismaResearchQueryRepository implements IResearchQueryRepository {
   }
 
   // ─────────────────────────────────────────────
+  // Research V2 — structured sharing (spec §7)
+  // ─────────────────────────────────────────────
+
+  async updateSharing(
+    id: string,
+    organizationId: string,
+    sharing: Sharing,
+  ): Promise<ResearchQuery> {
+    const record = await this.prisma.researchQuery.update({
+      where: { id },
+      data: {
+        sharing: sharing as any,
+        // keep v1 sharedWith consistent (AD-2 backward-compat)
+        sharedWith: sharing.users,
+      },
+    });
+    void organizationId;
+    return this.toEntity(record);
+  }
+
+  async findSharedWithMe(
+    organizationId: string,
+    userId: string,
+  ): Promise<SharedQueryRow[]> {
+    // Queries shared with this user (structured sharing.users OR v1 sharedWith),
+    // excluding their own queries. Returns lightweight projection.
+    const records = await this.prisma.researchQuery.findMany({
+      where: {
+        organizationId,
+        deletedAt: null,
+        createdBy: { not: userId },
+        OR: [
+          { sharedWith: { has: userId } },
+          // sharing.users stored as JSONB array; filter in TS for accuracy
+        ],
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const rows: SharedQueryRow[] = [];
+    for (const r of records) {
+      const sharing = (r.sharing as Sharing) ?? { users: [], permission: 'view' as const };
+      const inUsers = (sharing.users ?? []).includes(userId);
+      const inV1 = (r.sharedWith as string[]).includes(userId);
+      if (!inUsers && !inV1) continue; // defense-in-depth
+      const permission = inUsers ? sharing.permission : 'view';
+      rows.push({
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        createdBy: r.createdBy,
+        permission,
+        updatedAt: r.updatedAt,
+      });
+    }
+    return rows;
+  }
+
+  // ─────────────────────────────────────────────
   // Mapping
   // ─────────────────────────────────────────────
 
@@ -158,6 +219,8 @@ export class PrismaResearchQueryRepository implements IResearchQueryRepository {
       displayFields: query.displayFields,
       visualizations: query.visualizations,
       sharedWith: query.sharedWith,
+      sharing: query.sharing as any,
+      dashboardId: query.dashboardId,
       lastRunAt: query.lastRunAt,
       lastRunCount: query.lastRunCount,
     };
@@ -177,6 +240,8 @@ export class PrismaResearchQueryRepository implements IResearchQueryRepository {
       displayFields: record.displayFields as string[],
       visualizations: record.visualizations as VisualizationType[],
       sharedWith: (record.sharedWith as string[]) ?? [],
+      sharing: (record.sharing as Sharing) ?? { users: [], permission: 'view' },
+      dashboardId: record.dashboardId ?? null,
       lastRunAt: record.lastRunAt,
       lastRunCount: record.lastRunCount,
       createdAt: record.createdAt,

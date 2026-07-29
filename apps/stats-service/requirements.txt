@@ -1,0 +1,13 @@
+# apps/stats-service/requirements.txt
+# Python stats microservice (spec §1, BR-RES-005, design AD-1).
+# Stateless FastAPI app mirroring @medicore/contracts Zod schemas.
+fastapi==0.110.0
+uvicorn[standard]==0.27.1
+pydantic==2.6.1
+scipy==1.12.0
+statsmodels==0.14.1
+lifelines==0.28.0
+pandas==2.2.1
+numpy==1.26.4
+pytest==8.0.2
+httpx==0.27.0
