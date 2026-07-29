@@ -15,6 +15,7 @@ import { DashboardController } from './dashboard.controller';
 import { AnalyticsController } from './analytics.controller';
 import { SharingController } from './sharing.controller';
 import { ExportV2Controller } from './export.controller';
+import { StudiesController } from './studies.controller';
 import { PrismaModule } from '@/infrastructure/database/prisma.module';
 import { PrismaResearchQueryRepository } from '@/infrastructure/database/repositories/research-query.repository';
 import { PrismaPatientCollectionRepository } from '@/infrastructure/database/repositories/patient-collection.repository';
@@ -46,6 +47,20 @@ import { ResearchStatsModule } from '@/infrastructure/stats/stats.module';
 import { PdfQueueModule } from '@/infrastructure/queues/pdf.module';
 import { FeatureFlagsService } from '@/infrastructure/config/feature-flags.service';
 import { FeatureFlagGuard } from '@/infrastructure/config/feature-flag.guard';
+import { PrismaResearchStudyRepository } from '@/infrastructure/database/repositories/research-study.repository';
+import { PrismaStudyNotificationRepository } from '@/infrastructure/database/repositories/study-notification.repository';
+import { CreateStudyHandler } from '@/application/research/commands/create-study.handler';
+import { UpdateStudyHandler } from '@/application/research/commands/update-study.handler';
+import { FreezeStudyHandler } from '@/application/research/commands/freeze-study.handler';
+import { ArchiveStudyHandler } from '@/application/research/commands/archive-study.handler';
+import { ReactivateStudyHandler } from '@/application/research/commands/reactivate-study.handler';
+import { RecalculateStudyHandler } from '@/application/research/commands/recalculate-study.handler';
+import { ListStudiesHandler } from '@/application/research/queries/list-studies.handler';
+import { GetStudyHandler } from '@/application/research/queries/get-study.handler';
+import { ListNotificationsHandler } from '@/application/research/queries/list-notifications.handler';
+import { GetSuggestionsHandler } from '@/application/research/queries/get-suggestions.handler';
+import { StudyLifecycleService } from '@/application/research/services/study-lifecycle.service';
+import { StudySuggestionService } from '@/application/research/services/study-suggestion.service';
 
 @Module({
   imports: [
@@ -65,6 +80,7 @@ import { FeatureFlagGuard } from '@/infrastructure/config/feature-flag.guard';
     AnalyticsController,
     SharingController,
     ExportV2Controller,
+    StudiesController,
   ],
   providers: [
     // Repositories (interface-typed DI tokens).
@@ -93,11 +109,28 @@ import { FeatureFlagGuard } from '@/infrastructure/config/feature-flag.guard';
     ExecuteAdHocQueryHandler,
     DashboardCommandHandler,
     ExportV2Handler,
+    // Research V3 — study lifecycle (M8).
+    CreateStudyHandler,
+    UpdateStudyHandler,
+    FreezeStudyHandler,
+    ArchiveStudyHandler,
+    ReactivateStudyHandler,
+    RecalculateStudyHandler,
+    ListStudiesHandler,
+    GetStudyHandler,
+    ListNotificationsHandler,
+    GetSuggestionsHandler,
     // Infrastructure stats (Python microservice client).
     PythonStatsService,
     CircuitBreaker,
     FeatureFlagsService,
     FeatureFlagGuard,
+    // Research V3 — study repositories (interface-typed DI tokens).
+    { provide: 'IResearchStudyRepository', useClass: PrismaResearchStudyRepository },
+    { provide: 'IStudyNotificationRepository', useClass: PrismaStudyNotificationRepository },
+    // Research V3 — study services.
+    StudyLifecycleService,
+    StudySuggestionService,
     // BullMQ queue token for the PDF render worker (design AD-4).
     {
       provide: 'PDF_QUEUE',
