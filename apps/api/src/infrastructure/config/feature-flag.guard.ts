@@ -9,11 +9,11 @@
 
 import { Injectable, CanActivate, ExecutionContext, SetMetadata } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { FeatureFlagsService, type ResearchV2Flag } from './feature-flags.service';
+import { FeatureFlagsService, type ResearchFlag } from './feature-flags.service';
 
 export const FEATURE_FLAG_KEY = 'feature_flag';
 
-export const RequireFeature = (flag: ResearchV2Flag) =>
+export const RequireFeature = (flag: ResearchFlag) =>
   SetMetadata(FEATURE_FLAG_KEY, flag);
 
 @Injectable()
@@ -24,7 +24,7 @@ export class FeatureFlagGuard implements CanActivate {
   ) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const requiredFlag = this.reflector.getAllAndOverride<ResearchV2Flag>(FEATURE_FLAG_KEY, [
+    const requiredFlag = this.reflector.getAllAndOverride<ResearchFlag>(FEATURE_FLAG_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);

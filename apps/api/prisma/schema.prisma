@@ -63,6 +63,7 @@ model Organization {
   doctorSchedules     DoctorSchedule[]
   pharmaContacts      PharmaContact[]
   pharmaInteractions  PharmaInteraction[]
+  researchStudies     ResearchStudy[]
 
   @@index([slug])
   @@map("organizations")
@@ -453,6 +454,7 @@ model ResearchQuery {
 
   organization Organization        @relation(fields: [organizationId], references: [id])
   collections  PatientCollection[]
+  studies      ResearchStudy[]
   dashboard    Dashboard?          @relation("DashboardWidgets", fields: [dashboardId], references: [id])
 
   @@index([organizationId])
@@ -518,6 +520,65 @@ model PatientCollection {
   @@index([organizationId])
   @@index([organizationId, createdBy])
   @@map("patient_collections")
+}
+
+// ─────────────────────────────────────────────
+// RESEARCH V3 — ResearchStudy + StudyNotification (M8)
+// Live cohort wrapper around an immutable ResearchQuery (composition via FK).
+// BR-RES-008: auto-recalculate on import completion (stale cache > 6h).
+// BR-RES-009: only the owner can freeze a study (irreversible).
+// ─────────────────────────────────────────────
+
+enum StudyStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+  FROZEN
+}
+
+model ResearchStudy {
+  id             String      @id @default(uuid())
+  organizationId String      @map("organization_id")
+  createdBy      String      @map("created_by")
+  queryId        String      @map("query_id")
+
+  name           String
+  description    String?
+  status         StudyStatus @default(DRAFT)
+  cachedPatientIds Json      @default("[]") @map("cached_patient_ids")
+  cachedAt       DateTime?   @map("cached_at")
+  patientCount   Int         @default(0) @map("patient_count")
+  analyses       Json        @default("[]")
+  publicationRef String?     @map("publication_ref")
+  frozenAt       DateTime?   @map("frozen_at")
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  deletedAt      DateTime?
+
+  organization  Organization       @relation(fields: [organizationId], references: [id])
+  query          ResearchQuery      @relation(fields: [queryId], references: [id])
+  notifications  StudyNotification[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, createdBy])
+  @@index([queryId])
+  @@map("research_studies")
+}
+
+model StudyNotification {
+  id              String    @id @default(uuid())
+  studyId         String    @map("study_id")
+  organizationId  String    @map("organization_id")
+  userId          String    @map("user_id")
+  newPatientCount Int       @default(0) @map("new_patient_count")
+  readAt          DateTime? @map("read_at")
+  createdAt       DateTime  @default(now())
+
+  study           ResearchStudy @relation(fields: [studyId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, readAt])
+  @@map("study_notifications")
 }
 
 // ─────────────────────────────────────────────

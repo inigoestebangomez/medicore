@@ -8,6 +8,13 @@
 //   RESEARCH_V2_EXPORT_PDF       — journal-quality PDF export
 //   RESEARCH_V2_SHARING          — intra-org query sharing
 //   RESEARCH_V2_DASHBOARDS       — multi-widget dashboards
+//
+// Research Engine V3 flags — all default ON (opt-out), independent toggles:
+//   RESEARCH_V3_STUDIES   — ResearchStudy lifecycle + live cohorts + notifications (M8)
+//   RESEARCH_V3_TABLE1    — Table 1 auto stat selection + group comparison (M2/M6)
+//   RESEARCH_V3_PRE_POST  — Pre/post paired analysis (M3)
+//   RESEARCH_V3_VIZ       — Histogram / Pie / Bland-Altman / Forest / survival table (M4/M5)
+//   RESEARCH_V3_EXPORT    — Multi-format export v3: docx, TIFF, R/SPSS, ZIP (M7)
 
 import { Injectable } from '@nestjs/common';
 
@@ -18,18 +25,32 @@ export type ResearchV2Flag =
   | 'RESEARCH_V2_SHARING'
   | 'RESEARCH_V2_DASHBOARDS';
 
-const ALL_FLAGS: ResearchV2Flag[] = [
+export type ResearchV3Flag =
+  | 'RESEARCH_V3_STUDIES'
+  | 'RESEARCH_V3_TABLE1'
+  | 'RESEARCH_V3_PRE_POST'
+  | 'RESEARCH_V3_VIZ'
+  | 'RESEARCH_V3_EXPORT';
+
+export type ResearchFlag = ResearchV2Flag | ResearchV3Flag;
+
+const ALL_FLAGS: ResearchFlag[] = [
   'RESEARCH_V2_FIELD_DISCOVERY',
   'RESEARCH_V2_STATS_SERVICE',
   'RESEARCH_V2_EXPORT_PDF',
   'RESEARCH_V2_SHARING',
   'RESEARCH_V2_DASHBOARDS',
+  'RESEARCH_V3_STUDIES',
+  'RESEARCH_V3_TABLE1',
+  'RESEARCH_V3_PRE_POST',
+  'RESEARCH_V3_VIZ',
+  'RESEARCH_V3_EXPORT',
 ];
 
 @Injectable()
 export class FeatureFlagsService {
   /** Check whether a specific feature flag is enabled. */
-  isEnabled(flag: ResearchV2Flag): boolean {
+  isEnabled(flag: ResearchFlag): boolean {
     const value = process.env[flag];
     // Absent → enabled (opt-out: flags default ON).
     if (value === undefined || value === '') return true;
@@ -37,14 +58,14 @@ export class FeatureFlagsService {
   }
 
   /** Resolve a single flag — throws if disabled (for use in guards). */
-  require(flag: ResearchV2Flag): void {
+  require(flag: ResearchFlag): void {
     if (!this.isEnabled(flag)) {
       throw new FeatureDisabledError(flag);
     }
   }
 
-  /** All Research V2 flags for seeding / health checks. */
-  getAllFlags(): ResearchV2Flag[] {
+  /** All Research flags for seeding / health checks. */
+  getAllFlags(): ResearchFlag[] {
     return ALL_FLAGS;
   }
 }
