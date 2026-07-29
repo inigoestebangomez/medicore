@@ -16,21 +16,23 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from .routers import inferential, regression, survival, crosstab
+from .routers import normality
 
 app = FastAPI(
     title="MediCore Stats Service",
-    version="2.0.0",
-    description="Stateless inferential-stats microservice for the Research Engine V2.",
+    version="3.0.0",
+    description="Stateless inferential-stats microservice for the Research Engine (V2 + V3).",
 )
 
 
 @app.get("/health")
 def health():
     """Liveness/readiness probe (returned to PythonStatsService.health())."""
-    return {"status": "ok", "service": "medicore-stats-service", "version": "2.0.0"}
+    return {"status": "ok", "service": "medicore-stats-service", "version": "3.0.0"}
 
 
 app.include_router(inferential.router)
 app.include_router(regression.router)
 app.include_router(survival.router)
 app.include_router(crosstab.router)
+app.include_router(normality.router)

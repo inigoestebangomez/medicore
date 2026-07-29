@@ -54,5 +54,6 @@ playwright-report/
 # Python / V3 build artifacts
 __pycache__/
 *.pyc
+.venv/
 apps/api/var/
 ejemplos/

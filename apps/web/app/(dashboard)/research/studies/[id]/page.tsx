@@ -22,6 +22,7 @@ const STATUS_LABEL = {
 
 const TABS = [
   { key: 'table1', label: 'Tabla 1' },
+  { key: 'pre-post', label: 'Pre/Post' },
   { key: 'compare', label: 'Comparar' },
   { key: 'survival', label: 'Supervivencia' },
   { key: 'export', label: 'Exportar' },

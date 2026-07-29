@@ -188,3 +188,76 @@ export function useMarkNotificationsRead(id: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['research', 'studies', id, 'notifications'] }),
   });
 }
+
+// ─────────────────────────────────────────────
+// V3 — Table 1 + Pre/Post (M2/M3)
+// ─────────────────────────────────────────────
+
+const BASE = '/v1/research';
+
+export interface TableOneRequest {
+  studyId?: string;
+  queryId?: string;
+  fields: string[];
+  groupBy?: string;
+  overrides?: Record<string, 'mean_sd' | 'median_iqr'>;
+}
+
+export interface TableOneFieldResult {
+  field: string;
+  n: number;
+  representation: 'mean_sd' | 'median_iqr' | 'categorical';
+  mean: number | null;
+  sd: number | null;
+  median: number | null;
+  q1: number | null;
+  q3: number | null;
+  categories: Array<{ label: string; count: number; percent: number }>;
+  pValue?: string;
+}
+
+export interface TableOneResult {
+  queryId: string;
+  totalN: number;
+  groupBy?: string;
+  fields: TableOneFieldResult[];
+  warnings: string[];
+}
+
+export function useTableOne() {
+  return useMutation<TableOneResult, Error, TableOneRequest>({
+    mutationFn: (req: TableOneRequest) => apiFetch<TableOneResult>(`${BASE}/table1`, { method: 'POST', body: JSON.stringify(req) }),
+  });
+}
+
+export function useTableOneCompare() {
+  return useMutation<TableOneResult, Error, TableOneRequest>({
+    mutationFn: (req: TableOneRequest) => apiFetch<TableOneResult>(`${BASE}/table1/compare`, { method: 'POST', body: JSON.stringify(req) }),
+  });
+}
+
+export interface PrePostRequest {
+  studyId: string;
+  scaleType: string;
+  surgeryDate?: string;
+  preWindowDays?: number;
+  postWindowDays?: number;
+}
+
+export interface PrePostResult {
+  studyId: string;
+  scaleType: string;
+  n: number;
+  pValue: string;
+  meanPre: number | null;
+  meanPost: number | null;
+  meanDifference: number | null;
+  percentImprovement: number | null;
+  warnings: string[];
+}
+
+export function usePrePostAnalysis() {
+  return useMutation<PrePostResult, Error, PrePostRequest>({
+    mutationFn: (req: PrePostRequest) => apiFetch<PrePostResult>(`${BASE}/analysis/pre-post`, { method: 'POST', body: JSON.stringify(req) }),
+  });
+}

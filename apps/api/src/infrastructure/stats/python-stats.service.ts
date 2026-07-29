@@ -139,4 +139,112 @@ export class PythonStatsService {
       return false;
     }
   }
+
+  // ─────────────────────────────────────────────
+  // V3 — Normality + Wilcoxon (Table 1 / Pre-Post, M2/M3)
+  // Same circuit-breaker + timeout + graceful degradation pattern.
+  // ─────────────────────────────────────────────
+
+  async runNormality(values: number[], alpha = 0.05): Promise<NormalityResult> {
+    if (!this.breaker.allowCall()) throw new Error('stats_service_circuit_open');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5_000);
+    try {
+      const res = await fetch(`${PYTHON_BASE_URL}/internal/stats/normality`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ values, alpha }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error(`stats_service_http_${res.status}`);
+      this.breaker.recordSuccess();
+      return (await res.json()) as NormalityResult;
+    } catch (err) {
+      this.breaker.recordFailure();
+      this.logger.warn(`Normality test failed: ${(err as Error).message}`);
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async runWilcoxon(pre: number[], post: number[], alpha = 0.05): Promise<WilcoxonResult> {
+    if (!this.breaker.allowCall()) throw new Error('stats_service_circuit_open');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5_000);
+    try {
+      const res = await fetch(`${PYTHON_BASE_URL}/internal/stats/wilcoxon`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ pre, post, alpha }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error(`stats_service_http_${res.status}`);
+      this.breaker.recordSuccess();
+      return (await res.json()) as WilcoxonResult;
+    } catch (err) {
+      this.breaker.recordFailure();
+      this.logger.warn(`Wilcoxon test failed: ${(err as Error).message}`);
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async runDescribeAuto(values: number[], alpha = 0.05): Promise<DescribeAutoResult> {
+    if (!this.breaker.allowCall()) throw new Error('stats_service_circuit_open');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5_000);
+    try {
+      const res = await fetch(`${PYTHON_BASE_URL}/internal/stats/describe-auto`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ values, alpha }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error(`stats_service_http_${res.status}`);
+      this.breaker.recordSuccess();
+      return (await res.json()) as DescribeAutoResult;
+    } catch (err) {
+      this.breaker.recordFailure();
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
+// V3 result shapes (mirror Pydantic schemas.py normality section)
+// ─────────────────────────────────────────────
+
+export interface NormalityResult {
+  statistic: number | null;
+  pValue: number | null;
+  isNormal: boolean;
+  n: number;
+  warnings: string[];
+}
+
+export interface WilcoxonResult {
+  statistic: number | null;
+  pValue: number | null;
+  z: number | null;
+  n: number;
+  warnings: string[];
+}
+
+export interface DescribeAutoResult {
+  representation: 'mean_sd' | 'median_iqr';
+  mean: number | null;
+  sd: number | null;
+  median: number | null;
+  q1: number | null;
+  q3: number | null;
+  n: number;
+  normality: NormalityResult | null;
+  warnings: string[];
 }

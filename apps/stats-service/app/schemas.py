@@ -138,3 +138,46 @@ class CrossTabResult(BaseModel):
     oddsRatio: Optional[float] = None
     oddsRatioCi95: Optional[List[float]] = None
     warnings: List[str] = Field(default_factory=list)
+
+
+# ─────────────────────────────────────────────
+# Normality (POST /internal/stats/normality, /wilcoxon, /describe-auto) — V3 M2
+# ─────────────────────────────────────────────
+
+class NormalityRequest(BaseModel):
+    values: List[float] = Field(default_factory=list)
+    alpha: float = 0.05
+
+class NormalityResult(BaseModel):
+    statistic: Optional[float] = None
+    pValue: Optional[float] = None
+    isNormal: bool = False
+    n: int = 0
+    warnings: List[str] = Field(default_factory=list)
+
+class WilcoxonRequest(BaseModel):
+    pre: List[float] = Field(default_factory=list)
+    post: List[float] = Field(default_factory=list)
+    alpha: float = 0.05
+
+class WilcoxonResult(BaseModel):
+    statistic: Optional[float] = None
+    pValue: Optional[float] = None
+    z: Optional[float] = None
+    n: int = 0
+    warnings: List[str] = Field(default_factory=list)
+
+class DescribeAutoRequest(BaseModel):
+    values: List[float] = Field(default_factory=list)
+    alpha: float = 0.05
+
+class DescribeAutoResult(BaseModel):
+    representation: str  # "mean_sd" | "median_iqr"
+    mean: Optional[float] = None
+    sd: Optional[float] = None
+    median: Optional[float] = None
+    q1: Optional[float] = None
+    q3: Optional[float] = None
+    n: int = 0
+    normality: Optional[NormalityResult] = None
+    warnings: List[str] = Field(default_factory=list)

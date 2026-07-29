@@ -16,6 +16,7 @@ import { AnalyticsController } from './analytics.controller';
 import { SharingController } from './sharing.controller';
 import { ExportV2Controller } from './export.controller';
 import { StudiesController } from './studies.controller';
+import { StatsV3Controller } from './stats-v3.controller';
 import { PrismaModule } from '@/infrastructure/database/prisma.module';
 import { PrismaResearchQueryRepository } from '@/infrastructure/database/repositories/research-query.repository';
 import { PrismaPatientCollectionRepository } from '@/infrastructure/database/repositories/patient-collection.repository';
@@ -61,6 +62,10 @@ import { ListNotificationsHandler } from '@/application/research/queries/list-no
 import { GetSuggestionsHandler } from '@/application/research/queries/get-suggestions.handler';
 import { StudyLifecycleService } from '@/application/research/services/study-lifecycle.service';
 import { StudySuggestionService } from '@/application/research/services/study-suggestion.service';
+import { TableOneService } from '@/application/research/services/table-one.service';
+import { TableOneHandler, TableOneCompareHandler } from '@/application/research/commands/table-one.handler';
+import { PrePostAnalysisService } from '@/application/research/services/pre-post-analysis.service';
+import { PrePostAnalysisHandler } from '@/application/research/commands/pre-post-analysis.handler';
 
 @Module({
   imports: [
@@ -81,6 +86,7 @@ import { StudySuggestionService } from '@/application/research/services/study-su
     SharingController,
     ExportV2Controller,
     StudiesController,
+    StatsV3Controller,
   ],
   providers: [
     // Repositories (interface-typed DI tokens).
@@ -131,6 +137,12 @@ import { StudySuggestionService } from '@/application/research/services/study-su
     // Research V3 — study services.
     StudyLifecycleService,
     StudySuggestionService,
+    // Research V3 — table 1 + pre/post (M2/M3).
+    TableOneService,
+    TableOneHandler,
+    TableOneCompareHandler,
+    PrePostAnalysisService,
+    PrePostAnalysisHandler,
     // BullMQ queue token for the PDF render worker (design AD-4).
     {
       provide: 'PDF_QUEUE',
