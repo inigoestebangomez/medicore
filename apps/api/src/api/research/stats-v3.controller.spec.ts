@@ -24,12 +24,21 @@ function byVal<T>(value: T) {
   return fn;
 }
 
-function build(stubs: { python?: any; tableOne?: any; tableOneCompare?: any; prePost?: any }) {
+function build(stubs: {
+  python?: any;
+  tableOne?: any;
+  tableOneCompare?: any;
+  prePost?: any;
+  groupComparison?: any;
+  survivalTable?: any;
+}) {
   return new StatsV3Controller(
     stubs.python ?? { runNormality: jest.fn() },
     stubs.tableOne ?? { execute: jest.fn() },
     stubs.tableOneCompare ?? { execute: jest.fn() },
     stubs.prePost ?? { execute: jest.fn() },
+    stubs.groupComparison ?? { execute: jest.fn() },
+    stubs.survivalTable ?? { generate: jest.fn() },
   );
 }
 

@@ -66,6 +66,9 @@ import { TableOneService } from '@/application/research/services/table-one.servi
 import { TableOneHandler, TableOneCompareHandler } from '@/application/research/commands/table-one.handler';
 import { PrePostAnalysisService } from '@/application/research/services/pre-post-analysis.service';
 import { PrePostAnalysisHandler } from '@/application/research/commands/pre-post-analysis.handler';
+import { GroupComparisonService } from '@/application/research/services/group-comparison.service';
+import { GroupComparisonHandler } from '@/application/research/commands/group-comparison.handler';
+import { SurvivalTableService } from '@/application/research/services/survival-table.service';
 
 @Module({
   imports: [
@@ -143,6 +146,11 @@ import { PrePostAnalysisHandler } from '@/application/research/commands/pre-post
     TableOneCompareHandler,
     PrePostAnalysisService,
     PrePostAnalysisHandler,
+    // Research V3 — group comparison (M6).
+    GroupComparisonService,
+    GroupComparisonHandler,
+    // Research V3 — survival table export (M5).
+    SurvivalTableService,
     // BullMQ queue token for the PDF render worker (design AD-4).
     {
       provide: 'PDF_QUEUE',

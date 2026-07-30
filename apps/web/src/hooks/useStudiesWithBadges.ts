@@ -261,3 +261,75 @@ export function usePrePostAnalysis() {
     mutationFn: (req: PrePostRequest) => apiFetch<PrePostResult>(`${BASE}/analysis/pre-post`, { method: 'POST', body: JSON.stringify(req) }),
   });
 }
+
+// ─────────────────────────────────────────────
+// V3 — Group comparison (M6) + Survival table (M5)
+// ─────────────────────────────────────────────
+
+export interface GroupComparisonRequest {
+  studyId?: string;
+  queryId?: string;
+  groupBy: string;
+  variableFields: string[];
+}
+
+export interface GroupVariableResult {
+  field: string;
+  test: 'ttest_independent' | 'mannwhitney' | 'chi_square' | 'fisher_exact' | null;
+  pValue: string;
+  statistic: number | null;
+  groups: Array<{
+    key: string;
+    n: number;
+    representation: 'mean_sd' | 'median_iqr' | 'categorical';
+    mean: number | null;
+    sd: number | null;
+    median: number | null;
+    q1: number | null;
+    q3: number | null;
+    categories: Array<{ label: string; count: number; percent: number }>;
+  }>;
+  warnings: string[];
+}
+
+export interface GroupComparisonResult {
+  queryId: string;
+  groupBy: string;
+  groups: string[];
+  variables: GroupVariableResult[];
+  warnings: string[];
+}
+
+export function useGroupComparison() {
+  return useMutation<GroupComparisonResult, Error, GroupComparisonRequest>({
+    mutationFn: (req: GroupComparisonRequest) =>
+      apiFetch<GroupComparisonResult>(`${BASE}/analysis/compare-groups`, { method: 'POST', body: JSON.stringify(req) }),
+  });
+}
+
+export interface SurvivalTableRequest {
+  studyId?: string;
+  queryId?: string;
+  timeField: string;
+  eventField: string;
+  timePoints?: number[];
+}
+
+export interface SurvivalTableResult {
+  queryId: string;
+  timeField: string;
+  eventField: string;
+  n: number;
+  rows: Array<{ months: number; survival: number | null; ciLower: number | null; ciUpper: number | null }>;
+  medianSurvival: number | null;
+  logRankP: number | null;
+  warnings: string[];
+  csv: string;
+}
+
+export function useSurvivalTable() {
+  return useMutation<SurvivalTableResult, Error, SurvivalTableRequest>({
+    mutationFn: (req: SurvivalTableRequest) =>
+      apiFetch<SurvivalTableResult>(`${BASE}/analysis/survival-table`, { method: 'POST', body: JSON.stringify(req) }),
+  });
+}

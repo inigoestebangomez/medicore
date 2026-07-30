@@ -22,6 +22,14 @@ import { PythonStatsService } from '@/infrastructure/stats/python-stats.service'
 import { TableOneHandler } from '@/application/research/commands/table-one.handler';
 import { TableOneCompareHandler } from '@/application/research/commands/table-one.handler';
 import { PrePostAnalysisHandler, type PrePostCommand } from '@/application/research/commands/pre-post-analysis.handler';
+import {
+  GroupComparisonHandler,
+  type GroupComparisonCommand,
+} from '@/application/research/commands/group-comparison.handler';
+import {
+  SurvivalTableService,
+  type SurvivalTableCommand,
+} from '@/application/research/services/survival-table.service';
 
 @Controller('research')
 @UseGuards(AuthGuard, RBACGuard, FeatureFlagGuard)
@@ -31,6 +39,8 @@ export class StatsV3Controller {
     private readonly tableOne: TableOneHandler,
     private readonly tableOneCompare: TableOneCompareHandler,
     private readonly prePost: PrePostAnalysisHandler,
+    private readonly groupComparison: GroupComparisonHandler,
+    private readonly survivalTableSvc: SurvivalTableService,
   ) {}
 
   @Post('stats/normality')
@@ -95,6 +105,32 @@ export class StatsV3Controller {
     if (!body?.studyId) throw new BadRequestException('studyId is required');
     if (!body?.scaleType) throw new BadRequestException('scaleType is required');
     const result = await this.prePost.execute({ ...body, organizationId: user.organizationId });
+    return { data: result };
+  }
+
+  @Post('analysis/compare-groups')
+  @RequireFeature('RESEARCH_V3_TABLE1')
+  @Reflect.metadata(REQUIRED_ACTION_KEY, Action.READ_PATIENT)
+  async compareGroups(
+    @Body() body: Omit<GroupComparisonCommand, 'organizationId'>,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    if (!body?.groupBy) throw new BadRequestException('groupBy is required');
+    if (!body?.variableFields || body.variableFields.length === 0) throw new BadRequestException('variableFields is required');
+    const result = await this.groupComparison.execute({ ...body, organizationId: user.organizationId });
+    return { data: result };
+  }
+
+  @Post('analysis/survival-table')
+  @RequireFeature('RESEARCH_V3_VIZ')
+  @Reflect.metadata(REQUIRED_ACTION_KEY, Action.READ_PATIENT)
+  async survivalTable(
+    @Body() body: Omit<SurvivalTableCommand, 'organizationId'>,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    if (!body?.timeField) throw new BadRequestException('timeField is required');
+    if (!body?.eventField) throw new BadRequestException('eventField is required');
+    const result = await this.survivalTableSvc.generate({ ...body, organizationId: user.organizationId });
     return { data: result };
   }
 }

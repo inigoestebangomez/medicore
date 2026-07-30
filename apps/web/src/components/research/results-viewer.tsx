@@ -14,6 +14,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import type { ResultRow, FieldStat, CategoryDist } from '@/hooks/useResearch';
+import { HistogramChart } from './HistogramChart';
 
 // ─────────────────────────────────────────────
 // Numeric helpers — extract numeric series from rows for line/scatter/box
@@ -64,7 +65,7 @@ export function ResultsViewer({ rows, displayFields, stats, distributions }: Res
 
   // Numeric analysis (spec §10 — line / scatter / box plot switcher).
   const numFields = useMemo(() => numericFields(rows), [rows]);
-  const [chartType, setChartType] = useState<'line' | 'scatter' | 'box'>('line');
+  const [chartType, setChartType] = useState<'line' | 'scatter' | 'box' | 'histogram'>('line');
   const [lineField, setLineField] = useState<string>('');
   const [scatterX, setScatterX] = useState<string>('');
   const [scatterY, setScatterY] = useState<string>('');
@@ -201,7 +202,7 @@ export function ResultsViewer({ rows, displayFields, stats, distributions }: Res
           <div className="flex flex-wrap items-center gap-3">
             <h3 className="text-sm font-semibold text-on-surface-variant">Análisis numérico</h3>
             <div className="inline-flex rounded-md border border-outline overflow-hidden">
-              {(['line', 'scatter', 'box'] as const).map((t) => (
+              {(['line', 'scatter', 'box', 'histogram'] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -210,7 +211,7 @@ export function ResultsViewer({ rows, displayFields, stats, distributions }: Res
                     chartType === t ? 'bg-indigo-600 text-white' : 'bg-surface-lowest text-on-surface-variant hover:bg-surface-low'
                   }`}
                 >
-                  {t === 'line' ? 'Línea' : t === 'scatter' ? 'Dispersión' : 'Box plot'}
+                  {t === 'line' ? 'Línea' : t === 'scatter' ? 'Dispersión' : t === 'box' ? 'Box plot' : 'Histograma'}
                 </button>
               ))}
             </div>
@@ -238,6 +239,14 @@ export function ResultsViewer({ rows, displayFields, stats, distributions }: Res
               onChange={setBoxField}
             />
           )}
+          {chartType === 'histogram' && (
+            <NumericFieldSelect
+              label="Variable"
+              fields={numFields}
+              value={effectiveBoxField}
+              onChange={setBoxField}
+            />
+          )}
 
           <NumericChart
             type={chartType}
@@ -247,6 +256,14 @@ export function ResultsViewer({ rows, displayFields, stats, distributions }: Res
             scatterY={effectiveScatterY}
             boxField={effectiveBoxField}
           />
+
+          {chartType === 'histogram' && (
+            <HistogramChart
+              field={(effectiveBoxField || numFields[0]) ?? ''}
+              values={numericValues(rows, (effectiveBoxField || numFields[0]) ?? '')}
+              bins={10}
+            />
+          )}
         </section>
       )}
 
@@ -342,13 +359,16 @@ function NumericChart({
   scatterY,
   boxField,
 }: {
-  type: 'line' | 'scatter' | 'box';
+  type: 'line' | 'scatter' | 'box' | 'histogram';
   rows: ResultRow[];
   lineField: string;
   scatterX: string;
   scatterY: string;
   boxField: string;
 }) {
+  // Histogram is rendered by the dedicated HistogramChart below the switcher;
+  // NumericChart handles only line / scatter / box.
+  if (type === 'histogram') return null;
   // BR-RES-004: hide the chart when the series has fewer than 5 points.
   if (type === 'line') {
     const values = numericValues(rows, lineField);
