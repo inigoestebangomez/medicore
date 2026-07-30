@@ -6,7 +6,7 @@
 // buttons (BR-RES-002 anonymized), and collection management (create a cohort
 // from this query's snapshot, BR-RES-003 lock).
 
-import { use, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useExecuteQueryResult } from '@/hooks/useResearch';
 import { ResultsViewer } from '@/components/research/results-viewer';
@@ -15,8 +15,8 @@ import { CollectionManager } from '@/components/research/collection-manager';
 import type { Filter, FilterLogic } from '@medicore/contracts';
 import { FilterBuilder } from '@/components/research/filter-builder';
 
-export default function ResearchQueryResultsPage({ params }: { params: Promise<{ queryId: string }> }) {
-  const { queryId } = use(params);
+export default function ResearchQueryResultsPage({ params }: { params: { queryId: string } }) {
+  const { queryId } = params;
   const result = useExecuteQueryResult(queryId);
   const [overrideFilters, setOverrideFilters] = useState<Filter[] | null>(null);
   const [overrideLogic, setOverrideLogic] = useState<FilterLogic>('AND');

@@ -31,8 +31,7 @@ ALTER TABLE "research_queries" ADD CONSTRAINT "research_queries_dashboard_id_fke
 
 CREATE INDEX "research_queries_dashboard_id_idx" ON "research_queries"("dashboard_id");
 
--- GIN optimization for cross-tab / field-discovery push-down (design infra).
--- jsonb_path_ops is the most compact & query-efficient GIN opclass for existence
--- and containment queries used by FieldDiscoveryService / CrossTabService.
-CREATE INDEX IF NOT EXISTS "idx_patients_imported_data_path"
-    ON "patients" USING gin ("imported_data" jsonb_path_ops);
+-- NOTE: GIN index on patients.imported_data skipped — column does not exist in this DB.
+-- If imported_data is added later, re-create this index:
+-- CREATE INDEX IF NOT EXISTS "idx_patients_imported_data_path"
+--     ON "patients" USING gin ("imported_data" jsonb_path_ops);

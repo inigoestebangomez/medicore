@@ -3,16 +3,11 @@
 
 'use client';
 
-import { use } from 'react';
 import Link from 'next/link';
 import { ExportWizard } from '@/components/research/ExportWizard/ExportWizard';
 
-interface PageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default function ExportPage({ params }: PageProps) {
-  const { id } = use(params);
+export default function ExportPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   return (
     <div className="container mx-auto space-y-4 py-6">
       <Link href={`/research/studies/${id}`} className="text-xs text-on-surface-variant hover:underline">

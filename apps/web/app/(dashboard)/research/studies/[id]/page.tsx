@@ -4,14 +4,9 @@
 // Study detail (M8): overview + tabs for table1, compare, survival, export.
 // Tabs render placeholders here; Phase 2/3/4 pages mount the real components.
 
-import { use } from 'react';
 import Link from 'next/link';
 import { useStudy, useStudySuggestions } from '@/hooks/useStudiesWithBadges';
 import { StudySuggestionPanel } from '@/components/research/StudySuggestionPanel';
-
-interface PageProps {
-  params: Promise<{ id: string }>;
-}
 
 const STATUS_LABEL = {
   DRAFT: 'Borrador',
@@ -28,8 +23,8 @@ const TABS = [
   { key: 'export', label: 'Exportar' },
 ] as const;
 
-export default function StudyDetailPage({ params }: PageProps) {
-  const { id } = use(params);
+export default function StudyDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const { data: study, isLoading } = useStudy(id);
   const { data: suggestions } = useStudySuggestions(id);
 
