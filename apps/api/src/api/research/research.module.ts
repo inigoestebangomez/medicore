@@ -69,6 +69,14 @@ import { PrePostAnalysisHandler } from '@/application/research/commands/pre-post
 import { GroupComparisonService } from '@/application/research/services/group-comparison.service';
 import { GroupComparisonHandler } from '@/application/research/commands/group-comparison.handler';
 import { SurvivalTableService } from '@/application/research/services/survival-table.service';
+import { ExportV3Controller } from './export-v3.controller';
+import { DocxGenerator } from '@/application/research/export/docx.generator';
+import { TiffConverter } from '@/application/research/export/tiff.converter';
+import { ZipBundler } from '@/application/research/export/zip.bundler';
+import { ExportV3JobRegistry } from '@/application/research/export/export-v3.job-registry';
+import { ExportV3Handler } from '@/application/research/export/export-v3.handler';
+import { ExportV3StatusHandler } from '@/application/research/queries/export-v3-status.handler';
+import { ExportV3DownloadHandler } from '@/application/research/queries/export-v3-download.handler';
 
 @Module({
   imports: [
@@ -90,6 +98,7 @@ import { SurvivalTableService } from '@/application/research/services/survival-t
     ExportV2Controller,
     StudiesController,
     StatsV3Controller,
+    ExportV3Controller,
   ],
   providers: [
     // Repositories (interface-typed DI tokens).
@@ -151,6 +160,23 @@ import { SurvivalTableService } from '@/application/research/services/survival-t
     GroupComparisonHandler,
     // Research V3 — survival table export (M5).
     SurvivalTableService,
+    // Research V3 — export v3 (M7): native libs injected via factories (docx/sharp/archiver).
+    ExportV3JobRegistry,
+    {
+      provide: DocxGenerator,
+      useFactory: () => new DocxGenerator(require('docx')),
+    },
+    {
+      provide: TiffConverter,
+      useFactory: () => new TiffConverter(require('sharp')),
+    },
+    {
+      provide: ZipBundler,
+      useFactory: () => new ZipBundler(() => require('archiver')('zip', {})),
+    },
+    ExportV3Handler,
+    ExportV3StatusHandler,
+    ExportV3DownloadHandler,
     // BullMQ queue token for the PDF render worker (design AD-4).
     {
       provide: 'PDF_QUEUE',

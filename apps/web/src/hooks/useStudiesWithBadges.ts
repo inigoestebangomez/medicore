@@ -333,3 +333,57 @@ export function useSurvivalTable() {
       apiFetch<SurvivalTableResult>(`${BASE}/analysis/survival-table`, { method: 'POST', body: JSON.stringify(req) }),
   });
 }
+
+// ─────────────────────────────────────────────
+// V3 — Multi-format export (M7)
+// ─────────────────────────────────────────────
+
+export type ExportFormat = 'docx' | 'tiff' | 'csv' | 'r_syntax' | 'spss_syntax' | 'zip';
+
+export const EXPORT_FORMAT_LABEL: Record<ExportFormat, string> = {
+  docx: 'Word (.docx)',
+  tiff: 'Imagen TIFF (300dpi)',
+  csv: 'CSV',
+  r_syntax: 'Sintaxis R',
+  spss_syntax: 'Sintaxis SPSS',
+  zip: 'ZIP (todo)',
+};
+
+export interface ExportV3Request {
+  studyName: string;
+  formats: ExportFormat[];
+  table1?: unknown;
+  comparison?: unknown;
+  analyses?: unknown;
+  style?: 'APA' | 'Vancouver';
+  png?: string;
+  csv?: string;
+  tests?: unknown;
+  testDetails?: unknown;
+}
+
+export interface ExportV3JobResult {
+  jobId: string;
+  format: ExportFormat | 'zip';
+  filename: string;
+}
+
+export interface ExportV3Status {
+  jobId: string;
+  status: 'done' | 'failed' | 'unknown';
+  filename?: string;
+  error?: string;
+}
+
+const EXPORT_BASE = '/v1/research/export';
+
+export function useExportV3() {
+  return useMutation<ExportV3JobResult, Error, ExportV3Request>({
+    mutationFn: (req: ExportV3Request) =>
+      apiFetch<ExportV3JobResult>(`${EXPORT_BASE}/v3`, { method: 'POST', body: JSON.stringify(req) }),
+  });
+}
+
+export function getExportDownloadUrl(jobId: string): string {
+  return `${EXPORT_BASE}/v3/${jobId}/download`;
+}
