@@ -130,7 +130,56 @@ export class PythonStatsService {
     }
   }
 
-  /** Lightweight health check used on startup / readiness probe. */
+  // ─────────────────────────────────────────────
+// V4 — Agreement tests: Kappa/ICC/Cronbach (REQ-FB-010)
+// Same circuit-breaker + 5s timeout pattern. Endpoints are added to the
+// Python service in apps/stats-service/app/routers/agreement.py.
+// ─────────────────────────────────────────────
+
+async runKappa(
+  raterA: Array<string | number | boolean>,
+  raterB: Array<string | number | boolean>,
+  alpha = 0.05,
+): Promise<AgreementResult> {
+  return this.callAgreement('/internal/stats/kappa', { raterA, raterB, alpha });
+}
+
+async runIcc(valuesByRater: number[][], alpha = 0.05): Promise<AgreementResult> {
+  return this.callAgreement('/internal/stats/icc', { valuesByRater, alpha });
+}
+
+async runCronbach(itemsBySubject: number[][], alpha = 0.05): Promise<AgreementResult> {
+  return this.callAgreement('/internal/stats/cronbach', { itemsBySubject, alpha });
+}
+
+private async callAgreement(
+  path: string,
+  body: Record<string, unknown>,
+): Promise<AgreementResult> {
+  if (!this.breaker.allowCall()) throw new Error('stats_service_circuit_open');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5_000);
+  try {
+    const res = await fetch(`${PYTHON_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error(`stats_service_http_${res.status}`);
+    this.breaker.recordSuccess();
+    return (await res.json()) as AgreementResult;
+  } catch (err) {
+    this.breaker.recordFailure();
+    this.logger.warn(`Agreement test ${path} failed: ${(err as Error).message}`);
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Lightweight health check used on startup / readiness probe. */
   async health(): Promise<boolean> {
     try {
       const res = await fetch(`${PYTHON_BASE_URL}/health`, { signal: AbortSignal.timeout(2000) });
@@ -246,5 +295,13 @@ export interface DescribeAutoResult {
   q3: number | null;
   n: number;
   normality: NormalityResult | null;
+  warnings: string[];
+}
+
+// V4 — agreement test result (Kappa/ICC/Cronbach), mirror of Pydantic.
+export interface AgreementResult {
+  statistic: number | null;
+  pValue: number | null;
+  n: number;
   warnings: string[];
 }

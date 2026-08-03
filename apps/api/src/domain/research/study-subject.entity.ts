@@ -95,6 +95,11 @@ export class StudySubject {
     return this.values[varId];
   }
 
+  /** Replace mutable subject fields (caller validates values first). */
+  update(props: Partial<StudySubjectProps>): StudySubject {
+    return this.clone(props);
+  }
+
   /**
    * Validate all present values against their variables (REQ-FB-006).
    * Empty values are skipped (núcleo fijo rule) — never error.

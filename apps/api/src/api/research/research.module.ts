@@ -77,6 +77,40 @@ import { ExportV3JobRegistry } from '@/application/research/export/export-v3.job
 import { ExportV3Handler } from '@/application/research/export/export-v3.handler';
 import { ExportV3StatusHandler } from '@/application/research/queries/export-v3-status.handler';
 import { ExportV3DownloadHandler } from '@/application/research/queries/export-v3-download.handler';
+// Research V4 — form builder (REQ-FB-001 through REQ-FB-013).
+import { VariableBuilderController } from './variable-builder.controller';
+import { SubjectController } from './subject.controller';
+import { AnalysisController } from './analysis.controller';
+import { TemplateController } from './template.controller';
+import {
+  CreateVariableHandler,
+  UpdateVariableHandler,
+  DeleteVariableHandler,
+  ReorderVariablesHandler,
+  DecomposeVariableHandler,
+  AddVariableFromTemplateHandler,
+} from '@/application/research/commands/variable-builder.handlers';
+import {
+  EnrollSubjectHandler,
+  ListSubjectsHandler,
+  UpdateSubjectHandler,
+  PreviewAutoFillHandler,
+  UpdateAutoFillMapHandler,
+} from '@/application/research/commands/subject.handlers';
+import {
+  CreateVariableTemplateHandler,
+  ListVariableTemplatesHandler,
+  UpdateVariableTemplateHandler,
+} from '@/application/research/commands/variable-template.handlers';
+import {
+  RunAnalysisHandler,
+  ListAnalysesHandler,
+} from '@/application/research/commands/analysis.handler';
+import { GetRegistrationFormHandler } from '@/application/research/queries/get-registration-form.handler';
+import { PrismaStudyVariableRepository } from '@/infrastructure/database/repositories/study-variable.repository';
+import { PrismaStudySubjectRepository } from '@/infrastructure/database/repositories/study-subject.repository';
+import { PrismaVariableTemplateRepository } from '@/infrastructure/database/repositories/variable-template.repository';
+import { PrismaStatisticalAnalysisRepository } from '@/infrastructure/database/repositories/statistical-analysis.repository';
 
 @Module({
   imports: [
@@ -99,6 +133,11 @@ import { ExportV3DownloadHandler } from '@/application/research/queries/export-v
     StudiesController,
     StatsV3Controller,
     ExportV3Controller,
+    // Research V4 — form builder controllers (REQ-FB-013).
+    VariableBuilderController,
+    SubjectController,
+    AnalysisController,
+    TemplateController,
   ],
   providers: [
     // Repositories (interface-typed DI tokens).
@@ -183,6 +222,33 @@ import { ExportV3DownloadHandler } from '@/application/research/queries/export-v
       useFactory: (queue: any) => queue,
       inject: ['BullQueue_pdf.render'],
     },
+    // Research V4 — form builder repositories (interface-typed DI tokens).
+    { provide: 'IStudyVariableRepository', useClass: PrismaStudyVariableRepository },
+    { provide: 'IStudySubjectRepository', useClass: PrismaStudySubjectRepository },
+    { provide: 'IVariableTemplateRepository', useClass: PrismaVariableTemplateRepository },
+    { provide: 'IStatisticalAnalysisRepository', useClass: PrismaStatisticalAnalysisRepository },
+    // Research V4 — variable builder handlers (REQ-FB-001..005).
+    CreateVariableHandler,
+    UpdateVariableHandler,
+    DeleteVariableHandler,
+    ReorderVariablesHandler,
+    DecomposeVariableHandler,
+    AddVariableFromTemplateHandler,
+    // Research V4 — subject enrollment + auto-fill handlers (REQ-FB-006..009).
+    EnrollSubjectHandler,
+    ListSubjectsHandler,
+    UpdateSubjectHandler,
+    PreviewAutoFillHandler,
+    UpdateAutoFillMapHandler,
+    // Research V4 — variable library handlers (REQ-FB-002).
+    CreateVariableTemplateHandler,
+    ListVariableTemplatesHandler,
+    UpdateVariableTemplateHandler,
+    // Research V4 — analysis handlers (REQ-FB-010..012).
+    RunAnalysisHandler,
+    ListAnalysesHandler,
+    // Research V4 — registration form query (REQ-FB-007).
+    GetRegistrationFormHandler,
   ],
   exports: [
     FieldDiscoveryService,
