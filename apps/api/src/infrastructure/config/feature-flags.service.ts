@@ -16,7 +16,7 @@
 //   RESEARCH_V3_VIZ       — Histogram / Pie / Bland-Altman / Forest / survival table (M4/M5)
 //   RESEARCH_V3_EXPORT    — Multi-format export v3: docx, TIFF, R/SPSS, ZIP (M7)
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 
 export type ResearchV2Flag =
   | 'RESEARCH_V2_FIELD_DISCOVERY'
@@ -82,7 +82,7 @@ export class FeatureFlagsService {
   }
 }
 
-export class FeatureDisabledError extends Error {
+export class FeatureDisabledError extends ForbiddenException {
   constructor(public readonly flag: string) {
     super(`Feature flag "${flag}" is disabled`);
     this.name = 'FeatureDisabledError';
