@@ -25,6 +25,8 @@ export class RecalculateStudyHandler {
     const study = await this.studyRepo.findById(cmd.studyId, cmd.organizationId);
     if (!study) throw new StudyNotFoundError(cmd.studyId);
     if (study.status.isFrozen) throw new StudyStateError('Cannot recalculate a frozen study');
+    // V4: FORM studies (no queryId) have no cohort to recalculate.
+    if (!study.queryId) throw new StudyStateError('Only query-backed studies can be recalculated');
 
     const executed = await this.executeQuery.execute({
       queryId: study.queryId,

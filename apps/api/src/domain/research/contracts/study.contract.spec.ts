@@ -22,8 +22,17 @@ describe('study.contract (Zod)', () => {
     expect(CreateStudyInputSchema.safeParse({ queryId: 'q', name: '' }).success).toBe(false);
   });
 
-  it('rejects queryId missing for create', () => {
-    expect(CreateStudyInputSchema.safeParse({ name: 'x' }).success).toBe(false);
+  // V4 (REQ-FB-008): queryId is now optional — a FORM study is created
+  // without an originating ResearchQuery. QUERY/HYBRID still require it,
+  // but that is enforced in CreateStudyHandler (domain rule), not the contract.
+  it('accepts queryId missing for FORM study create', () => {
+    expect(
+      CreateStudyInputSchema.safeParse({ studyType: 'FORM', name: 'x' }).success,
+    ).toBe(true);
+    // Defaults to QUERY studyType when omitted
+    expect(CreateStudyInputSchema.parse({ name: 'x' }).studyType).toBe(
+      'QUERY',
+    );
   });
 
   it('accepts partial UpdateStudyInput', () => {

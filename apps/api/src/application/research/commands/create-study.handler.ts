@@ -24,14 +24,24 @@ export class CreateStudyHandler {
   ) {}
 
   async execute(cmd: CreateStudyCommand): Promise<ResearchStudy> {
-    const query = await this.queryRepo.findById(cmd.input.queryId, cmd.organizationId);
-    if (!query) throw new ResearchQueryNotFoundError(cmd.input.queryId);
+    const studyType = cmd.input.studyType ?? 'QUERY';
+    // QUERY & HYBRID studies require an originating ResearchQuery (cohort source).
+    // FORM studies have no query — queryId is null (REQ-FB-008).
+    let queryId: string | null = cmd.input.queryId ?? null;
+    if (studyType !== 'FORM') {
+      if (!queryId) throw new ResearchQueryNotFoundError('');
+      const query = await this.queryRepo.findById(queryId, cmd.organizationId);
+      if (!query) throw new ResearchQueryNotFoundError(queryId);
+    } else {
+      queryId = null; // FORM studies never carry a queryId
+    }
 
     const study = ResearchStudy.create({
       id: randomUUID(),
       organizationId: cmd.organizationId,
       createdBy: cmd.createdBy,
-      queryId: cmd.input.queryId,
+      queryId,
+      studyType,
       name: cmd.input.name,
       description: cmd.input.description,
       publicationRef: cmd.input.publicationRef,

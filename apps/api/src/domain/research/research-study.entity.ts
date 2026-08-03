@@ -6,11 +6,14 @@
 import { StudyStatusVO, type StudyStatusLiteral } from './value-objects/study-status.vo';
 import { InvalidStudyTransitionError } from './value-objects/study-status.vo';
 
+export type StudyTypeLiteral = 'QUERY' | 'FORM' | 'HYBRID';
+
 export interface ResearchStudyProps {
   id: string;
   organizationId: string;
   createdBy: string;
-  queryId: string;
+  queryId: string | null; // V4: nullable for FORM studies (REQ-FB-008)
+  studyType?: StudyTypeLiteral; // V4: QUERY | FORM | HYBRID (default QUERY)
   name: string;
   description?: string | null;
   status: StudyStatusLiteral;
@@ -29,7 +32,8 @@ export class ResearchStudy {
   readonly id: string;
   readonly organizationId: string;
   readonly createdBy: string;
-  readonly queryId: string;
+  readonly queryId: string | null; // V4: nullable
+  readonly studyType: StudyTypeLiteral; // V4
   readonly name: string;
   readonly description: string | null;
   readonly status: StudyStatusVO;
@@ -48,6 +52,7 @@ export class ResearchStudy {
     this.organizationId = props.organizationId;
     this.createdBy = props.createdBy;
     this.queryId = props.queryId;
+    this.studyType = props.studyType ?? 'QUERY';
     this.name = props.name;
     this.description = props.description ?? null;
     this.status = StudyStatusVO.create(props.status);
@@ -67,7 +72,8 @@ export class ResearchStudy {
     id: string;
     organizationId: string;
     createdBy: string;
-    queryId: string;
+    queryId?: string | null; // V4: optional for FORM studies
+    studyType?: StudyTypeLiteral; // V4
     name: string;
     description?: string;
     publicationRef?: string;
@@ -76,7 +82,8 @@ export class ResearchStudy {
       id: props.id,
       organizationId: props.organizationId,
       createdBy: props.createdBy,
-      queryId: props.queryId,
+      queryId: props.queryId ?? null,
+      studyType: props.studyType ?? 'QUERY',
       name: props.name,
       description: props.description ?? null,
       status: 'DRAFT',
@@ -164,6 +171,7 @@ export class ResearchStudy {
       organizationId: this.organizationId,
       createdBy: this.createdBy,
       queryId: this.queryId,
+      studyType: this.studyType,
       name: this.name,
       description: this.description,
       status: this.status.value,

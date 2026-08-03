@@ -9,8 +9,12 @@ import { z } from 'zod';
 export const StudyStatusSchema = z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED', 'FROZEN']);
 export type StudyStatusValue = z.infer<typeof StudyStatusSchema>;
 
+export const StudyTypeSchema = z.enum(['QUERY', 'FORM', 'HYBRID']);
+export type StudyTypeValue = z.infer<typeof StudyTypeSchema>;
+
 export const CreateStudyInputSchema = z.object({
-  queryId: z.string().min(1),
+  queryId: z.string().min(1).nullable().optional(), // V4: optional for FORM studies
+  studyType: StudyTypeSchema.default('QUERY'), // V4
   name: z.string().min(1).max(200),
   description: z.string().max(2000).optional(),
   publicationRef: z.string().max(500).optional(),
@@ -29,7 +33,8 @@ export const StudyResponseSchema = z.object({
   id: z.string().uuid(),
   organizationId: z.string().uuid(),
   createdBy: z.string().uuid(),
-  queryId: z.string().uuid(),
+  queryId: z.string().uuid().nullable(), // V4: nullable for FORM
+  studyType: StudyTypeSchema.default('QUERY'), // V4
   name: z.string(),
   description: z.string().nullable(),
   status: StudyStatusSchema,

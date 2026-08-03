@@ -209,6 +209,7 @@ export class StudiesController {
       organizationId: s.organizationId,
       createdBy: s.createdBy,
       queryId: s.queryId,
+      studyType: s.studyType,
       name: s.name,
       description: s.description,
       status: s.status.value,

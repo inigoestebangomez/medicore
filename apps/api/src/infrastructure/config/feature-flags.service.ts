@@ -32,7 +32,16 @@ export type ResearchV3Flag =
   | 'RESEARCH_V3_VIZ'
   | 'RESEARCH_V3_EXPORT';
 
-export type ResearchFlag = ResearchV2Flag | ResearchV3Flag;
+// Research Engine V4 flags — all default ON (opt-out), independent toggles:
+//   RESEARCH_FORM_BUILDER     — Form-builder core: variables/subjects/analyses (REQ-FB-013)
+//   RESEARCH_VARIABLE_LIBRARY — Org-level reusable variable templates (REQ-FB-002)
+//   RESEARCH_AGREEMENT_TESTS  — Kappa/ICC/Cronbach endpoints (REQ-FB-010)
+export type ResearchV4Flag =
+  | 'RESEARCH_FORM_BUILDER'
+  | 'RESEARCH_VARIABLE_LIBRARY'
+  | 'RESEARCH_AGREEMENT_TESTS';
+
+export type ResearchFlag = ResearchV2Flag | ResearchV3Flag | ResearchV4Flag;
 
 const ALL_FLAGS: ResearchFlag[] = [
   'RESEARCH_V2_FIELD_DISCOVERY',
@@ -45,6 +54,9 @@ const ALL_FLAGS: ResearchFlag[] = [
   'RESEARCH_V3_PRE_POST',
   'RESEARCH_V3_VIZ',
   'RESEARCH_V3_EXPORT',
+  'RESEARCH_FORM_BUILDER',
+  'RESEARCH_VARIABLE_LIBRARY',
+  'RESEARCH_AGREEMENT_TESTS',
 ];
 
 @Injectable()

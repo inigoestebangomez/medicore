@@ -46,7 +46,7 @@ describe('CreateStudyHandler', () => {
     const cmd: CreateStudyCommand = {
       organizationId: 'org-1',
       createdBy: 'user-1',
-      input: { queryId: 'q-1', name: 'New Cohort' },
+      input: { studyType: 'QUERY', queryId: 'q-1', name: 'New Cohort' },
     };
     const s = await h.execute(cmd);
     expect(s.status.value).toBe('DRAFT');
@@ -58,7 +58,7 @@ describe('CreateStudyHandler', () => {
     const queryRepo = mockRepo<IResearchQueryRepository>({ findById: jest.fn(async () => null) });
     const studyRepo = mockRepo<IResearchStudyRepository>({ create: jest.fn() });
     const h = new CreateStudyHandler(studyRepo, queryRepo);
-    await expect(h.execute({ organizationId: 'o', createdBy: 'u', input: { queryId: 'nope', name: 'x' } }))
+    await expect(h.execute({ organizationId: 'o', createdBy: 'u', input: { studyType: 'QUERY', queryId: 'nope', name: 'x' } }))
       .rejects.toThrow();
   });
 });

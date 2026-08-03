@@ -94,6 +94,7 @@ export class GroupComparisonService {
     if (cmd.studyId) {
       const study = await this.studyRepo.findById(cmd.studyId, cmd.organizationId);
       if (!study) throw new StudyNotFoundError(cmd.studyId);
+      if (!study.queryId) throw new Error('studyId or queryId is required');
       const executed = await this.executeQuery.execute({ queryId: study.queryId, organizationId: cmd.organizationId });
       return { queryId: study.queryId, rows: this.toRawRows(executed) };
     }

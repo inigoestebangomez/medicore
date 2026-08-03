@@ -64,6 +64,8 @@ model Organization {
   pharmaContacts      PharmaContact[]
   pharmaInteractions  PharmaInteraction[]
   researchStudies     ResearchStudy[]
+  variableTemplates   VariableTemplate[]
+  studySubjects       StudySubject[]
 
   @@index([slug])
   @@map("organizations")
@@ -346,6 +348,7 @@ model Patient {
   consents              ConsentRecord[]
   collectionMemberships PatientCollectionMember[]
   billingTransactions   BillingTransaction[]
+  studySubjects         StudySubject[]
 
   @@unique([organizationId, nhc]) // El NHC es único dentro de la organización
   @@index([organizationId])
@@ -536,34 +539,207 @@ enum StudyStatus {
   FROZEN
 }
 
+// ─────────────────────────────────────────────
+// RESEARCH V4 — Form Builder enums (REQ-FB-001, REQ-FB-008, REQ-FB-010)
+// ─────────────────────────────────────────────
+
+enum StudyType {
+  QUERY
+  FORM
+  HYBRID
+}
+
+enum VariableType {
+  CONTINUOUS
+  DISCRETE
+  DICHOTOMOUS
+  NOMINAL
+  ORDINAL
+  TIME_TO_EVENT
+}
+
+enum VariableScope {
+  CORE
+  CUSTOM
+}
+
+enum AnalysisTest {
+  KAPPA
+  ICC
+  CRONBACH
+  LOGISTIC
+  COX
+  KAPLAN_MEIER
+  T_TEST
+  MANN_WHITNEY
+  CHI_SQUARE
+  FISHER
+  ANOVA
+  PEARSON
+  SPEARMAN
+  WILCOXON
+  KRUSKAL
+}
+
+enum RiskFactorLabel {
+  RISK_FACTOR
+  PROTECTIVE_FACTOR
+  NEUTRAL
+}
+
 model ResearchStudy {
-  id             String      @id @default(uuid())
-  organizationId String      @map("organization_id")
-  createdBy      String      @map("created_by")
-  queryId        String      @map("query_id")
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  createdBy      String    @map("created_by")
+  queryId        String?   @map("query_id") // V4: nullable for FORM studies
+  studyType      StudyType @default(QUERY) @map("study_type") // V4: QUERY | FORM | HYBRID
 
-  name           String
-  description    String?
-  status         StudyStatus @default(DRAFT)
-  cachedPatientIds Json      @default("[]") @map("cached_patient_ids")
-  cachedAt       DateTime?   @map("cached_at")
-  patientCount   Int         @default(0) @map("patient_count")
-  analyses       Json        @default("[]")
-  publicationRef String?     @map("publication_ref")
-  frozenAt       DateTime?   @map("frozen_at")
+  name             String
+  description      String?
+  status           StudyStatus @default(DRAFT)
+  cachedPatientIds Json        @default("[]") @map("cached_patient_ids")
+  cachedAt         DateTime?   @map("cached_at")
+  patientCount     Int         @default(0) @map("patient_count")
+  analyses         Json        @default("[]")
+  publicationRef   String?     @map("publication_ref")
+  frozenAt         DateTime?   @map("frozen_at")
 
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  deletedAt      DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  organization  Organization       @relation(fields: [organizationId], references: [id])
-  query          ResearchQuery      @relation(fields: [queryId], references: [id])
-  notifications  StudyNotification[]
+  organization          Organization          @relation(fields: [organizationId], references: [id])
+  query                 ResearchQuery?        @relation(fields: [queryId], references: [id])
+  notifications         StudyNotification[]
+  variables             StudyVariable[]
+  subjects              StudySubject[]
+  analysisRuns          StatisticalAnalysis[]
+  variableTemplateLinks StudyVariableLink[]
 
   @@index([organizationId, status])
   @@index([organizationId, createdBy])
   @@index([queryId])
+  @@index([organizationId, studyType, status])
   @@map("research_studies")
+}
+
+// ─────────────────────────────────────────────
+// RESEARCH V4 — Form Builder models (REQ-FB-001 through REQ-FB-012)
+// Analysis-oriented variables: StudySubject.values is JSONB+GIN (coherent
+// with Patient.importedData, ClinicalScale.scores, ResearchStudy.analyses).
+// Editing a VariableTemplate does NOT break existing studies — the
+// StudyVariableLink snapshot stays immutable (REQ-FB-002).
+// ─────────────────────────────────────────────
+
+// Variable de estudio (analysis-oriented) — REQ-FB-001
+model StudyVariable {
+  id             String        @id @default(uuid())
+  organizationId String        @map("organization_id")
+  studyId        String        @map("study_id")
+  name           String
+  label          String
+  type           VariableType
+  scope          VariableScope @default(CUSTOM)
+  unit           String?
+  required       Boolean       @default(false)
+  isCore         Boolean       @default(false) @map("is_core")
+  position       Int           @default(0)
+  options        Json? // { values: [{value,label}] } NOMINAL/ORDINAL/DICHOTOMOUS
+  range          Json? // { min, max, step } CONTINUOUS/DISCRETE
+  parentId       String?       @map("parent_id") // descomposición compuesta
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  parent        StudyVariable?      @relation("VariableChildren", fields: [parentId], references: [id])
+  children      StudyVariable[]     @relation("VariableChildren")
+  study         ResearchStudy       @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  templateLinks StudyVariableLink[]
+
+  @@index([studyId, position])
+  @@index([organizationId, type])
+  @@map("study_variables")
+}
+
+// Plantilla reusable (biblioteca de la organización) — REQ-FB-002
+model VariableTemplate {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  createdBy      String       @map("created_by")
+  name           String
+  description    String?
+  type           VariableType
+  unit           String?
+  options        Json?
+  range          Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  links        StudyVariableLink[]
+
+  @@unique([organizationId, name])
+  @@map("variable_templates")
+}
+
+// Snapshot inmutable: editar plantilla no rompe estudios — REQ-FB-002
+model StudyVariableLink {
+  templateId String @map("template_id")
+  studyId    String @map("study_id")
+  studyVarId String @map("study_variable_id")
+
+  template VariableTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  study    ResearchStudy    @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  variable StudyVariable    @relation(fields: [studyVarId], references: [id], onDelete: Cascade)
+
+  @@id([templateId, studyVarId])
+  @@index([studyId])
+  @@map("study_variable_links")
+}
+
+// Registro de paciente en estudio form-based — REQ-FB-006
+model StudySubject {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  studyId        String   @map("study_id")
+  patientId      String?  @map("patient_id") // FK opcional
+  patientNhc     String   @map("patient_nhc") // texto para entry manual
+  values         Json     @default("{}") // { varId: value } validado por tipo
+  autoFillMap    Json     @default("{}") @map("auto_fill_map") // { varId: 'patient.age' } snapshot EHR
+  enrolledBy     String   @map("enrolled_by")
+  enrolledAt     DateTime @default(now()) @map("enrolled_at")
+  updatedAt      DateTime @updatedAt
+
+  study        ResearchStudy @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  patient      Patient?      @relation(fields: [patientId], references: [id])
+  Organization Organization  @relation(fields: [organizationId], references: [id])
+
+  @@unique([studyId, patientId])
+  @@index([organizationId, studyId])
+  @@index([values], type: Gin) // GIN para queries analíticas
+  @@map("study_subjects")
+}
+
+// Trazabilidad de análisis — REQ-FB-012
+model StatisticalAnalysis {
+  id             String           @id @default(uuid())
+  organizationId String           @map("organization_id")
+  studyId        String           @map("study_id")
+  test           AnalysisTest
+  variableIds    String[]         @map("variable_ids")
+  params         Json             @default("{}")
+  statistic      Float?
+  pValue         Float?           @map("p_value")
+  ci95           Json?            @map("ci_95") // { lower, upper }
+  effectSize     Json?            @map("effect_size") // { or, hr, name }
+  n              Int
+  riskLabel      RiskFactorLabel? @map("risk_label")
+  executedAt     DateTime         @default(now()) @map("executed_at")
+
+  study ResearchStudy @relation(fields: [studyId], references: [id], onDelete: Cascade)
+
+  @@index([studyId, executedAt])
+  @@index([organizationId, test, executedAt])
+  @@map("statistical_analyses")
 }
 
 model StudyNotification {
@@ -575,7 +751,7 @@ model StudyNotification {
   readAt          DateTime? @map("read_at")
   createdAt       DateTime  @default(now())
 
-  study           ResearchStudy @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  study ResearchStudy @relation(fields: [studyId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, userId, readAt])
   @@map("study_notifications")

@@ -60,6 +60,16 @@ export class StudyLifecycleService {
     study: import('@/domain/research/research-study.entity').ResearchStudy,
   ): Promise<RecalculateResult> {
     const previousIds = new Set(study.cachedPatientIds);
+    // V4: skip FORM studies — no query to re-execute (no cohort to refresh).
+    if (!study.queryId) {
+      return {
+        studyId: study.id,
+        previousCount: previousIds.size,
+        newCount: previousIds.size,
+        newPatientCount: 0,
+        notificationCreated: false,
+      };
+    }
     const executed = await this.executeQuery.execute({
       queryId: study.queryId,
       organizationId,

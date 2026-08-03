@@ -10,6 +10,8 @@ export const CLIENT_FLAGS = [
   'RESEARCH_V3_PRE_POST',
   'RESEARCH_V3_VIZ',
   'RESEARCH_V3_EXPORT',
+  // Research Engine V4 (REQ-FB-013)
+  'RESEARCH_FORM_BUILDER',
 ] as const;
 
 export type ClientFlag = (typeof CLIENT_FLAGS)[number];
