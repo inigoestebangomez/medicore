@@ -10,7 +10,7 @@
 //   POST   /research/studies/:id/variables/from-template  snapshot copy (REQ-FB-002)
 
 import {
-  Controller, Post, Patch, Delete, Body, Param,
+  Controller, Get, Post, Patch, Delete, Body, Param,
   UseGuards, BadRequestException, NotFoundException,
 } from '@nestjs/common';
 import { AuthGuard } from '@/api/shared/guards/auth.guard';
@@ -27,6 +27,7 @@ import {
 import {
   CreateVariableHandler, UpdateVariableHandler, DeleteVariableHandler,
   ReorderVariablesHandler, DecomposeVariableHandler, AddVariableFromTemplateHandler,
+  ListVariablesHandler,
 } from '@/application/research/commands/variable-builder.handlers';
 import { StudyNotFoundError } from '@/domain/research/errors/study-not-found.error';
 
@@ -35,6 +36,7 @@ import { StudyNotFoundError } from '@/domain/research/errors/study-not-found.err
 @UseGuards(AuthGuard, RBACGuard, FeatureFlagGuard)
 export class VariableBuilderController {
   constructor(
+    private readonly listVars: ListVariablesHandler,
     private readonly createVar: CreateVariableHandler,
     private readonly updateVar: UpdateVariableHandler,
     private readonly deleteVar: DeleteVariableHandler,
@@ -42,6 +44,13 @@ export class VariableBuilderController {
     private readonly decomposeVar: DecomposeVariableHandler,
     private readonly addFromTemplate: AddVariableFromTemplateHandler,
   ) {}
+
+  @Get()
+  @Reflect.metadata(REQUIRED_ACTION_KEY, Action.READ_PATIENT)
+  async list(@Param('id') studyId: string, @CurrentUser() user: JwtPayload) {
+    const vars = await this.listVars.execute({ organizationId: user.organizationId, studyId });
+    return { data: vars.map((v) => this.toResponse(v)) };
+  }
 
   @Post()
   @Reflect.metadata(REQUIRED_ACTION_KEY, Action.READ_PATIENT)

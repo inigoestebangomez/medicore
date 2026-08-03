@@ -16,7 +16,8 @@ export interface StudyDTO {
   id: string;
   organizationId: string;
   createdBy: string;
-  queryId: string;
+  queryId: string | null;
+  studyType: 'QUERY' | 'FORM' | 'HYBRID';
   name: string;
   description: string | null;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' | 'FROZEN';
@@ -143,7 +144,8 @@ export function useStudySuggestions(id: string) {
 export function useCreateStudy() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { queryId: string; name: string; description?: string; publicationRef?: string }) =>
+    // V4: studyType + optional queryId (FORM studies have no query).
+    mutationFn: (input: { name: string; studyType?: StudyDTO['studyType']; queryId?: string | null; description?: string; publicationRef?: string }) =>
       apiFetch<StudyDTO>(API_BASE, { method: 'POST', body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['research', 'studies'] }),
   });

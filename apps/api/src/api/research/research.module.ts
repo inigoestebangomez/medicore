@@ -89,6 +89,7 @@ import {
   ReorderVariablesHandler,
   DecomposeVariableHandler,
   AddVariableFromTemplateHandler,
+  ListVariablesHandler,
 } from '@/application/research/commands/variable-builder.handlers';
 import {
   EnrollSubjectHandler,
@@ -228,6 +229,7 @@ import { PrismaStatisticalAnalysisRepository } from '@/infrastructure/database/r
     { provide: 'IVariableTemplateRepository', useClass: PrismaVariableTemplateRepository },
     { provide: 'IStatisticalAnalysisRepository', useClass: PrismaStatisticalAnalysisRepository },
     // Research V4 — variable builder handlers (REQ-FB-001..005).
+    ListVariablesHandler,
     CreateVariableHandler,
     UpdateVariableHandler,
     DeleteVariableHandler,

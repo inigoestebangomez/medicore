@@ -12,6 +12,30 @@ import type { StudyVariableInput, StudyVariableUpdate } from '@medicore/contract
 import { StudyNotFoundError } from '@/domain/research/errors/study-not-found.error';
 
 // ─────────────────────────────────────────────
+// ListVariablesHandler — REQ-FB-004 (builder load)
+// The design §3 API table did not list a GET route, but the builder UI
+// needs the raw StudyVariable[] (with type/options metadata) — the
+// registration-form endpoint returns a lossy FormTemplate. This small
+// handler bridges that gap.
+// ─────────────────────────────────────────────
+
+export interface ListVariablesCommand {
+  organizationId: string;
+  studyId: string;
+}
+
+@Injectable()
+export class ListVariablesHandler {
+  constructor(
+    @Inject('IStudyVariableRepository') private readonly varRepo: IStudyVariableRepository,
+  ) {}
+
+  async execute(cmd: ListVariablesCommand): Promise<StudyVariable[]> {
+    return this.varRepo.findByStudy(cmd.studyId, cmd.organizationId);
+  }
+}
+
+// ─────────────────────────────────────────────
 // CreateVariableHandler — REQ-FB-001
 // ─────────────────────────────────────────────
 

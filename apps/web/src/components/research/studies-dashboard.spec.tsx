@@ -9,6 +9,7 @@ const study: StudyDTO = {
   organizationId: 'o',
   createdBy: 'u',
   queryId: 'q',
+  studyType: 'QUERY',
   name: 'Septoplastia 2024',
   description: 'Cohorte retrospectiva',
   status: 'ACTIVE',

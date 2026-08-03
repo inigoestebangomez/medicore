@@ -21,6 +21,19 @@ const STATUS_LABEL: Record<StudyDTO['status'], string> = {
   FROZEN: 'Congelado',
 };
 
+// V4 studyType badge (REQ-FB-008): QUERY (V3) | FORM (new) | HYBRID.
+const STUDY_TYPE_STYLE: Record<StudyDTO['studyType'], string> = {
+  QUERY: 'bg-surface-low text-on-surface-variant',
+  FORM: 'bg-primary/15 text-primary',
+  HYBRID: 'bg-secondary/15 text-secondary',
+};
+
+const STUDY_TYPE_LABEL: Record<StudyDTO['studyType'], string> = {
+  QUERY: 'Query',
+  FORM: 'Formulario',
+  HYBRID: 'Híbrido',
+};
+
 export interface StudyCardProps {
   study: StudyDTO;
   unreadCount?: number;
@@ -40,6 +53,9 @@ export function StudyCard({ study, unreadCount, onFreeze, onArchive }: StudyCard
           {study.name}
         </Link>
         <div className="flex items-center gap-2">
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STUDY_TYPE_STYLE[study.studyType]}`} title={`Tipo de estudio: ${STUDY_TYPE_LABEL[study.studyType]}`}>
+            {STUDY_TYPE_LABEL[study.studyType]}
+          </span>
           <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_STYLE[study.status]}`}>
             {STATUS_LABEL[study.status]}
           </span>
