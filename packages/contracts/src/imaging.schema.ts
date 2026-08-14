@@ -72,14 +72,51 @@ export type ListImagingStudiesQuery = z.infer<typeof ListImagingStudiesQuerySche
 // FileMetadata
 // ─────────────────────────────────────────────
 
-export const FileMetadataSchema = z.object({
+const CurrentFileMetadataSchema = z.object({
   key: z.string(),
   originalName: z.string(),
   mimeType: z.string(),
   size: z.number().int().nonnegative(),
   uploadedAt: z.string(),
 });
+const LegacyFileMetadataSchema = z.object({
+  url: z.string().url(),
+  name: z.string(),
+  size: z.number().int().nonnegative(),
+  mimeType: z.string().optional(),
+});
+export const FileMetadataSchema = z.union([CurrentFileMetadataSchema, LegacyFileMetadataSchema]);
 export type FileMetadata = z.infer<typeof FileMetadataSchema>;
+
+// ─────────────────────────────────────────────
+// Org-wide imaging list (top-level GET /v1/imaging-studies)
+// ─────────────────────────────────────────────
+
+export const ListOrgImagingStudiesQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(100).default(20),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  type: ImagingStudyTypeSchema.optional(),
+  sortBy: z.enum(['date', 'createdAt']).default('date'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+export type ListOrgImagingStudiesQuery = z.infer<typeof ListOrgImagingStudiesQuerySchema>;
+
+export const OrgImagingStudyListItemSchema = z.object({
+  id: z.string().uuid(),
+  patientId: z.string().uuid(),
+  patientFirstName: z.string(),
+  patientLastName: z.string(),
+  type: ImagingStudyTypeSchema,
+  date: z.string(),
+  description: z.string().nullable(),
+  findings: z.string().nullable(),
+  files: z.array(FileMetadataSchema),
+  createdBy: z.string(),
+  createdAt: z.string(),
+});
+export type OrgImagingStudyListItem = z.infer<typeof OrgImagingStudyListItemSchema>;
 
 // ─────────────────────────────────────────────
 // Upload response

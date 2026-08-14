@@ -5,10 +5,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   ImagingStudyType,
   ListImagingStudiesQuery,
+  ListOrgImagingStudiesQuery,
+  OrgImagingStudyListItem,
 } from '@medicore/contracts';
-import { apiFetch } from '@/lib/api-fetch';
+import { apiFetch, unwrapApiData } from '@/lib/api-fetch';
 
 const API_BASE = '/v1/patients';
+const ORG_API = '/v1/imaging-studies';
 
 // ─────────────────────────────────────────────
 // Types
@@ -64,6 +67,24 @@ interface PresignedUrlResponse {
   expiresAt: string;
 }
 
+type ApiEnvelope<T> = { data: T };
+
+export async function uploadImagingFiles(patientId: string, studyId: string, formData: FormData): Promise<UploadResponse> {
+  if (!studyId || studyId === 'undefined' || studyId === 'null') {
+    throw new Error('No se puede subir archivos sin un estudio válido.');
+  }
+  const response = await fetch(`${API_BASE}/${patientId}/imaging/${studyId}/files`, {
+    credentials: 'include',
+    method: 'POST',
+    body: formData,
+  });
+  const body = await response.json().catch(() => ({ message: response.statusText }));
+  if (!response.ok) {
+    throw new Error(body.message ?? `Error de subida: ${response.status}`);
+  }
+  return unwrapApiData(body as UploadResponse | ApiEnvelope<UploadResponse>);
+}
+
 interface CreateImagingStudyInput {
   type: ImagingStudyType;
   date: string;
@@ -93,6 +114,7 @@ const imagingKeys = {
     [...imagingKeys.lists(patientId), params] as const,
   detail: (patientId: string, studyId: string) =>
     [...imagingKeys.all(patientId), 'detail', studyId] as const,
+  org: (params: ListOrgImagingStudiesQuery) => ['imaging', 'org', params] as const,
 };
 
 // ─────────────────────────────────────────────
@@ -141,11 +163,13 @@ export function useImagingStudy(patientId: string, studyId: string) {
 export function useCreateImagingStudy(patientId: string) {
   const queryClient = useQueryClient();
   return useMutation<ImagingStudyResponse, Error, CreateImagingStudyInput>({
-    mutationFn: (data) =>
-      apiFetch<ImagingStudyResponse>(`${API_BASE}/${patientId}/imaging`, {
+    mutationFn: async (data) => {
+      const response = await apiFetch<ImagingStudyResponse | ApiEnvelope<ImagingStudyResponse>>(`${API_BASE}/${patientId}/imaging`, {
         method: 'POST',
         body: JSON.stringify(data),
-      }),
+      });
+      return unwrapApiData(response);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: imagingKeys.lists(patientId) });
     },
@@ -156,11 +180,13 @@ export function useCreateImagingStudy(patientId: string) {
 export function useUpdateImagingStudy(patientId: string, studyId: string) {
   const queryClient = useQueryClient();
   return useMutation<ImagingStudyResponse, Error, UpdateImagingStudyInput>({
-    mutationFn: (data) =>
-      apiFetch<ImagingStudyResponse>(`${API_BASE}/${patientId}/imaging/${studyId}`, {
+    mutationFn: async (data) => {
+      const response = await apiFetch<ImagingStudyResponse | ApiEnvelope<ImagingStudyResponse>>(`${API_BASE}/${patientId}/imaging/${studyId}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
-      }),
+      });
+      return unwrapApiData(response);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: imagingKeys.detail(patientId, studyId) });
       queryClient.invalidateQueries({ queryKey: imagingKeys.lists(patientId) });
@@ -172,17 +198,7 @@ export function useUpdateImagingStudy(patientId: string, studyId: string) {
 export function useUploadFiles(patientId: string, studyId: string) {
   const queryClient = useQueryClient();
   return useMutation<UploadResponse, Error, FormData>({
-    mutationFn: (formData) =>
-      fetch(`${API_BASE}/${patientId}/imaging/${studyId}/files`, {
-        method: 'POST',
-        body: formData,
-      }).then(async (res) => {
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ message: res.statusText }));
-          throw new Error(err.message ?? `Upload failed: ${res.status}`);
-        }
-        return res.json();
-      }),
+    mutationFn: (formData) => uploadImagingFiles(patientId, studyId, formData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: imagingKeys.detail(patientId, studyId) });
     },
@@ -193,11 +209,13 @@ export function useUploadFiles(patientId: string, studyId: string) {
 export function usePresignedUrl(patientId: string, studyId: string, fileKey: string) {
   return useQuery<PresignedUrlResponse>({
     queryKey: [...imagingKeys.detail(patientId, studyId), 'presigned', fileKey],
-    queryFn: () =>
-      apiFetch<PresignedUrlResponse>(
+    queryFn: async () => {
+      const response = await apiFetch<PresignedUrlResponse | ApiEnvelope<PresignedUrlResponse>>(
         `${API_BASE}/${patientId}/imaging/${studyId}/files/${encodeURIComponent(fileKey)}/url`,
-      ),
-    enabled: !!fileKey,
+      );
+      return unwrapApiData(response);
+    },
+    enabled: !!patientId && !!studyId && !!fileKey && studyId !== 'undefined' && studyId !== 'null',
   });
 }
 
@@ -213,6 +231,61 @@ export function useDeleteImagingStudy(patientId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: imagingKeys.lists(patientId) });
+    },
+  });
+}
+
+// ─────────────────────────────────────────────
+// Org-wide imaging studies (top-level GET /v1/imaging-studies)
+// ─────────────────────────────────────────────
+
+interface OrgListResponse {
+  items: OrgImagingStudyListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface UseOrgImagingStudiesParams {
+  page?: number;
+  pageSize?: number;
+  type?: ImagingStudyType | '';
+  from?: string;
+  to?: string;
+  sortBy?: 'date' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export function useOrgImagingStudies(params?: UseOrgImagingStudiesParams) {
+  const queryParams = new URLSearchParams();
+  const page = params?.page ?? 1;
+  const pageSize = params?.pageSize ?? 20;
+  queryParams.set('page', String(page));
+  queryParams.set('pageSize', String(pageSize));
+  if (params?.type) queryParams.set('type', params.type);
+  if (params?.from) queryParams.set('from', params.from);
+  if (params?.to) queryParams.set('to', params.to);
+  if (params?.sortBy) queryParams.set('sortBy', params.sortBy);
+  if (params?.sortOrder) queryParams.set('sortOrder', params.sortOrder);
+
+  const query: ListOrgImagingStudiesQuery = {
+    page,
+    pageSize,
+    type: (params?.type || undefined) as ImagingStudyType | undefined,
+    from: params?.from,
+    to: params?.to,
+    sortBy: params?.sortBy ?? 'date',
+    sortOrder: params?.sortOrder ?? 'desc',
+  };
+
+  return useQuery<OrgListResponse>({
+    queryKey: imagingKeys.org(query),
+    queryFn: async () => {
+      const res = await apiFetch<{ data: OrgListResponse }>(
+        `${ORG_API}?${queryParams.toString()}`,
+      );
+      return res.data;
     },
   });
 }

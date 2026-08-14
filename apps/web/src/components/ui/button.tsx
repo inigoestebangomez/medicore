@@ -5,14 +5,16 @@ export type ButtonVariant = 'default' | 'outline' | 'ghost' | 'secondary';
 export type ButtonSize = 'default' | 'sm' | 'lg' | 'icon';
 
 const variantClasses: Record<ButtonVariant, string> = {
-  default:
-    'border border-outline bg-surface-lowest text-on-surface-variant shadow-card hover:bg-surface-low focus-visible:ring-secondary',
+  // Migration to new design tokens (visual parity preserved):
+  //  - default (was dark subtle grey)  → btn-secondary (dark glass card)
+  //  - secondary (was aqua-tinted via --color-secondary-container) → btn-primary (aqua gradient)
+  //  - outline keeps a border emphasis without prominent fill
+  //  - ghost stays as a transparent text-only affordance
+  default: 'btn-secondary',
   outline:
-    'border border-outline bg-surface-lowest text-on-surface-variant shadow-card hover:bg-surface-low focus-visible:ring-secondary',
-  ghost:
-    'text-on-surface-variant hover:bg-surface-container focus-visible:ring-secondary',
-  secondary:
-    'bg-secondary-container text-on-secondary-container hover:bg-secondary/15 focus-visible:ring-secondary',
+    'border border-outline-variant bg-surface-low text-on-surface-variant hover:bg-surface-high hover:text-on-surface',
+  ghost: 'btn-ghost',
+  secondary: 'btn-primary',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

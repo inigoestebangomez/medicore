@@ -2,14 +2,15 @@ import { type HTMLAttributes, type TdHTMLAttributes, type ThHTMLAttributes, forw
 import { cn } from './lib/utils';
 
 /* ── Table primitives ──
-   Clinical Precision: high-density table for medical data.
+   Clinical Precision: high-density table for medical data, dark-first.
    - 8px vertical cell padding
-   - Zebra-striping for long lab result lists
+   - Translucent borders (white/[0.06]) so tables blend with glass cards
+   - Subtle hover state (white/[0.03]) for interactive rows
    - Compact header with Geist SemiBold labels */
 
 export const Table = forwardRef<HTMLTableElement, HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto rounded-lg border border-outline-variant">
+    <div className="relative w-full overflow-auto rounded-xl border border-white/[0.06]">
       <table
         ref={ref}
         className={cn('w-full caption-bottom text-sm font-body', className)}
@@ -26,7 +27,7 @@ export const TableHeader = forwardRef<
 >(({ className, ...props }, ref) => (
   <thead
     ref={ref}
-    className={cn('border-b border-outline-variant bg-surface-low', className)}
+    className={cn('border-b border-white/[0.06] bg-white/[0.03]', className)}
     {...props}
   />
 ));
@@ -51,7 +52,7 @@ export const TableFooter = forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      'border-t border-outline-variant bg-surface-low font-medium [&>tr]:last:border-b-0',
+      'border-t border-white/[0.06] bg-white/[0.03] font-medium [&>tr]:last:border-b-0',
       className,
     )}
     {...props}
@@ -64,9 +65,8 @@ export const TableRow = forwardRef<HTMLTableRowElement, HTMLAttributes<HTMLTable
     <tr
       ref={ref}
       className={cn(
-        'border-b border-outline-variant transition-colors',
-        'data-[state=selected]:bg-secondary-container/30',
-        /* Zebra-striping via CSS — every even row gets a slightly different bg */
+        'border-b border-white/[0.06] transition-colors',
+        'hover:bg-white/[0.03] data-[state=selected]:bg-aqua-500/10',
         className,
       )}
       {...props}
@@ -80,7 +80,7 @@ export const TableHead = forwardRef<HTMLTableCellElement, ThHTMLAttributes<HTMLT
     <th
       ref={ref}
       className={cn(
-        'h-8 px-3 text-left align-middle font-display text-label-caps text-on-surface-variant',
+        'h-8 px-3 text-left align-middle font-display text-label-caps text-zinc-400',
         '[&:has([role=checkbox])]:pr-0',
         className,
       )}
@@ -95,7 +95,7 @@ export const TableCell = forwardRef<HTMLTableCellElement, TdHTMLAttributes<HTMLT
     <td
       ref={ref}
       className={cn(
-        'px-3 py-2 align-middle text-sm',
+        'px-3 py-2 align-middle text-sm text-zinc-200',
         '[&:has([role=checkbox])]:pr-0',
         className,
       )}

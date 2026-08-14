@@ -146,6 +146,8 @@ export {
   ChangeSurgeryStatusSchema,
   SurgeryResponseSchema,
   ListSurgeriesQuerySchema,
+  ListOrgSurgeriesQuerySchema,
+  OrgSurgeryListItemSchema,
   ALLOWED_TRANSITIONS,
 } from './surgery.schema';
 
@@ -157,6 +159,8 @@ export type {
   ChangeSurgeryStatusInput,
   SurgeryResponse,
   ListSurgeriesQuery,
+  ListOrgSurgeriesQuery,
+  OrgSurgeryListItem,
 } from './surgery.schema';
 
 // Imaging
@@ -165,6 +169,8 @@ export {
   CreateImagingStudySchema,
   UpdateImagingStudySchema,
   ListImagingStudiesQuerySchema,
+  ListOrgImagingStudiesQuerySchema,
+  OrgImagingStudyListItemSchema,
   FileMetadataSchema,
   UploadFilesResponseSchema,
   PresignedUrlResponseSchema,
@@ -176,10 +182,51 @@ export type {
   CreateImagingStudyInput,
   UpdateImagingStudyInput,
   ListImagingStudiesQuery,
+  ListOrgImagingStudiesQuery,
+  OrgImagingStudyListItem,
   UploadFilesResponse,
   PresignedUrlResponse,
   PendingDeletionResponse,
 } from './imaging.schema';
+
+// Calendar
+export {
+  CalendarEventSourceSchema,
+  CalendarEventStatusSchema,
+  CalendarProviderSchema,
+  CalendarEventViewSchema,
+  CreateCalendarEventSchema,
+  UpdateCalendarEventSchema,
+  ListCalendarEventsQuerySchema,
+  CalendarEventResponseSchema,
+  CalendarSyncProviderSchema,
+  ProviderConnectionStatusSchema,
+  ListSyncProvidersResponseSchema,
+  ConnectProviderResponseSchema,
+  CallbackProviderRequestSchema,
+  CallbackProviderResponseSchema,
+  DisconnectProviderResponseSchema,
+  SyncRefreshResponseSchema,
+} from './calendar.schema';
+
+export type {
+  CalendarEventSource,
+  CalendarEventStatus,
+  CalendarProvider,
+  CalendarEventView,
+  CreateCalendarEventInput,
+  UpdateCalendarEventInput,
+  ListCalendarEventsQuery,
+  CalendarEventResponse,
+  CalendarSyncProvider,
+  ProviderConnectionStatus,
+  ListSyncProvidersResponse,
+  ConnectProviderResponse,
+  CallbackProviderRequest,
+  CallbackProviderResponse,
+  DisconnectProviderResponse,
+  SyncRefreshResponse,
+} from './calendar.schema';
 
 // Medication
 export {
@@ -236,6 +283,9 @@ export {
   CheckoutResponseSchema,
   PortalResponseSchema,
   StripeWebhookEventSchema,
+  BillingTransactionTypeSchema,
+  BillingTransactionStatusSchema,
+  UpdateBillingTransactionSchema,
 } from './billing.schema';
 
 export type {
@@ -247,42 +297,73 @@ export type {
   CheckoutResponse,
   PortalResponse,
   StripeWebhookEvent,
+  UpdateBillingTransactionInput,
 } from './billing.schema';
 
 // Import (Phase 11)
 export {
+  ImportedClinicalEventSchema,
+  ImportedEventsPageSchema,
   ImportStatusSchema,
   IMPORT_ALLOWED_TRANSITIONS,
   StandardFieldSchema,
   ColumnMappingSchema,
+  ColumnMappingConflictSchema,
+  formatColumnMappingConflict,
+  validateColumnMapping,
   ColumnMappingProposalSchema,
   FileSampleSchema,
   ParsedFileSchema,
   MatchDecisionSchema,
   PatientMatchSchema,
+  IgnoredColumnSchema,
+  IgnoredRowSchema,
+  IgnoredRowsSchema,
+  PreviewOverridesSchema,
+  CellOverridesSchema,
+  RowClassificationSchema,
   ConfirmMappingSchema,
   FinalizeImportSchema,
+  ConfirmImportResponseSchema,
   ImportBatchSummarySchema,
   ImportBatchResponseSchema,
+  ImportBatchHistoryItemSchema,
+  ImportHistoryResponseSchema,
   ListImportBatchesQuerySchema,
+  ImportPreviewRowSchema,
+  ImportPreviewResponseSchema,
   IMPORT_TIER_LIMITS,
   IMPORT_LIMIT_BYPASS_ENV,
 } from './import.schema';
 
 export type {
+  ImportedClinicalEvent,
+  ImportedEventsPage,
   ImportStatus,
   StandardField,
   ColumnMapping,
+  ColumnMappingConflict,
+  ColumnMappingValidationResult,
   ColumnMappingProposal,
   FileSample,
   ParsedFile,
   MatchDecision,
   PatientMatch,
+  IgnoredColumn,
+  IgnoredRow,
+  PreviewOverrides,
+  CellOverrides,
+  RowClassification,
   ConfirmMappingInput,
   FinalizeImportInput,
+  ConfirmImportResponse,
   ImportBatchSummary,
   ImportBatchResponse,
+  ImportBatchHistoryItem,
+  ImportHistoryResponse,
   ListImportBatchesQuery,
+  ImportPreviewRow,
+  ImportPreviewResponse,
 } from './import.schema';
 
 // Research (Phase 12)

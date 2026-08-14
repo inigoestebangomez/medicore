@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useImagingStudy } from '@/hooks/useImagingStudies';
+import { ImagingFileList } from '@/components/imaging/imaging-file-list';
 
 function formatDate(value: string | null) {
   if (!value) return null;
@@ -114,6 +115,10 @@ export default function ImagingStudyDetailPage() {
             ) : (
               <Empty>No findings recorded</Empty>
             )}
+          </Field>
+
+          <Field label="Files">
+            <ImagingFileList patientId={patientId} studyId={imagingId} files={study.files} />
           </Field>
         </dl>
       </div>

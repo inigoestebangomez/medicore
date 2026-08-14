@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Filter, FilterLogic, DataSource } from '@medicore/contracts';
+import type { FieldCatalogEntry, FieldType } from '@medicore/contracts';
 import { FieldDiscoveryPopover } from '../FieldDiscoveryPopover';
 import { useExecuteAdHoc, type AdHocResultRow } from '@/hooks/useResearchV2';
 
@@ -24,12 +25,61 @@ const NO_VALUE_OPS = new Set<Operator>([
 ]);
 const RANGE_OPS = new Set<Operator>(['between', 'date_between']);
 
+const ALL_OPERATORS: Operator[] = [
+  'equals', 'not_equals', 'contains', 'not_contains', 'starts_with',
+  'greater_than', 'less_than', 'between', 'is_empty', 'is_not_empty',
+  'in_list', 'date_before', 'date_after', 'date_between',
+  'boolean_true', 'boolean_false',
+];
+
+const SOURCE_LABELS: Record<Source, string> = {
+  standard: 'Campos estándar',
+  imported: 'Campos importados',
+  consultation: 'Consultas',
+  surgery: 'Cirugías',
+  medication: 'Medicación',
+  scale: 'Escalas',
+};
+
+const OPERATOR_LABELS: Record<Operator, string> = {
+  equals: 'Es igual a',
+  not_equals: 'No es igual a',
+  contains: 'Contiene',
+  not_contains: 'No contiene',
+  starts_with: 'Empieza por',
+  greater_than: 'Mayor que',
+  less_than: 'Menor que',
+  between: 'Entre',
+  is_empty: 'Está vacío',
+  is_not_empty: 'No está vacío',
+  in_list: 'Está en la lista',
+  date_before: 'Antes de',
+  date_after: 'Después de',
+  date_between: 'Entre fechas',
+  boolean_true: 'Sí',
+  boolean_false: 'No',
+};
+
+const OPERATORS_BY_TYPE: Record<FieldType, Operator[]> = {
+  string: ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'is_empty', 'is_not_empty', 'in_list'],
+  number: ['equals', 'not_equals', 'greater_than', 'less_than', 'between', 'is_empty', 'is_not_empty', 'in_list'],
+  date: ['equals', 'not_equals', 'date_before', 'date_after', 'date_between', 'is_empty', 'is_not_empty'],
+  boolean: ['equals', 'not_equals', 'is_empty', 'is_not_empty', 'boolean_true', 'boolean_false'],
+};
+
+function operatorsFor(type?: FieldType): Operator[] {
+  return type ? OPERATORS_BY_TYPE[type] : ALL_OPERATORS;
+}
+
 const EMPTY_FILTER: Filter = {
   field: '',
   source: 'standard',
   operator: 'equals',
   value: '',
 };
+
+const CONTROL_CLASSES =
+  'border-outline bg-surface-lowest text-on-surface placeholder:text-on-surface-variant focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1';
 
 export interface FilterBuilderV2Props {
   filters: Filter[];
@@ -173,6 +223,10 @@ export function FilterBuilderV2({
   disabled,
   debounceMs = 400,
 }: FilterBuilderV2Props) {
+  // Type metadata is UI state only: Filter's persisted contract intentionally
+  // stores field names and sources, not inferred catalog metadata.
+  const [fieldTypes, setFieldTypes] = useState<Record<string, FieldType>>({});
+
   const update = (index: number, patch: Partial<Filter>) => {
     const next = filters.map((f, i) => (i === index ? { ...f, ...patch } : f));
     onChange(next, logic);
@@ -180,6 +234,19 @@ export function FilterBuilderV2({
   const addRow = () => onChange([...filters, { ...EMPTY_FILTER }], logic);
   const removeRow = (index: number) => onChange(filters.filter((_, i) => i !== index), logic);
   const setLogic = (l: FilterLogic) => onChange(filters, l);
+
+  const fieldTypeKey = (filter: Filter) => `${filter.source}:${filter.field}`;
+  const typeFor = (filter: Filter) => fieldTypes[fieldTypeKey(filter)];
+  const handleCatalogSelect = (index: number, entry: FieldCatalogEntry) => {
+    const current = filters[index];
+    const nextOperators = operatorsFor(entry.type);
+    setFieldTypes((types) => ({ ...types, [`${entry.source}:${entry.field}`]: entry.type }));
+    update(index, {
+      field: entry.field,
+      source: entry.source,
+      operator: nextOperators.includes(current.operator) ? current.operator : 'equals',
+    });
+  };
 
   return (
     <div className="space-y-3 rounded-lg border border-outline-variant bg-surface-low p-4 shadow-card">
@@ -218,64 +285,94 @@ export function FilterBuilderV2({
               disabled={disabled}
               value={filter.source}
               onChange={(e) => update(i, { source: e.target.value as Source, field: '' })}
-              className="rounded border border-outline px-2 py-1 text-sm"
+              className={`rounded border px-2 py-1 text-sm ${CONTROL_CLASSES}`}
               aria-label="Origen del dato"
             >
               {SOURCES.map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>{SOURCE_LABELS[s]}</option>
               ))}
             </select>
 
             <div className="min-w-[200px] flex-1">
-              <FieldDiscoveryPopover
-                value={filter.field}
-                disabled={disabled}
-                source={filter.source === 'standard' ? 'standard' : 'imported'}
-                onSelect={(entry) =>
-                  update(i, { field: entry.field, source: entry.source === 'standard' ? 'standard' : 'imported' })
-                }
-                ariaLabel={`Campo del filtro ${i + 1}`}
-              />
+              {filter.source === 'standard' || filter.source === 'imported' ? (
+                <FieldDiscoveryPopover
+                  value={filter.field}
+                  disabled={disabled}
+                  source={filter.source}
+                  onSelect={(entry) => handleCatalogSelect(i, entry)}
+                  ariaLabel={`Campo del filtro ${i + 1}`}
+                />
+              ) : (
+                <input
+                  type="text"
+                  disabled={disabled}
+                  value={filter.field}
+                  onChange={(e) => update(i, { field: e.target.value })}
+                  placeholder="Nombre del campo de la relación"
+                  className={`w-full rounded border px-2 py-1 text-sm ${CONTROL_CLASSES}`}
+                  aria-label={`Campo del filtro ${i + 1}`}
+                />
+              )}
             </div>
 
             <select
               disabled={disabled}
               value={filter.operator}
               onChange={(e) => update(i, { operator: e.target.value as Operator })}
-              className="rounded border border-outline px-2 py-1 text-sm"
+              className={`rounded border px-2 py-1 text-sm ${CONTROL_CLASSES}`}
               aria-label="Operador"
             >
-              {(['equals','not_equals','contains','not_contains','starts_with','greater_than','less_than','between','is_empty','is_not_empty','in_list','date_before','date_after','date_between','boolean_true','boolean_false'] as Operator[]).map((o) => (
-                <option key={o} value={o}>{o}</option>
+              {operatorsFor(typeFor(filter)).map((o) => (
+                <option key={o} value={o}>{OPERATOR_LABELS[o]}</option>
               ))}
             </select>
 
             {!NO_VALUE_OPS.has(filter.operator) && !RANGE_OPS.has(filter.operator) && (
-              <input
-                disabled={disabled}
-                value={String(filter.value ?? '')}
-                onChange={(e) => update(i, { value: e.target.value })}
-                placeholder="valor"
-                className="w-32 rounded border border-outline px-2 py-1 text-sm"
-              />
+              typeFor(filter) === 'boolean' ? (
+                <select
+                  disabled={disabled}
+                  value={String(filter.value ?? '')}
+                  onChange={(e) => update(i, { value: e.target.value === 'true' })}
+                  className={`w-32 rounded border px-2 py-1 text-sm ${CONTROL_CLASSES}`}
+                  aria-label="Valor booleano"
+                >
+                  <option value="">Seleccionar</option>
+                  <option value="true">Sí</option>
+                  <option value="false">No</option>
+                </select>
+              ) : (
+                <input
+                  type={typeFor(filter) === 'number' ? 'number' : typeFor(filter) === 'date' ? 'date' : 'text'}
+                  inputMode={typeFor(filter) === 'number' ? 'decimal' : undefined}
+                  disabled={disabled}
+                  value={String(filter.value ?? '')}
+                  onChange={(e) => update(i, { value: e.target.value })}
+                  placeholder="valor"
+                  className={`w-32 rounded border px-2 py-1 text-sm ${CONTROL_CLASSES}`}
+                />
+              )
             )}
 
             {RANGE_OPS.has(filter.operator) && (
               <>
                 <input
+                  type={typeFor(filter) === 'date' ? 'date' : typeFor(filter) === 'number' ? 'number' : 'text'}
+                  inputMode={typeFor(filter) === 'number' ? 'decimal' : undefined}
                   disabled={disabled}
                   value={String(filter.value ?? '')}
                   onChange={(e) => update(i, { value: e.target.value })}
                   placeholder="desde"
-                  className="w-20 rounded border border-outline px-2 py-1 text-sm"
+                  className={`w-20 rounded border px-2 py-1 text-sm ${CONTROL_CLASSES}`}
                 />
                 <span className="text-on-surface-variant/60">–</span>
                 <input
+                  type={typeFor(filter) === 'date' ? 'date' : typeFor(filter) === 'number' ? 'number' : 'text'}
+                  inputMode={typeFor(filter) === 'number' ? 'decimal' : undefined}
                   disabled={disabled}
                   value={String(filter.valueTo ?? '')}
                   onChange={(e) => update(i, { valueTo: e.target.value })}
                   placeholder="hasta"
-                  className="w-20 rounded border border-outline px-2 py-1 text-sm"
+                  className={`w-20 rounded border px-2 py-1 text-sm ${CONTROL_CLASSES}`}
                 />
               </>
             )}

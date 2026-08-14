@@ -65,7 +65,12 @@ export class FileValidationPipe implements PipeTransform {
       // BR-IMG-001: Validate MIME type
       if (!ALLOWED_MIME_TYPES.includes(file.mimetype as any)) {
         throw new UnprocessableEntityException(
-          new InvalidMimeTypeError(file.mimetype, [...ALLOWED_MIME_TYPES]).message,
+          {
+            statusCode: 422,
+            error: 'INVALID_MIME_TYPE',
+            message: new InvalidMimeTypeError(file.mimetype, [...ALLOWED_MIME_TYPES]).message,
+            details: [{ fileName: file.originalname, mimeType: file.mimetype, allowed: [...ALLOWED_MIME_TYPES] }],
+          },
         );
       }
 
@@ -73,7 +78,12 @@ export class FileValidationPipe implements PipeTransform {
       const maxSize = SIZE_LIMITS[file.mimetype] ?? 0;
       if (file.size > maxSize) {
         throw new UnprocessableEntityException(
-          new FileTooLargeError(file.originalname, file.size, maxSize).message,
+          {
+            statusCode: 422,
+            error: 'FILE_TOO_LARGE',
+            message: new FileTooLargeError(file.originalname, file.size, maxSize).message,
+            details: [{ fileName: file.originalname, size: file.size, maxSize }],
+          },
         );
       }
 

@@ -268,11 +268,6 @@ describe('StudyVariable.validateValue for remaining types (REQ-FB-001)', () => {
 // ─────────────────────────────────────────────
 
 describe('StatisticalAnalysis.labelRiskFactor (REQ-FB-011)', () => {
-  const make = (effect: null, p: null) => StatisticalAnalysis.create({
-    id: 'a', organizationId: 'o', studyId: 's', test: 'LOGISTIC',
-    variableIds: ['v'], n: 100, statistic: null, pValue: p, effectSize: null,
-  });
-
   it('labels OR>1 significant as RISK', () => {
     const a = StatisticalAnalysis.create({
       id: 'a1', organizationId: 'o', studyId: 's', test: 'LOGISTIC',

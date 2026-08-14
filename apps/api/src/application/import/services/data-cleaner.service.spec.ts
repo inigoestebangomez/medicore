@@ -38,6 +38,11 @@ describe('DataCleanerService', () => {
     it('parseDate should accept Excel serial 45678 → 2025-01-21', () => {
       expect(cleaner.parseDate(45678)?.toISOString().slice(0, 10)).toBe('2025-01-21');
     });
+
+    it('should cover the import preview examples 45785 → 2025-05-08 and 46170 → 2026-05-28', () => {
+      expect(cleaner.parseDate(45785)?.toISOString().slice(0, 10)).toBe('2025-05-08');
+      expect(cleaner.parseDate(46170)?.toISOString().slice(0, 10)).toBe('2026-05-28');
+    });
   });
 
   describe('parseDate extended formats (SDD import-data-quality)', () => {
@@ -61,9 +66,29 @@ describe('DataCleanerService', () => {
       expect(cleaner.parseDate('2024-06-15')?.getTime()).toBe(utc(2024, 5, 15));
     });
 
-    it('parses two-digit year "5/3/68" → 1968 (rolling threshold; current year 2026 → 26)', () => {
-      // 68 > 26 → 1900 + 68 = 1968. Spanish d/m/yy → 5 March 1968.
+    it('parses two-digit year "5/3/68" → 1968 using the fixed import policy', () => {
       expect(cleaner.parseDate('5/3/68')?.getTime()).toBe(utc(1968, 2, 5));
+    });
+
+    it('parses 27/3/25 as 27 March 2025 instead of using the current year', () => {
+      expect(cleaner.parseDate('27/3/25')?.getTime()).toBe(utc(2025, 2, 27));
+    });
+
+    it.each(['05/03/68', '05-03-68', '05.03.68'])('parses day-first separator variant %s', (value) => {
+      expect(cleaner.parseDate(value)?.getTime()).toBe(utc(1968, 2, 5));
+    });
+
+    it('returns null for an impossible calendar date', () => {
+      expect(cleaner.parseDate('31/02/2025')).toBeNull();
+    });
+
+    it('rejects Excel serial 60, including its string representation', () => {
+      expect(cleaner.parseDate(60)).toBeNull();
+      expect(cleaner.parseDate('60')).toBeNull();
+    });
+
+    it('does not parse a mixed status and month/year text as a date', () => {
+      expect(cleaner.parseDate('Stand by, telemática 12/2026')).toBeNull();
     });
 
     it('returns null for an empty date string', () => {
@@ -147,6 +172,33 @@ describe('DataCleanerService', () => {
   });
 
   describe('full clean() pipeline', () => {
+    it('classifies full, NHC-only, and unidentifiable rows and applies override precedence', () => {
+      const mapping: ColumnMapping = {
+        NHC: 'nhc',
+        Nombre: 'patientName',
+        Notas: 'custom',
+        Edad: 'age',
+        Sexo: 'sex',
+        Diagnóstico: 'diagnosis',
+      };
+      const result = cleaner.clean(makeFile([
+        { NHC: '1', Nombre: 'Ana', Notas: 'raw' },
+        { NHC: '123456', Nombre: '', Notas: 'nhc-only' },
+        { NHC: '', Nombre: '', Notas: 'pending', Edad: 50, Sexo: 'M', Diagnóstico: 'review' },
+      ], ['NHC', 'Nombre', 'Notas', 'Edad', 'Sexo', 'Diagnóstico']), mapping, {
+        previewOverrides: { '0': { Nombre: 'Edited' }, '1': { Nombre: 'Wrong' } },
+        cellOverrides: { '1': { Nombre: null } },
+        ignoredColumns: [{ column: 'Notas', reason: 'draft' }],
+      });
+
+      expect(result.fullIdentityRows.map((row) => row.rowIndex)).toEqual([0]);
+      expect(result.identityLightRows.map((row) => row.rowIndex)).toEqual([1]);
+      expect(result.unidentifiableRows.map((row) => row.rowIndex)).toEqual([2]);
+      expect(result.cleanedRows[0].patientName).toBe('Edited');
+      expect(result.cleanedRows[1].patientName).toBeNull();
+      expect(result.cleanedRows[0].raw).not.toHaveProperty('Notas');
+    });
+
     it('should produce cleaned rows, skip junk, and extract patient phone to cleaned.phone (BR-IMP-007 inverted)', () => {
       const mapping: ColumnMapping = {
         'Nº HISTORIA': 'nhc',
@@ -200,6 +252,26 @@ describe('DataCleanerService', () => {
       expect(result.cleanedRows.map((r) => r.patientName)).toEqual(['JUAN PEREZ']);
       expect(result.falseRecordRowIndices).toContain(1);
       expect(result.reasons.some((r) => r.rowIndex === 1 && r.reason.includes('false record'))).toBe(true);
+      expect(result.fullIdentityRows).toEqual([{ rowIndex: 0 }]);
+      expect(result.identityLightRows).toEqual([]);
+      expect(result.unidentifiableRows).toEqual([]);
+    });
+
+    it('does not place a false record in an import bucket or cleaned rows', () => {
+      const mapping: ColumnMapping = {
+        NHC: 'nhc',
+        Paciente: 'patientName',
+        Edad: 'age',
+      };
+      const result = cleaner.clean(makeFile([
+        { NHC: '2', Paciente: 'PENDIENTE REVISIÓN', Edad: '' },
+      ], ['NHC', 'Paciente', 'Edad']), mapping);
+
+      expect(result.cleanedRows).toEqual([]);
+      expect(result.falseRecordRowIndices).toEqual([0]);
+      expect(result.fullIdentityRows).toEqual([]);
+      expect(result.identityLightRows).toEqual([]);
+      expect(result.unidentifiableRows).toEqual([]);
     });
 
     it('should compute birthDate from age when no birthDate column is present', () => {
@@ -270,6 +342,9 @@ describe('DataCleanerService', () => {
       expect(cleaner.normalizeSex('M')).toBe('FEMALE');
       expect(cleaner.normalizeSex('FEMALE')).toBe('FEMALE');
     });
+    it.each(['F', 'FEM', 'FEMENINO', 'MUJER'])('maps %s to FEMALE', (value) => {
+      expect(cleaner.normalizeSex(value)).toBe('FEMALE');
+    });
     it('should map OTHER/O → OTHER', () => {
       expect(cleaner.normalizeSex('O')).toBe('OTHER');
       expect(cleaner.normalizeSex('OTHER')).toBe('OTHER');
@@ -278,6 +353,37 @@ describe('DataCleanerService', () => {
       expect(cleaner.normalizeSex('XYZ')).toBeNull();
       expect(cleaner.normalizeSex('')).toBeNull();
       expect(cleaner.normalizeSex(null)).toBeNull();
+    });
+  });
+
+  describe('age normalization', () => {
+    it.each([
+      ['45', 45],
+      ['45 años', 45],
+      ['45,5', 45.5],
+    ])('normalizes %s consistently', (value, expected) => {
+      expect(cleaner.extractAge(value)).toBe(expected);
+    });
+
+    it('keeps an identifiable row with F sex and textual age', () => {
+      const result = cleaner.clean(makeFile([
+        { NHC: '123456', Nombre: 'Ana García', Edad: '45 años', Sexo: 'F' },
+      ], ['NHC', 'Nombre', 'Edad', 'Sexo']), {
+        NHC: 'nhc', Nombre: 'patientName', Edad: 'age', Sexo: 'sex',
+      });
+
+      expect(result.falseRecordRowIndices).toEqual([]);
+      expect(result.cleanedRows[0]).toMatchObject({ age: 45, ageAtImport: '45 años', sex: 'FEMALE' });
+    });
+
+    it('cleans an identifiable row after index 20', () => {
+      const rows = Array.from({ length: 21 }, (_, rowIndex) => ({
+        NHC: String(rowIndex), Nombre: `Paciente ${rowIndex}`, Edad: rowIndex,
+      }));
+      const result = cleaner.clean(makeFile(rows), { NHC: 'nhc', Nombre: 'patientName', Edad: 'age' });
+
+      expect(result.cleanedRows).toHaveLength(21);
+      expect(result.cleanedRows[20]).toMatchObject({ rowIndex: 20, nhc: '20', age: 20 });
     });
   });
 });

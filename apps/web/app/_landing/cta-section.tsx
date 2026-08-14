@@ -20,7 +20,7 @@ export function CtaSection() {
         {/* Both entry points flow through the same Google OAuth sign-in (LP-004). */}
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <form action={googleSignIn}>
-            <Button type="submit" size="lg">
+            <Button type="submit" size="lg" variant="secondary">
               {CTA_SECTION.primaryLabel}
             </Button>
           </form>

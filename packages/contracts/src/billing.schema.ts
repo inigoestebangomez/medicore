@@ -18,6 +18,33 @@ export type CreateCheckoutInput = z.infer<typeof CreateCheckoutSchema>;
 export const CreatePortalSchema = z.object({}).optional();
 export type CreatePortalInput = z.infer<typeof CreatePortalSchema>;
 
+/** PATCH /v1/billing/transactions/:id */
+export const BillingTransactionTypeSchema = z.enum([
+  'CONSULTATION',
+  'SURGERY',
+  'TREATMENT',
+  'SUBSCRIPTION',
+  'OTHER',
+]);
+export const BillingTransactionStatusSchema = z.enum([
+  'PENDING',
+  'PAID',
+  'CANCELLED',
+  'REFUNDED',
+]);
+
+export const UpdateBillingTransactionSchema = z.object({
+  amount: z.number().min(0).optional(),
+  type: BillingTransactionTypeSchema.optional(),
+  status: BillingTransactionStatusSchema.optional(),
+  description: z.string().max(2000).nullable().optional(),
+  date: z.string().datetime().optional(),
+  patientId: z.string().uuid().nullable().optional(),
+  consultationId: z.string().uuid().nullable().optional(),
+  surgeryId: z.string().uuid().nullable().optional(),
+});
+export type UpdateBillingTransactionInput = z.infer<typeof UpdateBillingTransactionSchema>;
+
 /** GET /v1/billing/usage response */
 export const UsageResponseSchema = z.object({
   aiReportsGenerated: z.number().int().min(0),

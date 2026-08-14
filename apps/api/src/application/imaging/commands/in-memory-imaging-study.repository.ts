@@ -1,7 +1,7 @@
 // apps/api/src/application/imaging/commands/in-memory-imaging-study.repository.ts
 // In-memory implementation of IImagingStudyRepository for use in spec tests.
 
-import type { IImagingStudyRepository, ListImagingStudiesParams, CreateImagingStudyInput, UpdateImagingStudyInput } from '@/domain/imaging/imaging-study.repository.interface';
+import type { IImagingStudyRepository, ListImagingStudiesParams, ListOrgImagingStudiesParams, ListOrgImagingStudiesResult, CreateImagingStudyInput, UpdateImagingStudyInput } from '@/domain/imaging/imaging-study.repository.interface';
 import type { FileMetadataEntry } from '@/domain/imaging/imaging-study.entity';
 import type { ImagingStudy } from '@/domain/imaging/imaging-study.entity';
 import { ImagingStudy as ImagingStudyEntity } from '@/domain/imaging/imaging-study.entity';
@@ -61,6 +61,39 @@ export class InMemoryImagingStudyRepository implements IImagingStudyRepository {
     items = items.slice(start, start + params.pageSize);
 
     return { items, total };
+  }
+
+  async listByOrganization(params: ListOrgImagingStudiesParams): Promise<ListOrgImagingStudiesResult> {
+    let items = Array.from(this.studies.values()).filter(
+      (s) => s.organizationId === params.organizationId && !s.deletedAt,
+    );
+
+    if (params.type) {
+      items = items.filter((s) => s.type === params.type);
+    }
+    if (params.from) {
+      items = items.filter((s) => s.date >= params.from!);
+    }
+    if (params.to) {
+      items = items.filter((s) => s.date <= params.to!);
+    }
+
+    const total = items.length;
+
+    items.sort((a, b) => {
+      const aVal = a[params.sortBy];
+      const bVal = b[params.sortBy];
+      if (aVal instanceof Date && bVal instanceof Date) {
+        return params.sortOrder === 'asc' ? aVal.getTime() - bVal.getTime() : bVal.getTime() - aVal.getTime();
+      }
+      return 0;
+    });
+
+    const start = (params.page - 1) * params.pageSize;
+    const paged = items.slice(start, start + params.pageSize);
+
+    const patientNames = new Map();
+    return { items: paged, total, patientNames };
   }
 
   async create(data: CreateImagingStudyInput): Promise<ImagingStudy> {

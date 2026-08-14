@@ -55,6 +55,19 @@ describe('FileParserService', () => {
       expect(result.parsed.totalRows).toBe(25);
       expect(result.parsed.sample.rows.length).toBe(20);
     });
+
+    it('keeps rows after the sample limit available for processing', () => {
+      const rows = Array.from({ length: 22 }, (_, i) => [String(i), `Paciente ${i}`, String(i)]);
+      const result = parser.parse({
+        buffer: makeXlsxBuffer(['NHC', 'Nombre', 'Edad'], rows),
+        fileName: 'all-rows.xlsx',
+      });
+
+      expect(result.parsed.sample.rows).toHaveLength(20);
+      expect(result.parsed.rows).toHaveLength(22);
+      expect(result.parsed.rows[20]).toEqual({ NHC: '20', Nombre: 'Paciente 20', Edad: '20' });
+      expect(result.parsed.rows[21]).toEqual({ NHC: '21', Nombre: 'Paciente 21', Edad: '21' });
+    });
   });
 
   describe('empty file handling', () => {

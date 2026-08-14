@@ -96,3 +96,37 @@ export function useCreateBillingTransaction() {
     },
   });
 }
+
+export interface UpdateBillingTransactionInput {
+  amount?: number;
+  type?: BillingType;
+  status?: BillingStatus;
+  description?: string | null;
+  date?: string;
+  patientId?: string | null;
+}
+
+/**
+ * Updates a billing transaction via PATCH /v1/billing/transactions/:id.
+ * NOTE: the matching backend PATCH endpoint is added in a later phase; the hook
+ * is wired now so the UI layer can call it once the endpoint ships.
+ */
+export function useUpdateBillingTransaction() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    BillingTransaction,
+    Error,
+    { id: string; patch: UpdateBillingTransactionInput }
+  >({
+    mutationFn: async ({ id, patch }) => {
+      const res = await apiFetch<{ data: BillingTransaction } | BillingTransaction>(
+        `${API_BASE}/transactions/${id}`,
+        { method: 'PATCH', body: JSON.stringify(patch) },
+      );
+      return 'data' in res ? (res as { data: BillingTransaction }).data : (res as BillingTransaction);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.all });
+    },
+  });
+}

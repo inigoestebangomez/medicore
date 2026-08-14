@@ -49,4 +49,10 @@ describe('buildPatientInputFromRow (SDD import-data-quality)', () => {
     expect(input.firstName).toBe('Desconocido');
     expect(input.lastName).toBe('');
   });
+
+  it('keeps NHC-only names null when identity-light is enabled', () => {
+    const input = buildPatientInputFromRow(makeRow({ nhc: '12345', patientName: null }), true);
+    expect(input.firstName).toBeNull();
+    expect(input.lastName).toBeNull();
+  });
 });

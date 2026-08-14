@@ -14,20 +14,29 @@ import { normalizeName, splitNormalizedName } from '@/domain/patient/name-normal
 import type { CleanedRow } from './data-cleaner.service';
 
 export interface PatientInputParts {
-  firstName: string;
-  lastName: string;
+  firstName: string | null;
+  lastName: string | null;
   birthDate: Date | null;
   phone: string | null;
 }
 
 const FALLBACK_FIRST_NAME = 'Desconocido';
 
-export function buildPatientInputFromRow(row: CleanedRow): PatientInputParts {
+export function buildPatientInputFromRow(row: CleanedRow, identityLightEnabled = false): PatientInputParts {
+  if (identityLightEnabled && !row.patientName && row.nhc) {
+    return {
+      firstName: null,
+      lastName: null,
+      birthDate: row.birthDate ?? null,
+      phone: row.phone ?? null,
+    };
+  }
+
   const normalized = normalizeName(row.patientName ?? '');
   const { firstName, lastName } = splitNormalizedName(normalized);
   return {
-    firstName: firstName || FALLBACK_FIRST_NAME,
-    lastName,
+    firstName: firstName || (identityLightEnabled ? null : FALLBACK_FIRST_NAME),
+    lastName: lastName || (identityLightEnabled && !row.patientName ? null : lastName),
     birthDate: row.birthDate ?? null,
     phone: row.phone ?? null,
   };

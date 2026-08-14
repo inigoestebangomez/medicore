@@ -3,6 +3,7 @@
 import type { IImagingStudyRepository } from '@/domain/imaging/imaging-study.repository.interface';
 import type { ImagingStudy } from '@/domain/imaging/imaging-study.entity';
 import { ImagingStudyNotFoundError } from '@/domain/imaging/errors/imaging-study-not-found.error';
+import { assertValidImagingStudyId } from '@/domain/imaging/imaging-study-id';
 
 export interface GetImagingStudyQuery {
   id: string;
@@ -14,6 +15,7 @@ export class GetImagingStudyUseCase {
 
   async execute(query: GetImagingStudyQuery): Promise<ImagingStudy> {
     const { id, organizationId } = query;
+    assertValidImagingStudyId(id);
 
     const study = await this.imagingRepo.findById(id, organizationId);
     if (!study) {

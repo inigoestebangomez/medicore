@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
+import type { Filter } from '@medicore/contracts';
 
 const useFieldCatalog = vi.hoisted(() => vi.fn());
 const useExecuteAdHoc = vi.hoisted(() => vi.fn());
@@ -75,5 +77,59 @@ describe('FilterBuilderV2', () => {
     );
 
     await waitFor(() => expect(screen.getByText('123 pacientes')).toBeInTheDocument());
+  });
+
+  it('keeps relation sources manual and preserves the selected source', () => {
+    useFieldCatalog.mockReturnValue({ data: { entries: [] }, isLoading: false });
+    useExecuteAdHoc.mockReturnValue(makeAdhoc());
+    const onChange = vi.fn();
+    renderWithProviders(
+      <FilterBuilderV2
+        filters={[{ field: 'procedureType', source: 'surgery', operator: 'equals', value: 'septoplasty' }]}
+        logic="AND"
+        onChange={onChange}
+        debounceMs={0}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Campo del filtro 1' }), {
+      target: { value: 'surgeryType' },
+    });
+    expect(onChange).toHaveBeenLastCalledWith(
+      [{ field: 'surgeryType', source: 'surgery', operator: 'equals', value: 'septoplasty' }],
+      'AND',
+    );
+    expect(screen.getByRole('option', { name: 'Contiene' })).toBeInTheDocument();
+  });
+
+  it('uses catalog type metadata to constrain operators and controls', () => {
+    useFieldCatalog.mockReturnValue({
+      data: {
+        entries: [{ field: 'age', source: 'standard', type: 'number', nonNullCount: 10, examples: [42] }],
+      },
+      isLoading: false,
+    });
+    useExecuteAdHoc.mockReturnValue(makeAdhoc());
+    function Controlled() {
+      const [filters, setFilters] = useState<Filter[]>([
+        { field: '', source: 'standard', operator: 'equals', value: '' },
+      ]);
+      return (
+        <FilterBuilderV2
+          filters={filters}
+          logic="AND"
+          onChange={(next) => setFilters(next)}
+          debounceMs={0}
+        />
+      );
+    }
+
+    renderWithProviders(<Controlled />);
+    fireEvent.focus(screen.getByRole('textbox', { name: 'Campo del filtro 1' }));
+    fireEvent.click(screen.getByRole('option', { name: /age/ }));
+
+    expect(screen.queryByRole('option', { name: 'Contiene' })).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Mayor que' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton')).toBeInTheDocument();
   });
 });

@@ -12,7 +12,15 @@ export class ZodValidationPipe implements PipeTransform {
         field: e.path.join('.'),
         message: e.message,
       }));
-      throw new BadRequestException({ message: 'Validation failed', errors });
+      const mappingConflicts = result.error.errors.flatMap((error) => {
+        if (!('params' in error) || !Array.isArray(error.params?.mappingConflicts)) return [];
+        return error.params.mappingConflicts;
+      });
+      throw new BadRequestException({
+        message: 'Validation failed',
+        errors,
+        ...(mappingConflicts.length > 0 ? { mappingConflicts } : {}),
+      });
     }
     return result.data;
   }

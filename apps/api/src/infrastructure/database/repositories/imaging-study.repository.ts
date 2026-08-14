@@ -2,7 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { ImagingStudy } from '@/domain/imaging/imaging-study.entity';
-import type { IImagingStudyRepository, ListImagingStudiesParams, CreateImagingStudyInput, UpdateImagingStudyInput } from '@/domain/imaging/imaging-study.repository.interface';
+import type { IImagingStudyRepository, ListImagingStudiesParams, ListOrgImagingStudiesParams, ListOrgImagingStudiesResult, CreateImagingStudyInput, UpdateImagingStudyInput } from '@/domain/imaging/imaging-study.repository.interface';
 import type { FileMetadataEntry } from '@/domain/imaging/imaging-study.entity';
 
 @Injectable()
@@ -54,6 +54,48 @@ export class PrismaImagingStudyRepository implements IImagingStudyRepository {
     ]);
 
     return { items: records.map((r) => this.toEntity(r)), total };
+  }
+
+  async listByOrganization(params: ListOrgImagingStudiesParams): Promise<ListOrgImagingStudiesResult> {
+    const where: Record<string, unknown> = {
+      organizationId: params.organizationId,
+      deletedAt: null,
+    };
+
+    if (params.type) {
+      where.type = params.type;
+    }
+
+    if (params.from || params.to) {
+      const dateFilter: Record<string, Date> = {};
+      if (params.from) dateFilter.gte = params.from;
+      if (params.to) dateFilter.lte = params.to;
+      where.date = dateFilter;
+    }
+
+    const [records, total] = await Promise.all([
+      this.prisma.imagingStudy.findMany({
+        where,
+        orderBy: { [params.sortBy]: params.sortOrder },
+        skip: (params.page - 1) * params.pageSize,
+        take: params.pageSize,
+      }),
+      this.prisma.imagingStudy.count({ where }),
+    ]);
+
+    const patientIds = Array.from(new Set(records.map((r) => r.patientId)));
+    const patientNames = new Map<string, { firstName: string; lastName: string }>();
+    if (patientIds.length > 0) {
+      const patients = await this.prisma.patient.findMany({
+        where: { id: { in: patientIds } },
+        select: { id: true, firstName: true, lastName: true },
+      });
+      for (const p of patients) {
+        patientNames.set(p.id, { firstName: p.firstName ?? '', lastName: p.lastName ?? '' });
+      }
+    }
+
+    return { items: records.map((r) => this.toEntity(r)), total, patientNames };
   }
 
   async create(data: CreateImagingStudyInput): Promise<ImagingStudy> {

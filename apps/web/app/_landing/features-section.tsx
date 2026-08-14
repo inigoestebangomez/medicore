@@ -70,7 +70,7 @@ export function FeaturesSection() {
           return (
             <li
               key={feature.title}
-              className="flex flex-col rounded-xl bg-surface-lowest p-6 shadow-card ring-1 ring-outline-variant"
+              className="card-primary flex flex-col p-6"
             >
               <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-secondary-container text-on-secondary-container">
                 <Icon className="h-6 w-6" />

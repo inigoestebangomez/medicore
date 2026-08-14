@@ -9,9 +9,9 @@ interface PatientListItem {
   nhc: string;
   firstName: string;
   lastName: string;
-  birthDate: string;
+  birthDate: string | null;
   sex: string;
-  age: number;
+  age: number | null;
   isPediatric: boolean;
   hasCriticalAllergy: boolean;
   hasActiveAllergies: boolean;
@@ -55,28 +55,23 @@ export function usePatients(params?: {
   if (params?.sortBy) queryParams.set('sortBy', params.sortBy);
   if (params?.sortOrder) queryParams.set('sortOrder', params.sortOrder);
 
-  if (query && query.length > 0) {
-    queryParams.set('query', query);
-    return useQuery<ListResponse>({
-      queryKey: patientKeys.search(query),
-      queryFn: async () => {
-        const res = await apiFetch<{ data: ListResponse } | ListResponse>(
-          `${API_BASE}/search?${queryParams.toString()}`,
-        );
-        return 'data' in res ? (res as { data: ListResponse }).data : (res as ListResponse);
-      },
-      enabled: query.length >= 1,
-    });
+  const isSearch = Boolean(query && query.length > 0);
+  const searchQuery = query ?? '';
+  if (isSearch) {
+    queryParams.set('query', searchQuery);
   }
 
+  const endpoint = isSearch ? `${API_BASE}/search` : API_BASE;
+
   return useQuery<ListResponse>({
-    queryKey: patientKeys.lists(),
+    queryKey: isSearch ? patientKeys.search(searchQuery) : patientKeys.lists(),
     queryFn: async () => {
       const res = await apiFetch<{ data: ListResponse } | ListResponse>(
-        `${API_BASE}?${queryParams.toString()}`,
+        `${endpoint}?${queryParams.toString()}`,
       );
       return 'data' in res ? (res as { data: ListResponse }).data : (res as ListResponse);
     },
+    enabled: isSearch ? searchQuery.length >= 1 : undefined,
   });
 }
 

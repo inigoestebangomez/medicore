@@ -2,8 +2,26 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Patient } from '@/domain/patient/patient.entity';
-import type { IPatientRepository, FindAllParams, SearchParams, CreatePatientInput, UpdatePatientInput, EnrichPatientInput } from '@/domain/patient/patient.repository.interface';
+import type { IPatientRepository, FindAllParams, SearchParams, CreatePatientInput, UpdatePatientInput, EnrichPatientInput, ImportedDataSnapshot } from '@/domain/patient/patient.repository.interface';
 import { NHC } from '@/domain/patient/value-objects/nhc.vo';
+
+const PLACEHOLDER_BIRTH_DATE = '1900-01-01';
+
+function isValidDate(value: Date | null | undefined): value is Date {
+  return value instanceof Date && !Number.isNaN(value.getTime());
+}
+
+function isPlaceholderBirthDate(value: Date | null): boolean {
+  return isValidDate(value) && value.toISOString().slice(0, 10) === PLACEHOLDER_BIRTH_DATE;
+}
+
+export function shouldReplaceBirthDate(
+  existing: Date | null,
+  incoming: Date | null | undefined,
+): incoming is Date {
+  if (!isValidDate(incoming) || isPlaceholderBirthDate(incoming)) return false;
+  return existing === null || isPlaceholderBirthDate(existing);
+}
 
 @Injectable()
 export class PrismaPatientRepository implements IPatientRepository {
@@ -24,6 +42,19 @@ export class PrismaPatientRepository implements IPatientRepository {
     });
     if (!record) return null;
     return this.toEntityWithAllergies(record);
+  }
+
+  async findImportedDataById(id: string, organizationId: string): Promise<ImportedDataSnapshot | null> {
+    const record = await this.prisma.patient.findFirst({
+      where: { id, organizationId, deletedAt: null },
+      select: { importedData: true, importSource: true, updatedAt: true },
+    });
+    if (!record) return null;
+    return {
+      importedData: record.importedData as Record<string, unknown> | null,
+      importSource: record.importSource,
+      updatedAt: record.updatedAt,
+    };
   }
 
   async findAll(params: FindAllParams): Promise<{ items: Patient[]; total: number }> {
@@ -179,6 +210,13 @@ export class PrismaPatientRepository implements IPatientRepository {
     return record ? this.toEntity(record) : null;
   }
 
+  async findByNhcIncludingDeleted(nhc: string, organizationId: string): Promise<Patient | null> {
+    const record = await this.prisma.patient.findFirst({
+      where: { organizationId, nhc },
+    });
+    return record ? this.toEntity(record) : null;
+  }
+
   async searchByNameFuzzy(organizationId: string, lastName: string, firstName?: string): Promise<Patient[]> {
     // Trigram-backed fuzzy search. We fall back to an ILIKE when pg_trgm is
     // not available (e.g.SQLite test DBs). Prisma's `mode: insensitive` covers
@@ -218,7 +256,9 @@ export class PrismaPatientRepository implements IPatientRepository {
     if (data.importSource !== undefined) updateData.importSource = data.importSource;
 
     // Only set standard fields when they are currently empty/null.
-    if (data.birthDate && !existing.birthDate) updateData.birthDate = data.birthDate;
+    if (shouldReplaceBirthDate(existing.birthDate, data.birthDate)) {
+      updateData.birthDate = data.birthDate;
+    }
     if (data.sex && !existing.sex) updateData.sex = data.sex as any;
 
     const record = await this.prisma.patient.update({ where: { id }, data: updateData });
@@ -249,6 +289,19 @@ export class PrismaPatientRepository implements IPatientRepository {
       });
     }
     return affected.length;
+  }
+
+  async findByImportBatchRow(batchId: string, organizationId: string, rowIndex: number): Promise<Patient | null> {
+    const records = await this.prisma.patient.findMany({
+      where: { organizationId, importBatchId: batchId, deletedAt: null },
+      select: { id: true, importedData: true },
+    });
+    const record = records.find((candidate: any) => {
+      const block = (candidate.importedData as Record<string, any> | null)?.[batchId];
+      return block?._rowIndex === rowIndex || block?._rowIndices?.includes(rowIndex);
+    });
+    if (!record) return null;
+    return this.findById(record.id, organizationId);
   }
 
   private toEntity(record: any): Patient {

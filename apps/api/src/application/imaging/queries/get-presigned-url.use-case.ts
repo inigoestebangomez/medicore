@@ -6,6 +6,7 @@
 import type { IImagingStudyRepository } from '@/domain/imaging/imaging-study.repository.interface';
 import type { IStorageService, PresignedUrlResult } from '@/domain/shared/storage.interface';
 import { ImagingStudyNotFoundError } from '@/domain/imaging/errors/imaging-study-not-found.error';
+import { assertValidImagingStudyId } from '@/domain/imaging/imaging-study-id';
 
 export interface GetPresignedUrlQuery {
   studyId: string;
@@ -21,6 +22,7 @@ export class GetPresignedUrlUseCase {
 
   async execute(query: GetPresignedUrlQuery): Promise<PresignedUrlResult> {
     const { studyId, organizationId, fileKey } = query;
+    assertValidImagingStudyId(studyId);
 
     // Fetch study and verify org ownership
     const study = await this.imagingRepo.findById(studyId, organizationId);

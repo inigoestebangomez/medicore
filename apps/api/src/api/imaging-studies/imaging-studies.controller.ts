@@ -18,6 +18,7 @@ import {
   ForbiddenException,
   HttpCode,
   HttpStatus,
+  BadRequestException,
   UseInterceptors,
   UploadedFiles,
 } from '@nestjs/common';
@@ -43,6 +44,7 @@ import { StudyAlreadyDeletedError } from '@/domain/imaging/errors/study-already-
 import { InvalidMimeTypeError } from '@/domain/imaging/errors/invalid-mime-type.error';
 import { FileTooLargeError } from '@/domain/imaging/errors/file-too-large.error';
 import { FileCountExceededError } from '@/domain/imaging/errors/file-count-exceeded.error';
+import { InvalidImagingStudyIdError } from '@/domain/imaging/errors/invalid-imaging-study-id.error';
 import { FileValidationPipe } from './pipes/file-validation.pipe';
 import { ZodValidationPipe } from '@/api/shared/pipes/zod-validation.pipe';
 import {
@@ -286,6 +288,13 @@ export class ImagingStudiesController {
   }
 
   private mapDomainError(error: unknown): never {
+    if (error instanceof InvalidImagingStudyIdError) {
+      throw new BadRequestException({
+        statusCode: 400,
+        error: error.code,
+        message: error.message,
+      });
+    }
     if (error instanceof ImagingStudyNotFoundError) {
       throw new NotFoundException(error.message);
     }

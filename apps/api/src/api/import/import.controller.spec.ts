@@ -9,6 +9,7 @@ import { ImportController } from './import.controller';
 import { ImportBatchNotFoundError } from '@/domain/import/errors/import-batch-not-found.error';
 import { FileEmptyError } from '@/domain/import/errors/file-empty.error';
 import { InvalidImportTransitionError } from '@/domain/import/errors/invalid-import-transition.error';
+import { ImportNhcConflictError } from '@/domain/import/errors/import-nhc-conflict.error';
 import { ImportReminderService } from '@/application/import/services/import-reminder.service';
 import type { JwtPayload } from '@medicore/contracts';
 
@@ -23,7 +24,13 @@ function buildController(stubs: {
 }) {
   const queue = stubs.queue ?? { add: jest.fn().mockResolvedValue({ id: 'job-1' }) };
   const ctrl = new ImportController(
-    stubs.batchRepo ?? {},
+    stubs.batchRepo ?? {
+      findById: jest.fn().mockResolvedValue({
+        status: 'CONFIRMING',
+        pendingRows: 0,
+        canTransitionTo: () => true,
+      }),
+    },
     stubs.parse ?? { execute: jest.fn().mockResolvedValue({ batchId: 'b-1' }) },
     stubs.analyze ?? { execute: jest.fn().mockResolvedValue({ batchId: 'b-1' }) },
     stubs.confirm ?? { execute: jest.fn().mockResolvedValue({ batchId: 'b-1', matches: [] }) },
@@ -60,6 +67,27 @@ describe('ImportController', () => {
     expect(queue.add).toHaveBeenCalledWith('finalize', expect.objectContaining({ batchId: 'b-1', organizationId: 'org-1' }));
   });
 
+  it('allows retrying a failed finalize without treating it as a new import', async () => {
+    const batchRepo = {
+      findById: jest.fn().mockResolvedValue({ status: 'FAILED', pendingRows: 0 }),
+    };
+    const { ctrl, queue } = buildController({ batchRepo });
+    const res = await ctrl.finalize('b-1', { matchResolutions: {} }, user);
+    expect(res.data.status).toBe('PROCESSING');
+    expect(queue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks finalize when unresolved import rows remain', async () => {
+    const batchRepo = {
+      findById: jest.fn().mockResolvedValue({ status: 'CONFIRMING', pendingRows: 2 }),
+    };
+    const { ctrl, queue } = buildController({ batchRepo });
+
+    await expect(ctrl.finalize('b-1', { matchResolutions: {} }, user))
+      .rejects.toThrow('Resolve the 2 pending import rows before finalizing');
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
   it('revert delegates to RevertImportHandler', async () => {
     const { ctrl } = buildController({ revert: { execute: jest.fn().mockResolvedValue({ reverted: true, affectedPatients: 3 }) } });
     const res = await ctrl.revert('b-1', user);
@@ -76,24 +104,75 @@ describe('ImportController', () => {
     await expect(ctrl.reanalyze('x', user)).rejects.toThrow();
   });
 
+  it('maps an NHC conflict to a useful 409 response', async () => {
+    const { ctrl } = buildController({
+      analyze: { execute: jest.fn().mockRejectedValue(new ImportNhcConflictError('123', 'soft-deleted')) },
+    });
+
+    await expect(ctrl.reanalyze('b-1', user)).rejects.toThrow('paciente eliminado');
+  });
+
   it('confirm requires columnMapping', async () => {
     const { ctrl } = buildController({});
     await expect(ctrl.confirm('b-1', {} as any, user)).rejects.toThrow();
   });
 
+  it('confirm exposes named mapping conflicts to the API caller', async () => {
+    const { ctrl } = buildController({});
+
+    try {
+      await ctrl.confirm('b-1', {
+        columnMapping: { Nombre: 'patientName', 'Nº Paciente': 'patientName' },
+      } as any, user);
+      throw new Error('expected mapping conflict');
+    } catch (error: any) {
+      expect(error.response.mappingConflicts[0].columns).toEqual(['Nombre', 'Nº Paciente']);
+    }
+  });
+
   it('list delegates to GetImportHistoryHandler with pagination', async () => {
-    const { ctrl } = buildController({ history: { execute: jest.fn().mockResolvedValue({ items: ['a'], total: 1, page: 2, pageSize: 5 }) } });
+    const { ctrl } = buildController({ history: { execute: jest.fn().mockResolvedValue({
+      items: [{ status: 'FAILED', errorMessage: 'connection failed', ignoredRows: [{ rowIndex: 3 }] }], total: 1, page: 2, pageSize: 5,
+    }) } });
     const res = await ctrl.list('2', '5', undefined, user);
     expect(res.data.page).toBe(2);
+    expect(res.data.items[0]).toMatchObject({ status: 'FAILED', errorMessage: 'connection failed' });
+    expect(res.data.items[0].discardedRowCount).toBe(1);
   });
 
   it('getOne returns the batch or 404', async () => {
-    const { ctrl } = buildController({ batchRepo: { findById: jest.fn().mockResolvedValue({ id: 'b-1' }) } });
+    const { ctrl } = buildController({ batchRepo: { findById: jest.fn().mockResolvedValue({
+      id: 'b-1', status: 'PROCESSING', errorMessage: null,
+    }) } });
     const res = await ctrl.getOne('b-1', user);
-    expect(res.data.id).toBe('b-1');
+    expect(res.data).toMatchObject({ id: 'b-1', status: 'PROCESSING', errorMessage: null });
 
     const { ctrl: ctrl2 } = buildController({ batchRepo: { findById: jest.fn().mockResolvedValue(null) } });
     await expect(ctrl2.getOne('missing', user)).rejects.toThrow();
+  });
+
+  it('returns paginated preview rows with real zero-based indices', async () => {
+    const { ctrl } = buildController({ batchRepo: { findById: jest.fn().mockResolvedValue({
+      id: 'b-1',
+      toParsedFile: () => ({
+        columns: ['NHC'],
+        rows: [{ NHC: 'a' }, { NHC: 'b' }, { NHC: 'c' }],
+        sample: { columns: ['NHC'], rows: [{ NHC: 'a' }] },
+        totalRows: 3,
+        originalFormat: 'csv',
+      }),
+    }) } });
+    const res = await ctrl.preview('b-1', '2', '1', user);
+    expect(res.data.rows).toEqual([{ rowIndex: 1, values: { NHC: 'b' } }]);
+    expect(res.data.page).toBe(2);
+  });
+
+  it('returns an actionable error when normalized preview rows are unavailable', async () => {
+    const { ctrl } = buildController({ batchRepo: { findById: jest.fn().mockResolvedValue({
+      id: 'old-1', toParsedFile: () => null,
+    }) } });
+    await expect(ctrl.preview('old-1', '1', '50', user))
+      .rejects.toThrow('Vuelve a subir el archivo para continuar');
   });
 
   it('reminderStatus delegates to ImportReminderService', async () => {

@@ -22,7 +22,7 @@ import { AuthGuard } from '@/api/shared/guards/auth.guard';
 import { RBACGuard } from '@/api/shared/guards/rbac.guard';
 import { REQUIRED_ACTION_KEY } from '@/api/shared/guards/rbac.guard';
 import { CurrentUser } from '@/api/shared/decorators/current-user.decorator';
-import type { JwtPayload, ColumnMapping } from '@medicore/contracts';
+import { validateColumnMapping, type JwtPayload, type ColumnMapping } from '@medicore/contracts';
 import { Action } from '@/domain/shared/rbac-permissions';
 import type { IImportBatchRepository } from '@/domain/import/import-batch.repository.interface';
 import { ParseFileHandler } from '@/application/import/handlers/parse-file.handler';
@@ -33,8 +33,14 @@ import { GetImportHistoryHandler } from '@/application/import/handlers/get-impor
 import { ImportBatchNotFoundError } from '@/domain/import/errors/import-batch-not-found.error';
 import { InvalidImportTransitionError } from '@/domain/import/errors/invalid-import-transition.error';
 import { FileEmptyError } from '@/domain/import/errors/file-empty.error';
+import { ImportBlockedByUnidentifiableError } from '@/domain/import/errors/import-blocked-by-unidentifiable.error';
+import { ImportNhcConflictError } from '@/domain/import/errors/import-nhc-conflict.error';
+import { ImportPreviewUnavailableError } from '@/domain/import/errors/import-preview-unavailable.error';
+import { ImportColumnMappingConflictError } from '@/domain/import/errors/import-column-mapping-conflict.error';
 import { ImportReminderService } from '@/application/import/services/import-reminder.service';
 import { IMPORT_QUEUE } from '@/infrastructure/queues/import-processor';
+import { ZodValidationPipe } from '@/api/shared/pipes/zod-validation.pipe';
+import { ConfirmMappingSchema, type ConfirmMappingInput } from '@medicore/contracts';
 
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25 MB per spec §2 (hospital Excels)
 
@@ -119,14 +125,17 @@ export class ImportController {
   @Reflect.metadata(REQUIRED_ACTION_KEY, Action.IMPORT_DATA)
   async confirm(
     @Param('id') id: string,
-    @Body() body: {
-      columnMapping: Record<string, string>;
-      customFieldNames?: Record<string, string>;
-      junkRowIndices?: number[];
-    },
+    @Body(new ZodValidationPipe(ConfirmMappingSchema)) body: ConfirmMappingInput,
     @CurrentUser() user: JwtPayload,
   ) {
     if (!body?.columnMapping) throw new BadRequestException('columnMapping is required');
+    const mappingValidation = validateColumnMapping(body.columnMapping);
+    if (!mappingValidation.valid) {
+      throw new BadRequestException({
+        message: 'El mapeo contiene conflictos de identidad',
+        mappingConflicts: mappingValidation.conflicts,
+      });
+    }
     try {
       const result = await this.confirmHandler.execute({
         batchId: id,
@@ -134,6 +143,10 @@ export class ImportController {
         columnMapping: body.columnMapping as unknown as ColumnMapping,
         customFieldNames: body.customFieldNames,
         junkRowIndices: body.junkRowIndices,
+        previewOverrides: body.previewOverrides,
+        ignoredColumns: body.ignoredColumns,
+        ignoredRows: body.ignoredRows,
+        cellOverrides: body.cellOverrides,
       });
       return { data: result };
     } catch (err) {
@@ -153,6 +166,19 @@ export class ImportController {
     @CurrentUser() user: JwtPayload,
   ) {
     try {
+      const batch = await this.batchRepo.findById(id, user.organizationId);
+      if (!batch) throw new ImportBatchNotFoundError(id);
+      if (batch.status === 'COMPLETED') {
+        return { data: { batchId: id, status: 'COMPLETED', message: 'La importación ya estaba finalizada' } };
+      }
+      // A failed finalize can be retried with the same confirmed payload while
+      // the parsed cache is still present; completed batches short-circuit above.
+      if (batch.status !== 'CONFIRMING' && batch.status !== 'FAILED') {
+        throw new InvalidImportTransitionError(batch.status, 'PROCESSING');
+      }
+      if (batch.pendingRows > 0) {
+        throw new ImportBlockedByUnidentifiableError(batch.pendingRows);
+      }
       await this.importQueue.add('finalize', {
         batchId: id,
         organizationId: user.organizationId,
@@ -202,7 +228,54 @@ export class ImportController {
       pageSize: pageSize ? Number(pageSize) : 20,
       status: status as any,
     });
-    return { data: result };
+    return {
+      data: {
+        ...result,
+        items: result.items.map((batch) => ({
+          ...batch,
+          // Explicit discards are audit metadata, not automatic skips.
+          discardedRowCount: batch.ignoredRows
+            ? new Set(batch.ignoredRows.map(({ rowIndex }) => rowIndex)).size
+            : 0,
+        })),
+      },
+    };
+  }
+
+  /** Single batch detail. */
+  @Get(':id/preview')
+  @Reflect.metadata(REQUIRED_ACTION_KEY, Action.READ_IMPORT)
+  async preview(
+    @Param('id') id: string,
+    @Query('page') pageValue: string,
+    @Query('pageSize') pageSizeValue: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const batch = await this.batchRepo.findById(id, user.organizationId);
+    if (!batch) throw new NotFoundException(`Import batch not found: ${id}`);
+
+    const parsed = batch.toParsedFile();
+    if (!parsed) {
+      throw new NotFoundException(new ImportPreviewUnavailableError().message);
+    }
+
+    const page = Math.max(1, Number(pageValue) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(pageSizeValue) || 50));
+    const start = (page - 1) * pageSize;
+    return {
+      data: {
+        batchId: batch.id,
+        columns: parsed.columns,
+        rows: parsed.rows.slice(start, start + pageSize).map((values, offset) => ({
+          rowIndex: start + offset,
+          values,
+        })),
+        totalRows: parsed.totalRows,
+        page,
+        pageSize,
+        source: 'persisted' as const,
+      },
+    };
   }
 
   /** Single batch detail. */
@@ -211,12 +284,29 @@ export class ImportController {
   async getOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     const batch = await this.batchRepo.findById(id, user.organizationId);
     if (!batch) throw new NotFoundException(`Import batch not found: ${id}`);
-    return { data: batch };
+    // Do not send all normalized PII rows in the detail response. The preview
+    // endpoint pages them and exposes only the requested slice.
+    const { normalizedRows: _normalizedRows, ...detail } = batch;
+    return {
+      data: {
+        ...detail,
+        discardedRowCount: batch.ignoredRows
+          ? new Set(batch.ignoredRows.map(({ rowIndex }) => rowIndex)).size
+          : 0,
+        normalizedRowsAvailable: Boolean(batch.normalizedRows),
+      },
+    };
   }
 
   private mapDomainError(error: unknown): never {
     if (error instanceof FileEmptyError) throw new BadRequestException(error.message);
     if (error instanceof ImportBatchNotFoundError) throw new NotFoundException(error.message);
+    if (error instanceof ImportBlockedByUnidentifiableError) throw new ConflictException(error.message);
+    if (error instanceof ImportNhcConflictError) throw new ConflictException(error.message);
+    if (error instanceof ImportColumnMappingConflictError) {
+      throw new BadRequestException({ message: error.message, mappingConflicts: error.conflicts });
+    }
+    if (error instanceof ImportPreviewUnavailableError) throw new NotFoundException(error.message);
     if (error instanceof InvalidImportTransitionError) throw new ConflictException(error.message);
     if (error instanceof Error && error.message.includes('not configured')) {
       throw new UnprocessableEntityException(error.message);

@@ -5,6 +5,8 @@ import type {
   UpdateSurgeryInput,
   ChangeSurgeryStatusInput,
   SurgeryStatus,
+  ListOrgSurgeriesQuery,
+  OrgSurgeryListItem,
 } from '@medicore/contracts';
 import { apiFetch } from '@/lib/api-fetch';
 
@@ -22,9 +24,18 @@ interface SurgeryListItem {
 }
 
 const API_BASE = '/v1/patients';
+const ORG_API = '/v1/surgeries';
 
 interface ListResponse {
   items: SurgeryListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+interface OrgListResponse {
+  items: OrgSurgeryListItem[];
   total: number;
   page: number;
   pageSize: number;
@@ -36,6 +47,7 @@ const surgeryKeys = {
   lists: (patientId: string) => [...surgeryKeys.all(patientId), 'list'] as const,
   detail: (patientId: string, surgeryId: string) =>
     [...surgeryKeys.all(patientId), 'detail', surgeryId] as const,
+  org: (params: ListOrgSurgeriesQuery) => ['surgeries', 'org', params] as const,
 };
 
 export function useSurgeries(
@@ -146,6 +158,56 @@ export function useChangeSurgeryStatus(patientId: string) {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: surgeryKeys.detail(patientId, variables.surgeryId) });
       queryClient.invalidateQueries({ queryKey: surgeryKeys.lists(patientId) });
+    },
+  });
+}
+
+// ─────────────────────────────────────────────
+// Org-wide surgeries (top-level GET /v1/surgeries)
+// ─────────────────────────────────────────────
+
+export interface UseOrgSurgeriesParams {
+  page?: number;
+  pageSize?: number;
+  status?: SurgeryStatus | '';
+  physicianId?: string;
+  from?: string;
+  to?: string;
+  sortBy?: 'date' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export function useOrgSurgeries(params?: UseOrgSurgeriesParams) {
+  const queryParams = new URLSearchParams();
+  const page = params?.page ?? 1;
+  const pageSize = params?.pageSize ?? 20;
+  queryParams.set('page', String(page));
+  queryParams.set('pageSize', String(pageSize));
+  if (params?.status) queryParams.set('status', params.status);
+  if (params?.physicianId) queryParams.set('physicianId', params.physicianId);
+  if (params?.from) queryParams.set('from', params.from);
+  if (params?.to) queryParams.set('to', params.to);
+  if (params?.sortBy) queryParams.set('sortBy', params.sortBy);
+  if (params?.sortOrder) queryParams.set('sortOrder', params.sortOrder);
+
+  const query: ListOrgSurgeriesQuery = {
+    page,
+    pageSize,
+    status: (params?.status || undefined) as SurgeryStatus | undefined,
+    physicianId: params?.physicianId,
+    from: params?.from,
+    to: params?.to,
+    sortBy: params?.sortBy ?? 'date',
+    sortOrder: params?.sortOrder ?? 'desc',
+  };
+
+  return useQuery<OrgListResponse>({
+    queryKey: surgeryKeys.org(query),
+    queryFn: async () => {
+      const res = await apiFetch<{ data: OrgListResponse }>(
+        `${ORG_API}?${queryParams.toString()}`,
+      );
+      return res.data;
     },
   });
 }

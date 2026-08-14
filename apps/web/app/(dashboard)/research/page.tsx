@@ -21,11 +21,12 @@ export default function ResearchPage() {
   useEffect(() => {
     if (isV3Studies) router.replace('/research/studies');
   }, [isV3Studies, router]);
+  const { data, isLoading } = useQueryHistory(1, 50);
+  const del = useDeleteQuery();
+
   if (isV3Studies) {
     return <p className="text-sm text-on-surface-variant">Redirigiendo a estudios…</p>;
   }
-  const { data, isLoading } = useQueryHistory(1, 50);
-  const del = useDeleteQuery();
 
   return (
     <div className="container mx-auto space-y-6 py-6">

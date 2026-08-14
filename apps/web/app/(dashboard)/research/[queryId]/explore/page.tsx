@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { FilterBuilderV2 } from '@/components/research/FilterBuilderV2';
+import { ResearchFieldPicker } from '@/components/research/ResearchFieldPicker';
 import { ResultsViewer } from '@/components/research/results-viewer';
 import { CrossTabViewer } from '@/components/research/CrossTabViewer';
 import { TimeSeriesChart } from '@/components/research/TimeSeriesChart';
@@ -25,6 +26,7 @@ export default function ExplorePage({ params }: { params: { queryId: string } })
 
   const [filters, setFilters] = useState<Filter[]>([]);
   const [logic, setLogic] = useState<FilterLogic>('AND');
+  const [displayFields, setDisplayFields] = useState<string[]>([]);
   const [section, setSection] = useState<'results' | 'crosstab' | 'timeseries' | 'inferential'>('results');
   const [showShare, setShowShare] = useState(false);
 
@@ -47,6 +49,7 @@ export default function ExplorePage({ params }: { params: { queryId: string } })
     if (data && initRef.current !== data.id) {
       setFilters(data.filters ?? []);
       setLogic(data.filterLogic ?? 'AND');
+      setDisplayFields(data.displayFields ?? []);
       initRef.current = data.id;
     }
   }, [data]);
@@ -59,14 +62,14 @@ export default function ExplorePage({ params }: { params: { queryId: string } })
     void exec.mutateAsync({
       filters,
       filterLogic: logic,
-      displayFields: data?.displayFields ?? [],
+      displayFields,
     });
   }
 
   async function runInferential() {
     const rows = exec.data?.rows ?? adhoc.data?.rows ?? [];
     const group1 = rows
-      .map((r) => Number(r.fields[data?.displayFields[0] ?? 'age'] ?? NaN))
+      .map((r) => Number(r.fields[displayFields[0] ?? 'age'] ?? NaN))
       .filter((n) => !Number.isNaN(n));
     const res = await inferential.mutateAsync({
       test: 'ttest_independent',
@@ -119,9 +122,20 @@ export default function ExplorePage({ params }: { params: { queryId: string } })
         onChange={(f, l) => { setFilters(f); setLogic(l); }}
         dataSource={data.dataSource}
         importBatchIds={data.importBatchIds}
-        previewFields={data.displayFields}
+        previewFields={displayFields}
         disabled={!fieldDiscoveryEnabled}
       />
+
+      <section className="rounded-md border border-outline-variant bg-surface-low p-4">
+        <h2 className="text-sm font-semibold text-on-surface">Campos a mostrar</h2>
+        <div className="mt-2">
+          <ResearchFieldPicker
+            value={displayFields}
+            onChange={setDisplayFields}
+            disabled={!fieldDiscoveryEnabled}
+          />
+        </div>
+      </section>
 
       <nav className="flex gap-2 text-sm">
         {(['results', 'crosstab', 'timeseries', 'inferential'] as const).map((s) => (
@@ -139,7 +153,7 @@ export default function ExplorePage({ params }: { params: { queryId: string } })
         exec.data ? (
           <ResultsViewer
             rows={exec.data.rows ?? []}
-            displayFields={exec.data.displayFields ?? []}
+            displayFields={displayFields}
             stats={exec.data.stats ?? []}
             distributions={exec.data.distributions ?? []}
           />

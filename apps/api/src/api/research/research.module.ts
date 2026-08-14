@@ -29,7 +29,7 @@ import { FieldDiscoveryService } from '@/application/research/services/field-dis
 import { CrossTabService } from '@/application/research/services/cross-tab.service';
 import { TimeSeriesService } from '@/application/research/services/time-series.service';
 import { VisibilityShareService } from '@/application/research/services/visibility-share.service';
-import { InMemoryFieldCatalogCache } from '@/infrastructure/research/in-memory-field-catalog-cache';
+import { FieldCatalogCacheModule } from '@/infrastructure/research/field-catalog-cache.module';
 import { PythonStatsService } from '@/infrastructure/stats/python-stats.service';
 import { CircuitBreaker } from '@/infrastructure/stats/circuit-breaker';
 import { SaveQueryHandler } from '@/application/research/commands/save-research-query.handler';
@@ -120,6 +120,7 @@ import { PrismaStatisticalAnalysisRepository } from '@/infrastructure/database/r
     AuditModule,
     ResearchStatsModule,
     PdfQueueModule,
+    FieldCatalogCacheModule,
     // The `stats` queue is registered by ResearchStatsModule; the `pdf.render`
     // queue is registered by PdfQueueModule. No duplicate registration here.
   ],
@@ -146,8 +147,6 @@ import { PrismaStatisticalAnalysisRepository } from '@/infrastructure/database/r
     { provide: 'IPatientCollectionRepository', useClass: PrismaPatientCollectionRepository },
     { provide: 'IPatientRepository', useClass: PrismaPatientRepository },
     { provide: 'IDashboardRepository', useClass: PrismaDashboardRepository },
-    // Field catalog cache port (AD-3) — in-memory default, swappable for Redis.
-    { provide: 'FieldCatalogCachePort', useClass: InMemoryFieldCatalogCache },
     // Application services.
     FilterBuilderService,
     JsonbSearchService,

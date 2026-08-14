@@ -8,6 +8,7 @@ import type { IImagingStudyRepository } from '@/domain/imaging/imaging-study.rep
 import type { IStorageService } from '@/domain/shared/storage.interface';
 import type { FileMetadataEntry } from '@/domain/imaging/imaging-study.entity';
 import { ImagingStudyNotFoundError } from '@/domain/imaging/errors/imaging-study-not-found.error';
+import { assertValidImagingStudyId } from '@/domain/imaging/imaging-study-id';
 
 export interface UploadFileEntry {
   originalName: string;
@@ -38,6 +39,7 @@ export class UploadFilesUseCase {
 
   async execute(command: UploadFilesCommand): Promise<UploadFilesResult> {
     const { studyId, organizationId, patientId } = command;
+    assertValidImagingStudyId(studyId);
 
     // Fetch existing study
     const existing = await this.imagingRepo.findById(studyId, organizationId);

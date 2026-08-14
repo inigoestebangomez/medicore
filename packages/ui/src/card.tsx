@@ -2,8 +2,9 @@ import { type HTMLAttributes, forwardRef } from 'react';
 import { cn } from './lib/utils';
 
 /* ── Card ──
-   Clinical Precision: border-based card with 8px radius, optional header.
-   NO shadow — depth is conveyed through a 1px outline. */
+   Clinical Precision: glassmorphism card. Depth is conveyed through a
+   1px translucent border, layered backdrop-blur, and a soft shadow.
+   Default radius is 2xl (24px) per Section 8 scale. */
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   /** When true, removes the border (for use inside other surfaces) */
@@ -15,8 +16,8 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     <div
       ref={ref}
       className={cn(
-        'rounded-lg bg-surface-lowest',
-        !borderless && 'border border-outline-variant',
+        'bg-white/[0.06] backdrop-blur-xl rounded-2xl shadow-card',
+        !borderless && 'border border-white/[0.08]',
         className,
       )}
       {...props}
@@ -26,7 +27,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
 Card.displayName = 'Card';
 
 /* ── CardHeader ──
-   Light background strip at the top of a card — groups diagnostic sections. */
+   Subtle glass strip at the top of a card — groups diagnostic sections. */
 
 export interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {
   /** When true, removes bottom border separator between header and body */
@@ -38,8 +39,8 @@ export const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
     <div
       ref={ref}
       className={cn(
-        'rounded-t-lg bg-surface-low px-4 py-3 font-display text-sm font-semibold text-on-surface',
-        !seamless && 'border-b border-outline-variant',
+        'rounded-t-2xl bg-white/[0.04] px-4 py-3 font-display text-sm font-semibold text-zinc-100',
+        !seamless && 'border-b border-white/[0.08]',
         className,
       )}
       {...props}

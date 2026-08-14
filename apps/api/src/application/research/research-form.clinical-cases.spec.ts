@@ -55,7 +55,7 @@ class MemAnalyses implements IStatisticalAnalysisRepository {
 const studyRepo = (): IResearchStudyRepository => ({
   async findById() { return { id: 's', organizationId: 'o', studyType: 'FORM' } as unknown as ResearchStudy; },
   create: async () => { throw new Error('noop'); },
-  findByOrgPaged: async () => ({ items: [], total: 0, page: 1, pageSize: 50 }),
+  findByOrganization: async () => ({ items: [], total: 0, page: 1, pageSize: 50 }),
   update: async (s: ResearchStudy) => s,
   findActiveWithStaleCache: async () => [],
   softDelete: async () => {},
@@ -69,7 +69,7 @@ const mk = (id: string, name: string, label: string, type: any, extra: any = {})
   StudyVariable.create({ id, organizationId: 'o', studyId: 's', name, label, type, ...extra });
 
 const enroll = (id: string, values: Record<string, unknown>) =>
-  StudySubject.create({ id, organizationId: 'o', studyId: 's', patientNhc: id, enrolledBy: 'u', values });
+  new StudySubject({ id, organizationId: 'o', studyId: 's', patientNhc: id, enrolledBy: 'u', values, enrolledAt: new Date() });
 
 const assertRegistrationForm = (label: string, vars: StudyVariable[]) => {
   // The API mapper operates on StudyVariable entities (reads `v.type.value`).

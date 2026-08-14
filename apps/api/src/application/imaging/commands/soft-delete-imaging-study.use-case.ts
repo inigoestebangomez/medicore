@@ -8,6 +8,7 @@ import type { MemberRole } from '@medicore/contracts';
 import type { ImagingStudy } from '@/domain/imaging/imaging-study.entity';
 import { ImagingStudyNotFoundError } from '@/domain/imaging/errors/imaging-study-not-found.error';
 import { StudyAlreadyDeletedError } from '@/domain/imaging/errors/study-already-deleted.error';
+import { assertValidImagingStudyId } from '@/domain/imaging/imaging-study-id';
 
 export interface SoftDeleteImagingStudyCommand {
   id: string;
@@ -27,6 +28,7 @@ export class SoftDeleteImagingStudyUseCase {
 
   async execute(command: SoftDeleteImagingStudyCommand): Promise<ImagingStudy> {
     const { id, organizationId } = command;
+    assertValidImagingStudyId(id);
 
     // Fetch existing study
     const existing = await this.imagingRepo.findById(id, organizationId);

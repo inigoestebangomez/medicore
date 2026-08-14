@@ -86,6 +86,24 @@ describe('PrismaImportBatchRepository', () => {
     expect(persisted.status).toBe('CONFIRMING');
   });
 
+  it('round-trips preview and explicit discard audit metadata', async () => {
+    const prisma = buildMockPrisma();
+    const repo = new PrismaImportBatchRepository(prisma);
+    const batch = makeBatch().applyConfirmedMapping({
+      columnMapping: { NHC: 'nhc', Nombre: 'patientName' },
+      ignoredColumns: [{ column: 'Notas', reason: 'draft' }],
+      ignoredRows: [{ rowIndex: 0, reason: 'duplicate' }],
+      previewOverrides: { '0': { Nombre: 'Edited' } },
+      cellOverrides: { '0': { Notas: null } },
+    });
+
+    const persisted = await repo.persist(batch);
+    expect(persisted.ignoredColumns).toEqual([{ column: 'Notas', reason: 'draft' }]);
+    expect(persisted.ignoredRows).toEqual([{ rowIndex: 0, reason: 'duplicate' }]);
+    expect(persisted.previewOverrides).toEqual({ '0': { Nombre: 'Edited' } });
+    expect(persisted.cellOverrides).toEqual({ '0': { Notas: null } });
+  });
+
   it('findById() scopes by organizationId and returns null when missing', async () => {
     const prisma = buildMockPrisma();
     const repo = new PrismaImportBatchRepository(prisma);
@@ -120,6 +138,17 @@ describe('PrismaImportBatchRepository', () => {
     expect(updated.createdRows).toBe(3);
     expect(updated.skippedRows).toBe(1);
     expect(updated.pendingRows).toBe(0);
+  });
+
+  it('updateStatus() persists an actionable finalize error', async () => {
+    const prisma = buildMockPrisma();
+    const repo = new PrismaImportBatchRepository(prisma);
+    await repo.persist(makeBatch());
+
+    const updated = await repo.updateStatus('batch-1', 'org-1', 'FAILED', 'NHC requires manual resolution');
+
+    expect(updated.status).toBe('FAILED');
+    expect(updated.errorMessage).toBe('NHC requires manual resolution');
   });
 
   it('findLatestByOrg() returns the most recent non-deleted batch', async () => {

@@ -14,6 +14,29 @@ export interface ListSurgeriesParams {
   to?: Date;
 }
 
+export interface ListOrgSurgeriesParams {
+  organizationId: string;
+  page: number;
+  pageSize: number;
+  sortBy: 'date' | 'createdAt';
+  sortOrder: 'asc' | 'desc';
+  status?: SurgeryStatus;
+  physicianId?: string;
+  from?: Date;
+  to?: Date;
+}
+
+export interface PatientNameLite {
+  firstName: string;
+  lastName: string;
+}
+
+export interface ListOrgSurgeriesResult {
+  items: Surgery[];
+  total: number;
+  patientNames: Map<string, PatientNameLite>;
+}
+
 export interface CreateSurgeryInput {
   organizationId: string;
   patientId: string;
@@ -62,6 +85,7 @@ export interface ISurgeryRepository {
   findById(id: string, organizationId: string): Promise<Surgery | null>;
   findByPatientId(id: string, patientId: string, organizationId: string): Promise<Surgery | null>;
   listByPatient(params: ListSurgeriesParams): Promise<{ items: Surgery[]; total: number }>;
+  listByOrganization(params: ListOrgSurgeriesParams): Promise<ListOrgSurgeriesResult>;
   create(data: CreateSurgeryInput): Promise<Surgery>;
   update(id: string, organizationId: string, data: UpdateSurgeryInput): Promise<Surgery>;
   softDelete(id: string, organizationId: string): Promise<Surgery>;

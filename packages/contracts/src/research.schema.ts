@@ -319,6 +319,21 @@ export const FieldCatalogEntrySchema = z.object({
   /** Count of non-null values observed across the org */
   nonNullCount: z.number().int().min(0),
   examples: z.array(z.unknown()).max(5).default([]),
+  /** Physician-facing label. Optional for backwards-compatible catalog responses. */
+  label: z.string().optional(),
+  /** Unit only when it is explicit or safely inferred from the header. */
+  unit: z.string().nullable().optional(),
+  originalHeaders: z.array(z.string()).optional(),
+  batches: z.array(
+    z.object({
+      id: z.string(),
+      fileName: z.string(),
+      originalFormat: z.string(),
+      importedAt: z.string().datetime(),
+    }),
+  ).optional(),
+  totalCount: z.number().int().min(0).optional(),
+  completenessPercent: z.number().min(0).max(100).optional(),
 });
 export type FieldCatalogEntry = z.infer<typeof FieldCatalogEntrySchema>;
 
@@ -326,6 +341,7 @@ export const FieldCatalogResponseSchema = z.object({
   query: z.string().default(''),
   type: FieldTypeSchema.optional(),
   entries: z.array(FieldCatalogEntrySchema).default([]),
+  totalPatients: z.number().int().min(0).optional(),
 });
 export type FieldCatalogResponse = z.infer<typeof FieldCatalogResponseSchema>;
 

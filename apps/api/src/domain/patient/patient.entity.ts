@@ -15,8 +15,8 @@ export interface PatientProps {
   id: string;
   organizationId: string;
   nhc: string;
-  firstName: string;
-  lastName: string;
+  firstName: string | null;
+  lastName: string | null;
   birthDate: Date | null;
   sex: Sex;
   phone?: string | null;
@@ -43,8 +43,8 @@ export class Patient {
   readonly id: string;
   readonly organizationId: string;
   readonly nhc: string;
-  readonly firstName: string;
-  readonly lastName: string;
+  readonly firstName: string | null;
+  readonly lastName: string | null;
   readonly birthDate: Date | null;
   readonly sex: Sex;
   readonly phone: string | null;

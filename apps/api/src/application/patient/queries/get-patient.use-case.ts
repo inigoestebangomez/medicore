@@ -14,8 +14,8 @@ export interface GetPatientQuery {
 export interface PatientPublicResponse {
   id: string;
   nhc: string;
-  firstName: string;
-  lastName: string;
+  firstName: string | null;
+  lastName: string | null;
   birthDate: string | null;
   sex: string;
   age: number | null;

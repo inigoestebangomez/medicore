@@ -20,8 +20,8 @@ export interface SearchParams {
 
 export interface CreatePatientInput {
   nhc: string;
-  firstName: string;
-  lastName: string;
+  firstName: string | null;
+  lastName: string | null;
   birthDate: Date | null;
   sex: string;
   phone?: string | null;
@@ -37,8 +37,8 @@ export interface CreatePatientInput {
 }
 
 export interface UpdatePatientInput {
-  firstName?: string;
-  lastName?: string;
+  firstName?: string | null;
+  lastName?: string | null;
   birthDate?: Date;
   sex?: string;
   phone?: string | null;
@@ -63,9 +63,17 @@ export interface EnrichPatientInput {
   importSource?: string | null;
 }
 
+export interface ImportedDataSnapshot {
+  importedData: Record<string, unknown> | null;
+  importSource: string | null;
+  updatedAt: Date;
+}
+
 export interface IPatientRepository {
   findById(id: string, organizationId: string): Promise<Patient | null>;
   findByIdWithAllergies(id: string, organizationId: string): Promise<Patient | null>;
+  /** Narrow read used by the imported timeline; optional keeps legacy test doubles compatible. */
+  findImportedDataById?(id: string, organizationId: string): Promise<ImportedDataSnapshot | null>;
   findAll(params: FindAllParams): Promise<{ items: Patient[]; total: number }>;
   search(params: SearchParams): Promise<{ items: Patient[]; total: number }>;
   findDuplicates(organizationId: string, lastName: string, birthDate: Date): Promise<Patient[]>;
@@ -77,6 +85,8 @@ export interface IPatientRepository {
   countByOrg(organizationId: string): Promise<number>;
   // Phase 11 — import matching + enrichment (backward-compatible additions).
   findByNhc(nhc: string, organizationId: string): Promise<Patient | null>;
+  /** Import-only lookup that also detects soft-deleted rows occupying an NHC. */
+  findByNhcIncludingDeleted?(nhc: string, organizationId: string): Promise<Patient | null>;
   searchByNameFuzzy(organizationId: string, lastName: string, firstName?: string): Promise<Patient[]>;
   enrich(id: string, organizationId: string, data: EnrichPatientInput, updatedBy: string): Promise<Patient>;
   /**
@@ -85,4 +95,6 @@ export interface IPatientRepository {
    * Manual standard fields are never touched. Returns the affected count.
    */
   removeImportedBatch(batchId: string, organizationId: string): Promise<number>;
+  /** Used by finalize retries to find rows already written by this batch. */
+  findByImportBatchRow?(batchId: string, organizationId: string, rowIndex: number): Promise<Patient | null>;
 }

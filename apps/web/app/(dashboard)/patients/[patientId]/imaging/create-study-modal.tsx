@@ -6,7 +6,12 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { ImagingStudyType } from '@medicore/contracts';
-import { useCreateImagingStudy } from '@/hooks/useImagingStudies';
+import { uploadImagingFiles, useCreateImagingStudy } from '@/hooks/useImagingStudies';
+import {
+  IMAGING_FILE_ACCEPT,
+  prepareImagingFileForUpload,
+  validateImagingFile,
+} from '@/components/imaging/imaging-file';
 
 interface CreateStudyModalProps {
   patientId: string;
@@ -21,8 +26,6 @@ const TYPE_OPTIONS: { value: ImagingStudyType; label: string }[] = [
   { value: 'ENDOSCOPY', label: 'Endoscopía' },
   { value: 'OTHER', label: 'Otro' },
 ];
-
-const ACCEPTED_FILE_TYPES = '.jpg,.jpeg,.png,.dcm,.dicom,.pdf,image/*,application/pdf';
 
 type Phase = 'editing' | 'creating' | 'uploading' | 'done';
 
@@ -50,7 +53,13 @@ export function CreateStudyModal({ patientId, onClose }: CreateStudyModalProps) 
     const list = e.target.files;
     if (!list) return;
     const next = Array.from(list);
-    setFiles((prev) => [...prev, ...next]);
+    const invalid = next.map(validateImagingFile).filter((message): message is string => Boolean(message));
+    if (invalid.length > 0) {
+      setError(invalid.join(' '));
+    } else {
+      setError(null);
+    }
+    setFiles((prev) => [...prev, ...next.filter((file) => !validateImagingFile(file))]);
     // Reset the input so the same file can be re-added later if needed.
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
@@ -79,15 +88,8 @@ export function CreateStudyModal({ patientId, onClose }: CreateStudyModalProps) 
       if (files.length > 0) {
         setPhase('uploading');
         const formData = new FormData();
-        for (const f of files) formData.append('files', f, f.name);
-        const res = await fetch(
-          `/v1/patients/${patientId}/imaging/${created.id}/files`,
-          { method: 'POST', body: formData },
-        );
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ message: res.statusText }));
-          throw new Error(err.message ?? `Error de subida: ${res.status}`);
-        }
+        for (const f of files) formData.append('files', prepareImagingFileForUpload(f), f.name);
+        await uploadImagingFiles(patientId, created.id, formData);
       }
 
       setPhase('done');
@@ -206,13 +208,13 @@ export function CreateStudyModal({ patientId, onClose }: CreateStudyModalProps) 
               ref={fileInputRef}
               type="file"
               multiple
-              accept={ACCEPTED_FILE_TYPES}
+               accept={IMAGING_FILE_ACCEPT}
               onChange={handleFileChange}
               className={`${inputCls} file:mr-3 file:rounded file:border-0 file:bg-surface-container file:px-3 file:py-1 file:text-xs file:font-medium file:text-on-surface-variant hover:file:bg-surface-high`}
               disabled={isWorking}
             />
             <p className="mt-1 text-xs text-on-surface-variant/60">
-              Imágenes (JPG, PNG, DICOM) o PDF. Se subirán tras crear el estudio.
+               JPG, PNG, WebP, DICOM, MP4, MOV, PDF o ZIP. Se subirán tras crear el estudio.
             </p>
             {files.length > 0 && (
               <ul className="mt-2 space-y-1">

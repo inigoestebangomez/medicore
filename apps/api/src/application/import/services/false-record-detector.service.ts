@@ -138,8 +138,7 @@ export class FalseRecordDetectorService {
 
   private validateAge(value: unknown): string | null {
     if (this.isEmpty(value)) return null;
-    const n = Number(value);
-    if (isNaN(n) || n < 0 || n > 130) {
+    if (this.cleaner.extractAge(value) === null) {
       return 'age: non-numeric or out-of-range value';
     }
     return null;

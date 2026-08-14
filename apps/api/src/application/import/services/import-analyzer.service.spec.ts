@@ -113,4 +113,21 @@ describe('ImportAnalyzerService (chain orchestrator)', () => {
     expect(Object.values(result.proposal.columnMapping)).toEqual(['custom', 'custom']);
     expect(result.attempted.length).toBe(3);
   });
+
+  it('validates every provider proposal and does not accept an identity collision', async () => {
+    const heuristic = makeProvider('heuristic', 0.95, {
+      columnMapping: { Nombre: 'patientName', 'Nº Paciente': 'patientName' },
+    });
+    const groq = makeProvider('groq', 0.85, {
+      columnMapping: { Nombre: 'patientName', 'Nº Paciente': 'nhc' },
+    });
+    const claude = makeProvider('claude', 0.8);
+    const svc = new ImportAnalyzerService(heuristic, groq, claude);
+
+    const result = await svc.analyzeWithFallback(sample);
+
+    expect(result.provider).toBe('groq');
+    expect(result.proposal.mappingConflicts).toEqual([]);
+    expect((groq.analyzeStructure as jest.Mock)).toHaveBeenCalledTimes(1);
+  });
 });

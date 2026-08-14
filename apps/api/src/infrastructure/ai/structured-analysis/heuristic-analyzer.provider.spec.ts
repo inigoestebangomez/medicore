@@ -32,6 +32,34 @@ describe('HeuristicAnalyzer', () => {
     expect(result.confidence).toBeGreaterThan(0.7);
   });
 
+  it.each([
+    'NHC',
+    'Nº Paciente',
+    'N° Paciente',
+    'No Paciente',
+    'Nº Historia',
+    'Nº Historia Clínica',
+    'Historia Clínica',
+    'ID paciente',
+  ])('maps "%s" to nhc before the generic patient rule', async (identifier) => {
+    const result = await analyzer.analyzeStructure({
+      columns: [identifier, 'Nombre'],
+      rows: [{ [identifier]: '123', Nombre: 'Ana García' }],
+    });
+
+    expect(result.columnMapping[identifier]).toBe('nhc');
+    expect(result.columnMapping.Nombre).toBe('patientName');
+  });
+
+  it('keeps the exact Nombre + Nº Paciente proposal collision-free', async () => {
+    const result = await analyzer.analyzeStructure({
+      columns: ['Nombre', 'Nº Paciente'],
+      rows: [{ Nombre: 'Ana García', 'Nº Paciente': '123' }],
+    });
+
+    expect(result.columnMapping).toEqual({ Nombre: 'patientName', 'Nº Paciente': 'nhc' });
+  });
+
   describe('BR-IMP-007 — phone column exclusion', () => {
     it('should detect "Teléfono" and exclude it', async () => {
       const sample: FileSample = {

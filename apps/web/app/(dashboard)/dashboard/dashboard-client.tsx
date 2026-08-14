@@ -143,15 +143,15 @@ function Sparkline({ data }: { data: Array<{ x: string; y: number }> }) {
         <AreaChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
           <defs>
             <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+              <stop offset="0%" stopColor="#22C4DC" stopOpacity={0.4} />
+              <stop offset="100%" stopColor="#22C4DC" stopOpacity={0} />
             </linearGradient>
           </defs>
           <YAxis hide domain={['dataMin', 'dataMax']} />
           <Area
             type="monotone"
             dataKey="y"
-            stroke="#3b82f6"
+            stroke="#22C4DC"
             strokeWidth={2}
             fill="url(#spark-fill)"
             isAnimationActive={false}
@@ -167,7 +167,7 @@ function ChangeBadge({ value, percent, period }: { value: number; percent: numbe
   if (value === 0 && percent === 0) return null;
   const up = value >= 0;
   const arrow = up ? '↗︎' : '↘︎';
-  const color = up ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50';
+  const color = up ? 'text-emerald-400 bg-emerald-400/15' : 'text-red-400 bg-red-400/15';
   const sign = value > 0 ? '+' : '';
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${color}`}>
@@ -197,14 +197,14 @@ function StatCard({
 
   if (isLoading) {
     return (
-      <div className="animate-pulse rounded-lg border border-outline-variant bg-surface-lowest p-5 shadow-card">
+      <div className="rounded-lg border border-outline-variant bg-surface-lowest p-5 shadow-card">
         <div className="flex items-center justify-between">
-          <div className="h-4 w-24 rounded bg-gray-200" />
-          <div className="h-4 w-4 rounded bg-gray-200" />
+          <div className="skeleton h-4 w-24" />
+          <div className="skeleton h-4 w-4" />
         </div>
-        <div className="mt-6 h-8 w-28 rounded bg-gray-200" />
-        <div className="mt-3 h-4 w-40 rounded bg-gray-200" />
-        <div className="mt-4 h-20 w-full rounded bg-gray-100" />
+        <div className="skeleton mt-6 h-8 w-28" />
+        <div className="skeleton mt-3 h-4 w-40" />
+        <div className="skeleton mt-4 h-20 w-full" />
       </div>
     );
   }
@@ -401,7 +401,7 @@ function DetailPanel({ title, rows }: { title: string; rows: Array<[string, numb
             <div className="flex items-center gap-2">
               <div className="h-2 w-24 overflow-hidden rounded bg-surface-container">
                 <div
-                  className="h-2 bg-blue-500"
+                  className="h-2 bg-aqua-400"
                   style={{ width: total > 0 ? `${(n / total) * 100}%` : '0%' }}
                 />
               </div>

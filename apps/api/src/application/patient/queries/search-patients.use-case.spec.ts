@@ -51,7 +51,7 @@ describe('SearchPatientsUseCase', () => {
     });
 
     expect(result.items.length).toBeGreaterThanOrEqual(2);
-    expect(result.items.every((p) => p.lastName.toLowerCase().includes('garcía'))).toBe(true);
+    expect(result.items.every((p) => p.lastName?.toLowerCase().includes('garcía'))).toBe(true);
   });
 
   it('should search by firstName', async () => {
@@ -141,7 +141,7 @@ describe('SearchPatientsUseCase', () => {
     });
 
     // Only org-1 Garcia patients
-    expect(result.items.every((p) => p.lastName.includes('García'))).toBe(true);
+    expect(result.items.every((p) => p.lastName?.includes('García'))).toBe(true);
   });
 
   it('should return empty results for non-matching query', async () => {

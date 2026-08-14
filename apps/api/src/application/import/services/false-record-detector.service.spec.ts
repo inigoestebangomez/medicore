@@ -50,6 +50,11 @@ describe('FalseRecordDetectorService', () => {
       expect(r.isFalse).toBe(true);
       expect(r.reasons.some((x) => x.startsWith('age'))).toBe(true);
     });
+
+    it.each(['45', '45 años', '45,5'])('accepts the cleaner age format %s', (value) => {
+      const r = detector.detect({ '0': value }, new Map([['0', 'age']]));
+      expect(r.isFalse).toBe(false);
+    });
   });
 
   describe('detect — sex column', () => {
@@ -63,6 +68,11 @@ describe('FalseRecordDetectorService', () => {
       const r = detector.detect({ '0': 'M' }, new Map([['0', 'sex']]));
       expect(r.isFalse).toBe(false);
       expect(r.reasons).toHaveLength(0);
+    });
+
+    it.each(['F', 'FEM', 'FEMENINO', 'MUJER'])('does not flag recognized female code %s', (value) => {
+      const r = detector.detect({ '0': value }, new Map([['0', 'sex']]));
+      expect(r.isFalse).toBe(false);
     });
   });
 

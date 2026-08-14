@@ -10,7 +10,7 @@ export function HeroSection() {
         className="pointer-events-none absolute inset-0 opacity-60"
         style={{
           background:
-            'radial-gradient(60% 60% at 50% 10%, rgba(58,114,168,0.45) 0%, rgba(15,31,46,0) 70%)',
+            'radial-gradient(60% 60% at 50% 10%, rgba(14, 165, 192, 0.45) 0%, rgba(2, 45, 53, 0) 70%)',
         }}
         aria-hidden="true"
       />

@@ -64,6 +64,16 @@ export interface AdHocResult {
   appliedFilters: Filter[];
   warnings?: string[];
 }
+export type AdHocApiResult = Omit<AdHocResult, 'rows'> & {
+  rows?: AdHocResultRow[];
+  items?: AdHocResultRow[];
+};
+
+/** Normalize the execute endpoint's current `items` shape and legacy `rows`. */
+export function normalizeAdHocResult(data: AdHocApiResult): AdHocResult {
+  const { items, rows, ...result } = data;
+  return { ...result, rows: rows ?? items ?? [] };
+}
 export interface PaginatedResult {
   items: AdHocResultRow[];
   totalRows: number;
@@ -112,11 +122,21 @@ export const researchV2Keys = {
 export function useFieldCatalog(query: string, type?: FieldType, enabled = true) {
   return useQuery({
     queryKey: researchV2Keys.fields(query, type),
-    queryFn: async (): Promise<{ query: string; type: FieldType | undefined; entries: FieldCatalogEntry[] }> => {
+    queryFn: async (): Promise<{
+      query: string;
+      type: FieldType | undefined;
+      entries: FieldCatalogEntry[];
+      totalPatients?: number;
+    }> => {
       const params = new URLSearchParams();
       if (query) params.set('q', query);
       if (type) params.set('type', type);
-      const res = await apiFetch<{ data: { query: string; type: FieldType | undefined; entries: FieldCatalogEntry[] } }>(
+      const res = await apiFetch<{ data: {
+        query: string;
+        type: FieldType | undefined;
+        entries: FieldCatalogEntry[];
+        totalPatients?: number;
+      } }>(
         `${API_BASE}/fields?${params.toString()}`,
       );
       return res.data;
@@ -144,11 +164,11 @@ export interface ExecuteAdHocInput {
 export function useExecuteAdHoc() {
   return useMutation({
     mutationFn: async (input: ExecuteAdHocInput): Promise<AdHocResult> => {
-      const res = await apiFetch<{ data: AdHocResult }>(`${API_BASE}/queries/execute`, {
+      const res = await apiFetch<{ data: AdHocApiResult }>(`${API_BASE}/queries/execute`, {
         method: 'POST',
         body: JSON.stringify(input),
       });
-      return res.data;
+      return normalizeAdHocResult(res.data);
     },
   });
 }

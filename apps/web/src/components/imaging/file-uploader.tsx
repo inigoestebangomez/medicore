@@ -7,40 +7,19 @@
 
 import React, { useCallback, useRef, useState } from 'react';
 import { useUploadFiles } from '@/hooks/useImagingStudies';
+import {
+  IMAGING_FILE_ACCEPT,
+  prepareImagingFileForUpload,
+  resolveImagingMimeType,
+  validateImagingFile,
+  formatImagingSize,
+} from './imaging-file';
 
 // ─────────────────────────────────────────────
 // Constants (matches backend FileValidationPipe)
 // ─────────────────────────────────────────────
 
-const ALLOWED_MIME_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'application/dicom',
-  'video/mp4',
-  'video/quicktime',
-  'application/pdf',
-  'application/zip',
-] as const;
-
-const SIZE_LIMITS: Record<string, number> = {
-  'image/jpeg': 50 * 1024 * 1024,
-  'image/png': 50 * 1024 * 1024,
-  'image/webp': 50 * 1024 * 1024,
-  'application/dicom': 200 * 1024 * 1024,
-  'video/mp4': 500 * 1024 * 1024,
-  'video/quicktime': 500 * 1024 * 1024,
-  'application/pdf': 25 * 1024 * 1024,
-  'application/zip': 500 * 1024 * 1024,
-};
-
 const MAX_FILES_PER_UPLOAD = 20;
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 interface FileState {
   file: File;
@@ -60,18 +39,12 @@ interface FileUploaderProps {
 export function FileUploader({ patientId, studyId, onUploadComplete, disabled }: FileUploaderProps) {
   const [files, setFiles] = useState<FileState[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadMutation = useUploadFiles(patientId, studyId);
 
   const validateFile = useCallback((file: File): string | undefined => {
-    if (!ALLOWED_MIME_TYPES.includes(file.type as typeof ALLOWED_MIME_TYPES[number])) {
-      return `Tipo no permitido: ${file.type}`;
-    }
-    const maxSize = SIZE_LIMITS[file.type] ?? 0;
-    if (file.size > maxSize) {
-      return `Archivo muy grande (${formatSize(file.size)}), máximo ${formatSize(maxSize)}`;
-    }
-    return undefined;
+    return validateImagingFile(file);
   }, []);
 
   const addFiles = useCallback((fileList: FileList | File[]) => {
@@ -79,14 +52,16 @@ export function FileUploader({ patientId, studyId, onUploadComplete, disabled }:
     const currentCount = files.filter((f) => f.status !== 'error').length;
 
     if (currentCount + incoming.length > MAX_FILES_PER_UPLOAD) {
-      alert(`Máximo ${MAX_FILES_PER_UPLOAD} archivos por carga`);
+      setSelectionError(`Máximo ${MAX_FILES_PER_UPLOAD} archivos por carga.`);
       return;
     }
+
+    setSelectionError(null);
 
     const newStates: FileState[] = incoming.map((file) => {
       const error = validateFile(file);
       let previewUrl: string | undefined;
-      if (file.type.startsWith('image/')) {
+      if (resolveImagingMimeType(file.name, file.type)?.startsWith('image/')) {
         previewUrl = URL.createObjectURL(file);
       }
       return {
@@ -136,7 +111,7 @@ export function FileUploader({ patientId, studyId, onUploadComplete, disabled }:
     );
 
     const formData = new FormData();
-    validFiles.forEach((f) => formData.append('files', f.file));
+    validFiles.forEach((f) => formData.append('files', prepareImagingFileForUpload(f.file)));
 
     try {
       await uploadMutation.mutateAsync(formData);
@@ -176,7 +151,7 @@ export function FileUploader({ patientId, studyId, onUploadComplete, disabled }:
           ref={inputRef}
           type="file"
           multiple
-          accept={ALLOWED_MIME_TYPES.join(',')}
+          accept={IMAGING_FILE_ACCEPT}
           onChange={(e) => e.target.files && addFiles(e.target.files)}
           className="hidden"
           disabled={disabled}
@@ -185,8 +160,9 @@ export function FileUploader({ patientId, studyId, onUploadComplete, disabled }:
           Arrastrá archivos acá o hacé click para seleccionar
         </p>
         <p className="text-xs text-on-surface-variant/60 mt-1">
-          DICOM, imágenes, video, PDF — máx. {MAX_FILES_PER_UPLOAD} archivos
+          JPG, PNG, WebP, DICOM, MP4, MOV, PDF o ZIP. Máx. {MAX_FILES_PER_UPLOAD} archivos.
         </p>
+        {selectionError && <p className="mt-2 text-xs text-red-600">{selectionError}</p>}
       </div>
 
       {/* File list */}
@@ -206,14 +182,14 @@ export function FileUploader({ patientId, studyId, onUploadComplete, disabled }:
                 />
               ) : (
                 <div className="flex h-10 w-10 items-center justify-center rounded bg-surface-container text-xs text-on-surface-variant">
-                  {f.file.type.split('/').pop()?.toUpperCase().slice(0, 4) ?? 'FILE'}
+                  {(resolveImagingMimeType(f.file.name, f.file.type)?.split('/').pop()?.toUpperCase().slice(0, 4) ?? 'FILE')}
                 </div>
               )}
 
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <p className="truncate font-medium text-on-surface">{f.file.name}</p>
-                <p className="text-xs text-on-surface-variant">{formatSize(f.file.size)}</p>
+                <p className="text-xs text-on-surface-variant">{formatImagingSize(f.file.size)}</p>
               </div>
 
               {/* Status */}

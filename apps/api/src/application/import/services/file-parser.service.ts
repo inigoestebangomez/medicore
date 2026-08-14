@@ -1,8 +1,9 @@
 // apps/api/src/application/import/services/file-parser.service.ts
 // Parses uploaded xlsx/xls/csv/tsv files into a normalized in-memory shape:
 // { columns, rows, sample, totalRows, originalFormat }. The raw file buffer is
-// not persisted anywhere — parse-and-discard per AD-6 (RGPD: no PII surface
-// beyond the JSONB we explicitly store). Empty / unparsable files throw
+// buffer is not persisted — the handler stores only normalized row values in
+// ImportBatch for preview/resume (RGPD: this is an intentional, bounded PII
+// surface that follows the batch retention policy). Empty / unparsable files throw
 // FileEmptyError so the use case can surface a 400.
 
 import { Injectable } from '@nestjs/common';

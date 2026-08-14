@@ -11,7 +11,11 @@
 // the physician still gets a mapping to review in the UI).
 
 import { Injectable, Logger, Inject } from '@nestjs/common';
-import type { ColumnMappingProposal, FileSample } from '@medicore/contracts';
+import {
+  validateColumnMapping,
+  type ColumnMappingProposal,
+  type FileSample,
+} from '@medicore/contracts';
 import type { StructuredAnalysisProvider } from '@/infrastructure/ai/structured-analysis/structured-analysis.provider';
 
 export const ANALYSIS_CONFIDENCE_THRESHOLD = 0.7;
@@ -51,18 +55,19 @@ export class ImportAnalyzerService {
           attempted.push({ provider: provider.name, success: false, error: 'provider not configured (no API key)' });
           continue;
         }
-        const proposal = await provider.analyzeStructure(sample);
+        const proposal = this.validateProposal(await provider.analyzeStructure(sample));
+        const hasConflicts = (proposal.mappingConflicts?.length ?? 0) > 0;
         attempted.push({ provider: provider.name, success: true, confidence: proposal.confidence });
 
         if (provider.name === 'heuristic') {
           bestHeuristic = proposal;
           // Heuristic ≥ threshold → stop (covers ~80% of files).
-          if (proposal.confidence >= ANALYSIS_CONFIDENCE_THRESHOLD) {
+          if (!hasConflicts && proposal.confidence >= ANALYSIS_CONFIDENCE_THRESHOLD) {
             return { proposal, provider: provider.name, metThreshold: true, attempted };
           }
         } else {
           // AI provider above threshold → use it and stop.
-          if (proposal.confidence >= ANALYSIS_CONFIDENCE_THRESHOLD) {
+          if (!hasConflicts && proposal.confidence >= ANALYSIS_CONFIDENCE_THRESHOLD) {
             return { proposal, provider: provider.name, metThreshold: true, attempted };
           }
           // Below threshold but successful — keep going, but remember the best
@@ -80,6 +85,18 @@ export class ImportAnalyzerService {
     // fallback we got) — the physician still reviews the mapping in the UI.
     const fallback = bestHeuristic ?? this.emptyProposal(sample);
     return { proposal: fallback, provider: 'heuristic', metThreshold: false, attempted };
+  }
+
+  private validateProposal(proposal: ColumnMappingProposal): ColumnMappingProposal {
+    const { conflicts } = validateColumnMapping(proposal.columnMapping);
+    if (conflicts.length === 0) return { ...proposal, mappingConflicts: [] };
+
+    const knownIssues = new Set(proposal.issues);
+    const issues = [
+      ...proposal.issues,
+      ...conflicts.map(({ message }) => message).filter((message) => !knownIssues.has(message)),
+    ];
+    return { ...proposal, mappingConflicts: conflicts, issues };
   }
 
   private emptyProposal(sample: FileSample): ColumnMappingProposal {

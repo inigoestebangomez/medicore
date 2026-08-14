@@ -33,6 +33,7 @@ import { ImportProcessor, IMPORT_QUEUE, IMPORT_QUEUE_NAME } from '@/infrastructu
 import { ImportReminderJob } from '@/infrastructure/queues/import-reminder.job';
 import { FieldCatalogCacheModule } from '@/infrastructure/research/field-catalog-cache.module';
 import { AuthModule } from '@/api/auth/auth.module';
+import { FeatureFlagsService } from '@/infrastructure/config/feature-flags.service';
 
 @Module({
   imports: [
@@ -44,6 +45,14 @@ import { AuthModule } from '@/api/auth/auth.module';
       name: IMPORT_QUEUE_NAME,
       redis: {
         maxRetriesPerRequest: null, // Required for Bull workers; prevents ioredis retry limit
+      },
+      // The processor converts functional failures to UnrecoverableError, so
+      // only connection failures reach this bounded retry policy.
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: { count: 100 },
+        removeOnFail: { count: 200 },
       },
     }),
     FieldCatalogCacheModule,
@@ -69,6 +78,7 @@ import { AuthModule } from '@/api/auth/auth.module';
     PatientMatcherService,
     ImportAnalyzerService,
     ImportReminderService,
+    FeatureFlagsService,
     { provide: PARSED_FILE_CACHE, useClass: InMemoryParsedFileCache },
     { provide: 'IParsedFileCache', useExisting: PARSED_FILE_CACHE },
     // Use case handlers.

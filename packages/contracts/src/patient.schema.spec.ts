@@ -177,6 +177,25 @@ describe('patient.schema', () => {
       expect(result.phone).toBeUndefined();
       expect(result.email).toBeUndefined();
     });
+
+    it('should accept null birthDate and age for patients without a known DOB', () => {
+      const data = {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        nhc: '2026-00001',
+        firstName: 'María',
+        lastName: 'García López',
+        birthDate: null,
+        sex: 'FEMALE',
+        age: null,
+        isPediatric: false,
+        hasCriticalAllergy: false,
+        hasActiveAllergies: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      };
+
+      expect(PatientResponseSchema.parse(data)).toMatchObject({ birthDate: null, age: null });
+    });
   });
 
   describe('SearchPatientsSchema', () => {

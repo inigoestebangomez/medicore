@@ -82,7 +82,7 @@ const studyRepoOf = (studies: ResearchStudy[] = [studyStub('s-1')]): IResearchSt
   },
   // The following methods are unused by the handlers under test but required by the interface.
   create: async () => { throw new Error('not implemented'); },
-  findByOrgPaged: async () => ({ items: [], total: 0, page: 1, pageSize: 50 }),
+  findByOrganization: async () => ({ items: [], total: 0, page: 1, pageSize: 50 }),
   update: async (s: ResearchStudy) => s,
   findActiveWithStaleCache: async () => [],
   softDelete: async () => {},
@@ -197,7 +197,7 @@ describe('UpdateSubjectHandler (REQ-FB-006)', () => {
     });
     varRepo.store.set('v1', edad);
     const subjectRepo = new InMemorySubjectRepo();
-    const existing = StudySubject.create({ id: 'sub-1', organizationId: 'org-1', studyId: 's-1', patientNhc: '1', enrolledBy: 'u', values: { v1: 50 } });
+    const existing = new StudySubject({ id: 'sub-1', organizationId: 'org-1', studyId: 's-1', patientNhc: '1', enrolledBy: 'u', values: { v1: 50 }, enrolledAt: new Date() });
     subjectRepo.store.set('sub-1', existing);
     const h = new UpdateSubjectHandler(subjectRepo, varRepo);
     const updated = await h.execute({
@@ -220,9 +220,9 @@ describe('RunAnalysisHandler — Kappa agreement (REQ-FB-010, REQ-FB-012)', () =
     varRepo.store.set('ra', raterA); varRepo.store.set('rb', raterB);
     const subjectRepo = new InMemorySubjectRepo();
     for (let i = 0; i < 4; i++) {
-      const s = StudySubject.create({
+      const s = new StudySubject({
         id: `sub-${i}`, organizationId: 'org-1', studyId: 's-1', patientNhc: String(i), enrolledBy: 'u',
-        values: { ra: true, rb: i % 2 === 0 },
+        values: { ra: true, rb: i % 2 === 0 }, enrolledAt: new Date(),
       });
       subjectRepo.store.set(s.id, s);
     }

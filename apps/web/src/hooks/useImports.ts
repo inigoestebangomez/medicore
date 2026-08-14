@@ -8,6 +8,11 @@ import type {
   ImportStatus,
   MatchDecision,
   PatientMatch,
+  CellOverrides,
+  IgnoredColumn,
+  IgnoredRow,
+  PreviewOverrides,
+  RowClassification,
 } from '@medicore/contracts';
 
 // ─────────────────────────────────────────────
@@ -38,10 +43,17 @@ export interface ConfirmImportResponse {
   cleanedRowCount: number;
   junkRowCount: number;
   skippedRowCount: number;
+  discardedRowCount: number;
   matches: PatientMatch[];
   pendingResolutionCount: number;
   autoMatchCount: number;
   newPatientCount: number;
+  fullIdentityRows: RowClassification[];
+  identityLightRows: RowClassification[];
+  unidentifiableRows: RowClassification[];
+  fullIdentityCount: number;
+  identityLightCount: number;
+  unidentifiableCount: number;
 }
 
 export interface FinalizeImportResponse {
@@ -61,13 +73,42 @@ export interface ImportBatchListItem {
   fileName: string;
   originalFormat: string;
   status: ImportStatus;
+  errorMessage: string | null;
   totalRows: number;
   importedRows: number;
   enrichedRows: number;
   createdRows: number;
   skippedRows: number;
+  discardedRowCount?: number;
   createdAt: string;
   completedAt: string | null;
+}
+
+export interface ImportBatchDetail extends ImportBatchListItem {
+  sample: FileSample;
+  columnMapping: ColumnMapping;
+  customFieldNames?: Record<string, string>;
+  junkRowIndices?: number[];
+  ignoredColumns?: IgnoredColumn[];
+  ignoredRows?: IgnoredRow[];
+  previewOverrides?: PreviewOverrides;
+  cellOverrides?: CellOverrides;
+  aiConfidence?: number | null;
+  aiProvider?: string | null;
+  issues?: string[];
+  notes?: string | null;
+  pendingRows: number;
+  normalizedRowsAvailable?: boolean;
+}
+
+export interface ImportPreviewResponse {
+  batchId: string;
+  columns: string[];
+  rows: Array<{ rowIndex: number; values: Record<string, unknown> }>;
+  totalRows: number;
+  page: number;
+  pageSize: number;
+  source: 'cache' | 'persisted';
 }
 
 export interface ImportHistoryResponse {
@@ -95,7 +136,7 @@ interface ApiResponse<T> { data: T }
 
 const importKeys = {
   all: ['imports'] as const,
-  history: (page: number) => ['imports', 'history', page] as const,
+  history: (page: number, pageSize: number) => ['imports', 'history', page, pageSize] as const,
   reminder: () => ['imports', 'reminder'] as const,
   detail: (id: string) => ['imports', 'detail', id] as const,
 };
@@ -143,6 +184,10 @@ export function useConfirmImportMapping() {
       columnMapping: ColumnMapping;
       customFieldNames?: Record<string, string>;
       junkRowIndices?: number[];
+      previewOverrides?: PreviewOverrides;
+      ignoredColumns?: IgnoredColumn[];
+      ignoredRows?: IgnoredRow[];
+      cellOverrides?: CellOverrides;
     }): Promise<ConfirmImportResponse> => {
       const json = await apiFetch<ApiResponse<ConfirmImportResponse>>(
         `/v1/imports/${input.batchId}/confirm`,
@@ -150,6 +195,10 @@ export function useConfirmImportMapping() {
           columnMapping: input.columnMapping,
           customFieldNames: input.customFieldNames,
           junkRowIndices: input.junkRowIndices,
+          previewOverrides: input.previewOverrides,
+          ignoredColumns: input.ignoredColumns,
+          ignoredRows: input.ignoredRows,
+          cellOverrides: input.cellOverrides,
         }) },
       );
       return json.data;
@@ -194,13 +243,47 @@ export function useRevertImport() {
 
 export function useImportHistory(page = 1, pageSize = 20) {
   return useQuery({
-    queryKey: importKeys.history(page),
+    queryKey: importKeys.history(page, pageSize),
     queryFn: async (): Promise<ImportHistoryResponse> => {
       const json = await apiFetch<ApiResponse<ImportHistoryResponse>>(
         `/v1/imports?page=${page}&pageSize=${pageSize}`,
       );
       return json.data;
     },
+  });
+}
+
+const TERMINAL_IMPORT_STATUSES: ReadonlySet<ImportStatus> = new Set(['COMPLETED', 'FAILED']);
+
+export function useImportBatch(batchId: string | null) {
+  return useQuery({
+    queryKey: importKeys.detail(batchId ?? ''),
+    enabled: Boolean(batchId),
+    queryFn: async (): Promise<ImportBatchDetail> => {
+      if (!batchId) throw new Error('batchId is required');
+      const json = await apiFetch<ApiResponse<ImportBatchDetail>>(`/v1/imports/${batchId}`);
+      return json.data;
+    },
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status && !TERMINAL_IMPORT_STATUSES.has(status) ? 2000 : false;
+    },
+    refetchIntervalInBackground: true,
+  });
+}
+
+export function useImportPreview(batchId: string | null, page = 1, pageSize = 50) {
+  return useQuery({
+    queryKey: ['imports', 'preview', batchId ?? '', page, pageSize],
+    enabled: Boolean(batchId),
+    queryFn: async (): Promise<ImportPreviewResponse> => {
+      if (!batchId) throw new Error('batchId is required');
+      const json = await apiFetch<ApiResponse<ImportPreviewResponse>>(
+        `/v1/imports/${batchId}/preview?page=${page}&pageSize=${pageSize}`,
+      );
+      return json.data;
+    },
+    placeholderData: (previous) => previous,
   });
 }
 

@@ -12,6 +12,12 @@ import { FieldCatalogCacheModule } from '@/infrastructure/research/field-catalog
     BullModule.registerQueue({
       name: IMPORT_QUEUE_NAME,
       redis: { maxRetriesPerRequest: null },
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: { count: 100 },
+        removeOnFail: { count: 200 },
+      },
     }),
     FieldCatalogCacheModule,
   ],

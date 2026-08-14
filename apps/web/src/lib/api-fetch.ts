@@ -15,3 +15,10 @@ export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
 
   return res.json();
 }
+
+export function unwrapApiData<T>(response: T | { data: T }): T {
+  if (response && typeof response === 'object' && 'data' in response) {
+    return response.data;
+  }
+  return response as T;
+}

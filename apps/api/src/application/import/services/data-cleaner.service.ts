@@ -9,7 +9,15 @@
 // Returns a structured CleanResult with valid rows, skipped indices and reasons.
 
 import { Injectable, Optional } from '@nestjs/common';
-import type { ColumnMapping, ParsedFile } from '@medicore/contracts';
+import type {
+  CellOverrides,
+  ColumnMapping,
+  IgnoredColumn,
+  IgnoredRow,
+  ParsedFile,
+  PreviewOverrides,
+  RowClassification,
+} from '@medicore/contracts';
 import { PhoneExtractorService } from './phone-extractor.service';
 import { FalseRecordDetectorService } from './false-record-detector.service';
 
@@ -19,6 +27,7 @@ export interface CleanedRow {
   patientName: string | null;
   birthDate: Date | null;
   age: number | null;
+  ageAtImport: unknown | null;
   sex: string | null;
   admissionDate: Date | null;
   diagnosis: string | null;
@@ -34,9 +43,20 @@ export interface CleanedRow {
 export interface CleanResult {
   cleanedRows: CleanedRow[];
   junkRowIndices: number[];
-  skippedRowIndices: number[];   // rows skipped because no identifiable patient info
+  skippedRowIndices: number[];   // rows pending because no identifiable patient info
   falseRecordRowIndices: number[]; // SDD import-data-quality: rows flagged as false records
+  discardedRowIndices: number[];
   reasons: Array<{ rowIndex: number; reason: string }>;
+  fullIdentityRows: RowClassification[];
+  identityLightRows: RowClassification[];
+  unidentifiableRows: RowClassification[];
+}
+
+export interface CleanOverrides {
+  previewOverrides?: PreviewOverrides;
+  ignoredColumns?: IgnoredColumn[];
+  ignoredRows?: IgnoredRow[];
+  cellOverrides?: CellOverrides;
 }
 
 // Excel serial epoch + Lotus 1-2-3 leap year bug: 25569 = days between
@@ -65,16 +85,31 @@ export class DataCleanerService {
     * ParsedFile (rows) and the column→field mapping produced by the analyzer
     * and (optionally) corrected by the physician.
     */
-  clean(file: ParsedFile, mapping: ColumnMapping): CleanResult {
+  clean(file: ParsedFile, mapping: ColumnMapping, overrides: CleanOverrides = {}): CleanResult {
     const cleanedRows: CleanedRow[] = [];
     const junkRowIndices: number[] = [];
     const skippedRowIndices: number[] = [];
     const falseRecordRowIndices: number[] = [];
+    const discardedRowIndices: number[] = [];
     const reasons: CleanResult['reasons'] = [];
+    const fullIdentityRows: RowClassification[] = [];
+    const identityLightRows: RowClassification[] = [];
+    const unidentifiableRows: RowClassification[] = [];
+    const ignoredColumns = new Set((overrides.ignoredColumns ?? []).map(({ column }) => column));
+    const ignoredRows = new Map((overrides.ignoredRows ?? []).map((entry) => [entry.rowIndex, entry.reason]));
 
     file.rows.forEach((row, rowIndex) => {
+      if (ignoredRows.has(rowIndex)) {
+        discardedRowIndices.push(rowIndex);
+        reasons.push({ rowIndex, reason: `discarded by physician${ignoredRows.get(rowIndex) ? `: ${ignoredRows.get(rowIndex)}` : ''}` });
+        return;
+      }
+      // Explicit discard wins before junk detection, field mapping, and audit
+      // storage. Preview edits then win over the raw value for each cell.
+      const effectiveRow = this.applyOverrides(row, rowIndex, overrides, ignoredColumns);
+
       // 4. Junk row detection (totals, means, notes, single-cell metadata).
-      if (this.isJunkRow(row)) {
+      if (this.isJunkRow(effectiveRow)) {
         junkRowIndices.push(rowIndex);
         reasons.push({ rowIndex, reason: 'junk row (totals/means/notes)' });
         return;
@@ -86,6 +121,7 @@ export class DataCleanerService {
         patientName: null,
         birthDate: null,
         age: null,
+        ageAtImport: null,
         sex: null,
         admissionDate: null,
         diagnosis: null,
@@ -98,7 +134,7 @@ export class DataCleanerService {
         // raw preserves the original row for importedData JSONB (BR-IMP-002),
         // but BR-IMP-007 phone/ignored columns are stripped here so they never
         // reach Patient.importedData downstream.
-        raw: this.stripIgnoredColumns(row, mapping),
+        raw: this.stripIgnoredColumns(effectiveRow, mapping),
       };
 
       // Walk every mapped column; assign to the standard field or customFields.
@@ -108,7 +144,7 @@ export class DataCleanerService {
         //    flow through to the PhoneExtractorService which scans the full row.
         if (field === 'ignore') continue;
 
-        const rawValue = row[column];
+        const rawValue = effectiveRow[column];
 
         switch (field) {
           case 'nhc': {
@@ -125,7 +161,10 @@ export class DataCleanerService {
               : null;
             if (valueForName && valueForName.name) {
               cleaned.patientName = valueForName.name;
-              if (valueForName.age !== null) cleaned.age = valueForName.age;
+              if (valueForName.age !== null) {
+                cleaned.age = valueForName.age;
+                cleaned.ageAtImport = rawValue;
+              }
               if (valueForName.sex) cleaned.sex = valueForName.sex;
             } else {
               const v = this.normalizeDisplayText(rawValue);
@@ -142,7 +181,10 @@ export class DataCleanerService {
             const v = this.extractAge(rawValue);
             // Only overwrite an age parsed earlier from a mixed name/sex cell
             // when the dedicated age column actually has a value.
-            if (v !== null) cleaned.age = v;
+            if (v !== null) {
+              cleaned.age = v;
+              cleaned.ageAtImport = rawValue;
+            }
             break;
           }
           case 'sex': {
@@ -189,7 +231,7 @@ export class DataCleanerService {
       // 3. Mixed-cell parsing: if patientName absent but an NHC-like cell with
       // name/age exists, attempt to parse "EDUARDO MARTINEZ (45)" → name + age.
       if (!cleaned.patientName && !cleaned.nhc) {
-        for (const val of Object.values(row)) {
+        for (const val of Object.values(effectiveRow)) {
           if (typeof val === 'string' && /\(.*\)/.test(val)) {
             const parsed = this.parseMixedCell(val);
             if (parsed.name) cleaned.patientName = parsed.name;
@@ -208,29 +250,68 @@ export class DataCleanerService {
 
       // SDD import-data-quality: extract the patient phone from the FULL
       // original row (scans every cell, regardless of the column mapping).
-      cleaned.phone = this.phoneExtractor.extract(row);
+      cleaned.phone = this.phoneExtractor.extract(effectiveRow);
 
       // SDD import-data-quality: validate cleaned cells against their mapped
       // column expectations and flag false records (equipment names, admin
       // notes, numeric record-id cells, ...).
-      const detection = this.falseRecordDetector.detect(row, this.toDetectorColumnMap(mapping));
+      const detection = this.falseRecordDetector.detect(effectiveRow, this.toDetectorColumnMap(mapping));
       if (detection.isFalse) {
         falseRecordRowIndices.push(rowIndex);
         reasons.push({ rowIndex, reason: `false record: ${detection.reasons.join('; ')}` });
         return;
       }
 
-      // 4b. Row without minimum identifiable info → skip (not a patient).
-      if (!this.hasMinimumIdentifiableInfo(cleaned)) {
+      // Every eligible non-junk row remains visible in exactly one identity bucket.
+      if (!cleaned.patientName && !cleaned.nhc) {
         skippedRowIndices.push(rowIndex);
-        reasons.push({ rowIndex, reason: 'no minimum identifiable info (name or NHC)' });
+        unidentifiableRows.push({ rowIndex, reason: 'pending_decision' });
+        reasons.push({ rowIndex, reason: 'pending decision: no name or NHC' });
         return;
       }
 
+      if (cleaned.patientName) {
+        fullIdentityRows.push({ rowIndex });
+      } else {
+        identityLightRows.push({ rowIndex, reason: 'NHC only' });
+      }
       cleanedRows.push(cleaned);
     });
 
-    return { cleanedRows, junkRowIndices, skippedRowIndices, falseRecordRowIndices, reasons };
+    return {
+      cleanedRows,
+      junkRowIndices,
+      skippedRowIndices,
+      falseRecordRowIndices,
+      discardedRowIndices,
+      reasons,
+      fullIdentityRows,
+      identityLightRows,
+      unidentifiableRows,
+    };
+  }
+
+  private applyOverrides(
+    row: Record<string, unknown>,
+    rowIndex: number,
+    overrides: CleanOverrides,
+    ignoredColumns: Set<string>,
+  ): Record<string, unknown> {
+    const preview = overrides.previewOverrides?.[String(rowIndex)] ?? {};
+    const cells = overrides.cellOverrides?.[String(rowIndex)] ?? {};
+    const result: Record<string, unknown> = {};
+
+    for (const [column, rawValue] of Object.entries(row)) {
+      if (ignoredColumns.has(column)) continue;
+      if (Object.prototype.hasOwnProperty.call(cells, column)) {
+        result[column] = null;
+      } else if (Object.prototype.hasOwnProperty.call(preview, column)) {
+        result[column] = preview[column];
+      } else {
+        result[column] = rawValue;
+      }
+    }
+    return result;
   }
 
   /**
@@ -259,7 +340,7 @@ export class DataCleanerService {
     if (value == null || value === '') return null;
     if (value instanceof Date) return value;
     if (typeof value === 'number') {
-      if (value >= EXCEL_SERIAL_MIN && value <= EXCEL_SERIAL_MAX) {
+      if (value !== 60 && value >= EXCEL_SERIAL_MIN && value <= EXCEL_SERIAL_MAX) {
         return this.convertExcelSerial(value);
       }
       return null;
@@ -270,51 +351,48 @@ export class DataCleanerService {
       // Pure date serial as string?
       if (/^\d{4,5}(\.\d+)?$/.test(trimmed)) {
         const n = parseFloat(trimmed);
-        if (n >= EXCEL_SERIAL_MIN && n <= EXCEL_SERIAL_MAX) {
+        if (n !== 60 && n >= EXCEL_SERIAL_MIN && n <= EXCEL_SERIAL_MAX) {
           return this.convertExcelSerial(n);
         }
       }
-      // ── SDD import-data-quality: explicit formats producing UTC-midnight dates.
-      // Spanish day-first: dd?/mm?/yyyy  or  dd?/mm?/yy (rolling 2-digit year).
-      const slash = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-      if (slash) {
-        const day = parseInt(slash[1], 10);
-        const month = parseInt(slash[2], 10);
-        const yearRaw = slash[3];
-        if (yearRaw.length === 2) {
-          const year = this.expandTwoDigitYear(parseInt(yearRaw, 10));
-          return this.utcDate(year, month - 1, day);
-        }
-        return this.utcDate(parseInt(yearRaw, 10), month - 1, day);
-      }
-      // Dash day-first: dd?/mm? style with dashes. dd-mm-yyyy
-      const dash = trimmed.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-      if (dash) {
-        return this.utcDate(parseInt(dash[3], 10), parseInt(dash[2], 10) - 1, parseInt(dash[1], 10));
+      // Explicit date formats only. Day-first values use a fixed two-digit
+      // year policy so imports do not change meaning as the calendar advances.
+      const dayFirst = trimmed.match(/^(\d{1,2})([/.\-])(\d{1,2})\2(\d{2}|\d{4})$/);
+      if (dayFirst) {
+        const day = parseInt(dayFirst[1], 10);
+        const month = parseInt(dayFirst[3], 10);
+        const yearRaw = dayFirst[4];
+        const year = yearRaw.length === 2
+          ? this.expandTwoDigitYear(parseInt(yearRaw, 10))
+          : parseInt(yearRaw, 10);
+        return this.parseCalendarDate(year, month, day);
       }
       // ISO: yyyy-mm-dd
       const iso = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
       if (iso) {
-        return this.utcDate(parseInt(iso[1], 10), parseInt(iso[2], 10) - 1, parseInt(iso[3], 10));
+        return this.parseCalendarDate(parseInt(iso[1], 10), parseInt(iso[2], 10), parseInt(iso[3], 10));
       }
-      // Legacy fallback: try a native parse of anything we didn't match above
-      // (e.g. previously-supported yyyy-mm-dd variants). Date-only ISO strings
-      // land on UTC midnight; everything else is whatever the engine gives us.
-      const parsed = new Date(trimmed);
-      return isNaN(parsed.getTime()) ? null : parsed;
+      return null;
     }
     return null;
   }
 
   /**
-   * Expand a two-digit year into a four-digit year using a rolling threshold
-   * equal to `currentYear % 100`. Years greater than the threshold are anchored
-   * to the 1900s; otherwise to the 2000s.
-   *   currentYear 2026 → threshold 26 → 68 → 1968, 05 → 2005
+   * Expand a two-digit year using the import policy: 00–49 means 2000–2049
+   * and 50–99 means 1950–1999.
    */
   private expandTwoDigitYear(twoDigit: number): number {
-    const threshold = new Date().getFullYear() % 100;
-    return twoDigit > threshold ? 1900 + twoDigit : 2000 + twoDigit;
+    return twoDigit <= 49 ? 2000 + twoDigit : 1900 + twoDigit;
+  }
+
+  /** Build a date only when its components survive a calendar round-trip. */
+  private parseCalendarDate(year: number, month: number, day: number): Date | null {
+    const date = this.utcDate(year, month - 1, day);
+    return date.getUTCFullYear() === year
+      && date.getUTCMonth() === month - 1
+      && date.getUTCDate() === day
+      ? date
+      : null;
   }
 
   /** Build a Date at UTC midnight from year/month(0-based)/day — timezone-stable. */
@@ -415,8 +493,13 @@ export class DataCleanerService {
 
   extractAge(rawValue: unknown): number | null {
     if (rawValue == null || rawValue === '') return null;
-    const n = typeof rawValue === 'number' ? rawValue : parseFloat(String(rawValue));
-    return Number.isFinite(n) && n >= 0 && n <= 130 ? Math.round(n) : null;
+    const normalized = typeof rawValue === 'number'
+      ? String(rawValue)
+      : String(rawValue).trim().replace(',', '.');
+    const match = normalized.match(/^(\d+(?:\.\d+)?)\s*(?:años?|anys?)?$/i);
+    if (!match) return null;
+    const n = Number(match[1]);
+    return Number.isFinite(n) && n >= 0 && n <= 130 ? n : null;
   }
 
   normalizeSex(rawValue: unknown): string | null {
@@ -425,7 +508,7 @@ export class DataCleanerService {
     const s = String(rawValue).trim().toUpperCase();
     if (!s) return null;
     if (['HOMBRE', 'MALE', 'HOME', 'MASCULINO', 'H', 'VARÓN', 'VARON'].includes(s)) return 'MALE';
-    if (['MUJER', 'FEMALE', 'DONA', 'FEMENINO', 'M', 'HEMBRA'].includes(s)) return 'FEMALE';
+    if (['MUJER', 'FEMALE', 'DONA', 'FEM', 'FEMENINO', 'F', 'M', 'HEMBRA'].includes(s)) return 'FEMALE';
     if (['O', 'OTRO', 'OTHER'].includes(s)) return 'OTHER';
     if (['DESCONOCIDO', 'UNKNOWN'].includes(s)) return 'UNKNOWN';
     // Fallback: return the cleaned value if it matches a known enum; null otherwise.
@@ -464,10 +547,6 @@ export class DataCleanerService {
   // Minimum identifiable info: a row needs at least an NHC or a patientName.
   // ─────────────────────────────────────────────
 
-  private hasMinimumIdentifiableInfo(cleaned: CleanedRow): boolean {
-    return Boolean(cleaned.nhc) || Boolean(cleaned.patientName);
-  }
-
   /**
    * Strip 'ignore'-mapped columns from the original row before it is stored in
    * importedData. SDD import-data-quality: phone-named columns are no longer
@@ -479,6 +558,7 @@ export class DataCleanerService {
     const stripped: Record<string, unknown> = {};
     for (const [column, field] of Object.entries(mapping)) {
       if (field === 'ignore') continue;
+      if (!(column in row)) continue;
       stripped[column] = row[column];
     }
     // Preserve unmapped columns too (they become part of the audit copy in

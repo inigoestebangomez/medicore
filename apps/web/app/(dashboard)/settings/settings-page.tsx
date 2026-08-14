@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api-fetch';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { CalendarSyncPanel } from '@/components/calendar/calendar-sync-panel';
 
 type MemberRole = 'OWNER' | 'ADMIN' | 'PHYSICIAN' | 'VIEWER';
 
@@ -30,7 +32,7 @@ interface SettingsPageProps {
 const ROLES: MemberRole[] = ['OWNER', 'ADMIN', 'PHYSICIAN', 'VIEWER'];
 
 export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
-  const [tab, setTab] = useState<'organization' | 'members'>('organization');
+  const [tab, setTab] = useState<'organization' | 'members' | 'preferences' | 'calendar'>('organization');
 
   const [org, setOrg] = useState<Organization | null>(null);
   const [orgLoading, setOrgLoading] = useState(true);
@@ -172,6 +174,26 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
           >
             Members
           </button>
+          <button
+            onClick={() => setTab('preferences')}
+            className={`pb-3 text-sm font-medium transition-colors ${
+              tab === 'preferences'
+                ? 'border-b-2 border-blue-600 text-secondary'
+                : 'text-on-surface-variant hover:text-on-surface-variant'
+            }`}
+          >
+            Preferences
+          </button>
+          <button
+            onClick={() => setTab('calendar')}
+            className={`pb-3 text-sm font-medium transition-colors ${
+              tab === 'calendar'
+                ? 'border-b-2 border-blue-600 text-secondary'
+                : 'text-on-surface-variant hover:text-on-surface-variant'
+            }`}
+          >
+            Calendario
+          </button>
         </nav>
       </div>
 
@@ -252,7 +274,7 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                     placeholder="doctor@example.com"
-                    className="mt-1 block w-full rounded-lg border border-outline px-3 py-2 text-sm shadow-card focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+                    className="mt-1 block w-full rounded-lg border border-outline bg-surface px-3 py-2 text-sm text-on-surface shadow-card focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
                   />
                 </div>
                 <div>
@@ -260,7 +282,7 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
                   <select
                     value={inviteRole}
                     onChange={(e) => setInviteRole(e.target.value as MemberRole)}
-                    className="mt-1 block w-full rounded-lg border border-outline px-3 py-2 text-sm shadow-card focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+                    className="mt-1 block w-full rounded-lg border border-outline bg-surface px-3 py-2 text-sm text-on-surface shadow-card focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
                   >
                     {ROLES.map((r) => (
                       <option key={r} value={r}>{r}</option>
@@ -329,7 +351,7 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
                             <select
                               value={member.role}
                               onChange={(e) => handleRoleChange(member.userId, e.target.value as MemberRole)}
-                              className="rounded border border-outline px-2 py-1 text-xs focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+                              className="rounded border border-outline bg-surface px-2 py-1 text-xs text-on-surface focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
                             >
                               {ROLES.map((r) => (
                                 <option key={r} value={r}>{r}</option>
@@ -367,6 +389,26 @@ export function SettingsPage({ organizationId, isOwner }: SettingsPageProps) {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {tab === 'preferences' && (
+        <div className="max-w-lg space-y-6">
+          <div className="rounded-lg border border-outline-variant bg-surface-lowest p-6 shadow-card">
+            <h3 className="text-sm font-semibold text-on-surface">Appearance</h3>
+            <p className="mt-1 text-xs text-on-surface-variant">
+              Choose between dark and light mode. Your preference is saved automatically.
+            </p>
+            <div className="mt-4">
+              <ThemeToggle />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'calendar' && (
+        <div className="max-w-2xl">
+          <CalendarSyncPanel />
         </div>
       )}
     </div>

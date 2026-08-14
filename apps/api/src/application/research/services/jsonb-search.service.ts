@@ -63,9 +63,9 @@ export class JsonbSearchService {
     >(
       `SELECT (kv.value::text)::numeric AS value
        FROM patients p,
-            jsonb_each_text(p.imported_data) AS b(k, batch_val),
+            jsonb_each_text(p."importedData") AS b(k, batch_val),
             jsonb_each_text(batch_val) AS kv(field, value)
-       WHERE p.organization_id = $1
+       WHERE p."organizationId" = $1
          AND p.id = ANY($2)
          AND kv.field = $3
          AND kv.value::text ~ '^-?[0-9]+(\\.[0-9]+)?$'`,
@@ -124,9 +124,9 @@ export class JsonbSearchService {
     >(
       `SELECT DISTINCT p.id
        FROM patients p,
-            jsonb_each_text(p.imported_data) AS b(k, batch_val),
+            jsonb_each_text(p."importedData") AS b(k, batch_val),
             jsonb_each_text(batch_val) AS kv(field, value)
-       WHERE p.organization_id = $1
+       WHERE p."organizationId" = $1
          AND p.id = ANY($2)
          AND kv.field = $3
          AND (kv.value::text) ~ '^-?[0-9]+(\\.[0-9]+)?$'
@@ -152,9 +152,9 @@ export class JsonbSearchService {
     >(
       `SELECT DISTINCT p.id
        FROM patients p,
-            jsonb_each_text(p.imported_data) AS b(k, batch_val),
+            jsonb_each_text(p."importedData") AS b(k, batch_val),
             jsonb_each_text(batch_val) AS kv(field, value)
-       WHERE p.organization_id = $1
+       WHERE p."organizationId" = $1
          AND p.id = ANY($2)
          AND kv.field = $3
          AND (kv.value::text) ~ '^-?[0-9]+(\\.[0-9]+)?$'
@@ -199,9 +199,9 @@ export class JsonbSearchService {
     >(
       `SELECT DISTINCT p.id
        FROM patients p,
-            jsonb_each_text(p.imported_data) AS b(k, batch_val),
+            jsonb_each_text(p."importedData") AS b(k, batch_val),
             jsonb_each_text(batch_val) AS kv(field, value)
-       WHERE p.organization_id = $1
+       WHERE p."organizationId" = $1
          AND p.id = ANY($2)
          AND kv.field = $3
          AND kv.value::text ~ '^\\d{4}-\\d{2}-\\d{2}'

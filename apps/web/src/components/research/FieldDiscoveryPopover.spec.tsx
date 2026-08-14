@@ -62,4 +62,39 @@ describe('FieldDiscoveryPopover', () => {
     fireEvent.focus(screen.getByRole('textbox'));
     expect(screen.getByText(/No se encontraron campos/)).toBeInTheDocument();
   });
+
+  it('shows clinical metadata and import provenance when the backend provides it', () => {
+    useFieldCatalog.mockReturnValue({
+      data: {
+        totalPatients: 10,
+        entries: [{
+          field: 'EVA clínica',
+          label: 'Dolor percibido',
+          unit: 'puntos',
+          source: 'imported' as const,
+          type: 'number' as const,
+          nonNullCount: 8,
+          totalCount: 10,
+          completenessPercent: 80,
+          examples: [8],
+          originalHeaders: ['EVA clínica'],
+          batches: [{
+            id: 'batch-1',
+            fileName: 'seguimiento.xlsx',
+            originalFormat: 'xlsx',
+            importedAt: '2026-08-01T10:00:00.000Z',
+          }],
+        }],
+      },
+      isLoading: false,
+    });
+    renderWithProviders(<FieldDiscoveryPopover value="" onSelect={vi.fn()} />);
+    fireEvent.focus(screen.getByRole('textbox'));
+
+    expect(screen.getByText('Dolor percibido')).toBeInTheDocument();
+    expect(screen.getByText('EVA clínica')).toBeInTheDocument();
+    expect(screen.getByText(/8\/10 \(80%\).*unidad: puntos/)).toBeInTheDocument();
+    expect(screen.getByText(/Excel: EVA clínica/)).toBeInTheDocument();
+    expect(screen.getByText(/Lote: seguimiento\.xlsx \(xlsx\)/)).toBeInTheDocument();
+  });
 });

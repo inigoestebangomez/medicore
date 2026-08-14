@@ -22,8 +22,8 @@ export interface ListPatientsResponse {
 export interface PatientListItem {
   id: string;
   nhc: string;
-  firstName: string;
-  lastName: string;
+  firstName: string | null;
+  lastName: string | null;
   birthDate: string | null;
   sex: string;
   age: number | null;

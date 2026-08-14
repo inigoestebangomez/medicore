@@ -51,6 +51,18 @@ const FIELD_PATTERNS: FieldPattern[] = [
   { field: 'completionDate', patterns: [/fecha.*realizaci/, /fecha.*ejecuci/, /realizaci/, /fecha.*completad/] },
 ];
 
+// These identifiers must be checked before the generic /paciente/ rule. A
+// spreadsheet can contain both "Nº Paciente" and "Nombre"; they are distinct
+// identity fields and must never be proposed as patientName twice.
+const PATIENT_IDENTIFIER_PATTERNS: RegExp[] = [
+  /^nhc$/,
+  /^n[º°o]?\s*paciente$/,
+  /^n[º°o]?\s*historia$/,
+  /^n[º°o]?\s*historia\s+clinica$/,
+  /^historia\s+clinica$/,
+  /^id\s+paciente$/,
+];
+
 // Phone-like columns — always mapped to 'ignore' (BR-IMP-007)
 const PHONE_PATTERNS: RegExp[] = [
   /tel[eé]fono/, /\btlf\b/, /tel[eé]f/, /\bm[oó]vil\b/, /\bmvl\b/, /\bphone\b/, /tlfno/, /contacto.*tel/, /\bcel\b/,
@@ -124,6 +136,13 @@ export class HeuristicAnalyzer implements StructuredAnalysisProvider {
       // BR-IMP-007: phone columns are ALWAYS excluded first.
       if (PHONE_PATTERNS.some((re) => re.test(norm))) {
         mapping[col] = 'ignore';
+        totalTypedColumns++;
+        continue;
+      }
+
+      if (PATIENT_IDENTIFIER_PATTERNS.some((re) => re.test(norm))) {
+        mapping[col] = 'nhc';
+        standardHits++;
         totalTypedColumns++;
         continue;
       }

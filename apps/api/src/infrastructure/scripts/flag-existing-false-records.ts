@@ -15,8 +15,8 @@ const detector = new FalseRecordDetectorService();
 export interface PatientNameRecord {
   id: string;
   nhc: string;
-  firstName: string;
-  lastName: string;
+  firstName: string | null;
+  lastName: string | null;
 }
 
 export interface FlaggingResult {

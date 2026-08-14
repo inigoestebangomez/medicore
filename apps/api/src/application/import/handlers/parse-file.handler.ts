@@ -62,6 +62,7 @@ export class ParseFileHandler {
       fileHash,
       originalFormat: parsed.originalFormat,
       sample: parsed.sample,
+      normalizedRows: parsed.rows,
       totalRows: parsed.totalRows,
     });
     await this.batchRepo.persist(pending);
@@ -85,6 +86,7 @@ export class ParseFileHandler {
       columnMapping: confirming.columnMapping,
       customFieldNames: confirming.customFieldNames,
       junkRowIndices: confirming.junkRowIndices,
+      ignoredRows: confirming.ignoredRows,
       aiConfidence: confirming.aiConfidence,
       aiProvider: confirming.aiProvider,
       issues: confirming.issues,

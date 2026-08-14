@@ -6,6 +6,7 @@ import type { IImagingStudyRepository, UpdateImagingStudyInput } from '@/domain/
 import type { MemberRole } from '@medicore/contracts';
 import type { ImagingStudy } from '@/domain/imaging/imaging-study.entity';
 import { ImagingStudyNotFoundError } from '@/domain/imaging/errors/imaging-study-not-found.error';
+import { assertValidImagingStudyId } from '@/domain/imaging/imaging-study-id';
 
 export class ForbiddenError extends Error {
   public readonly code = 'FORBIDDEN';
@@ -34,6 +35,7 @@ export class UpdateImagingStudyUseCase {
 
   async execute(command: UpdateImagingStudyCommand): Promise<ImagingStudy> {
     const { id, organizationId, role, userId } = command;
+    assertValidImagingStudyId(id);
 
     // Fetch existing study
     const existing = await this.imagingRepo.findById(id, organizationId);

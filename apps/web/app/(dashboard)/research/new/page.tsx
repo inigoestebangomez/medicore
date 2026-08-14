@@ -10,12 +10,20 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { FilterBuilderV2 } from '@/components/research/FilterBuilderV2';
+import { ResearchFieldPicker } from '@/components/research/ResearchFieldPicker';
 import { useSaveQuery } from '@/hooks/useResearch';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import type { Filter, FilterLogic, DataSource, VisualizationType } from '@medicore/contracts';
 
-const SUGGESTED_DISPLAY = ['nhc', 'age', 'sex', 'birthDate'];
 const DEFAULT_VIZ: VisualizationType[] = ['table', 'stats'];
+
+const VISUALIZATION_OPTIONS: Array<{ value: VisualizationType; label: string; description: string }> = [
+  { value: 'table', label: 'Tabla de pacientes', description: 'Filas anonimizadas con los campos seleccionados' },
+  { value: 'stats', label: 'Resumen estadístico', description: 'Conteo, medias y distribución de los datos' },
+  { value: 'bar_chart', label: 'Barras', description: 'Compara categorías de un campo' },
+  { value: 'line_chart', label: 'Evolución temporal', description: 'Observa cambios a lo largo del tiempo' },
+  { value: 'scatter', label: 'Dispersión', description: 'Explora la relación entre dos variables' },
+];
 
 export default function NewResearchQueryPage() {
   const router = useRouter();
@@ -26,13 +34,12 @@ export default function NewResearchQueryPage() {
   const [description, setDescription] = useState('');
   const [dataSource, setDataSource] = useState<DataSource>('all_patients');
   const [importBatchIds, setImportBatchIds] = useState('');
-  const [displayFields, setDisplayFields] = useState('age, sex');
+  const [displayFields, setDisplayFields] = useState<string[]>(['age', 'sex']);
   const [visualizations, setVisualizations] = useState<VisualizationType[]>(DEFAULT_VIZ);
   const [filters, setFilters] = useState<Filter[]>([]);
   const [logic, setLogic] = useState<FilterLogic>('AND');
 
-  // Parse the raw text inputs into typed arrays for both the save flow and the
-  // FilterBuilderV2 live preview (which needs importBatchIds + previewFields).
+  // Parse the raw batch input while keeping display fields as API-facing names.
   const importBatchIdsArr = useMemo(
     () =>
       importBatchIds.trim()
@@ -40,11 +47,6 @@ export default function NewResearchQueryPage() {
         : undefined,
     [importBatchIds],
   );
-  const previewFieldsArr = useMemo(
-    () => displayFields.split(',').map((s) => s.trim()).filter(Boolean),
-    [displayFields],
-  );
-
   const toggleViz = (v: VisualizationType) =>
     setVisualizations((prev) =>
       prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v],
@@ -59,47 +61,48 @@ export default function NewResearchQueryPage() {
       importBatchIds: importBatchIdsArr,
       filters,
       filterLogic: logic,
-      displayFields: previewFieldsArr,
+      displayFields,
       visualizations,
     });
     router.push(`/research/${saved.id}`);
   };
 
   return (
-    <div className="container mx-auto space-y-6 py-6">
+    <div className="container mx-auto max-w-6xl space-y-6 py-8">
       <div>
-        <h1 className="text-2xl font-semibold text-on-surface">Nueva consulta de investigación</h1>
-        <p className="text-sm text-on-surface-variant">
+        <p className="label-clinical mb-2">Investigación clínica</p>
+        <h1 className="page-title">Nueva consulta de investigación</h1>
+        <p className="mt-2 max-w-3xl text-sm text-on-surface-variant">
           La consulta se guarda como privada (BR-RES-001). Para compartirla, exporta la cohorte a una colección bloqueada.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 rounded-md border border-outline-variant p-4 md:grid-cols-2">
+      <div className="card-primary grid grid-cols-1 gap-5 p-5 md:grid-cols-2">
         <label className="text-sm">
-          <span className="font-medium text-on-surface-variant">Nombre</span>
+          <span className="label-clinical">Nombre</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded border border-outline px-2 py-1.5"
+            className="input-clinical mt-1"
             placeholder="p.ej. Pacientes > 50 con IMC > 30"
           />
         </label>
 
         <label className="text-sm">
-          <span className="font-medium text-on-surface-variant">Descripción</span>
+          <span className="label-clinical">Descripción</span>
           <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="mt-1 w-full rounded border border-outline px-2 py-1.5"
+            className="input-clinical mt-1"
           />
         </label>
 
         <label className="text-sm">
-          <span className="font-medium text-on-surface-variant">Origen de datos</span>
+          <span className="label-clinical">Origen de datos</span>
           <select
             value={dataSource}
             onChange={(e) => setDataSource(e.target.value as DataSource)}
-            className="mt-1 w-full rounded border border-outline px-2 py-1.5"
+            className="input-clinical mt-1"
           >
             <option value="all_patients">Todos los pacientes</option>
             <option value="manual_only">Solo cargados manualmente</option>
@@ -110,56 +113,59 @@ export default function NewResearchQueryPage() {
 
         {dataSource === 'import_batch' && (
           <label className="text-sm">
-            <span className="font-medium text-on-surface-variant">IDs de lote (coma-separados)</span>
+            <span className="label-clinical">IDs de lote (coma-separados)</span>
             <input
               value={importBatchIds}
               onChange={(e) => setImportBatchIds(e.target.value)}
-              className="mt-1 w-full rounded border border-outline px-2 py-1.5"
+              className="input-clinical mt-1"
               placeholder="uuid, uuid…"
             />
           </label>
         )}
 
-        <label className="text-sm md:col-span-2">
-          <span className="font-medium text-on-surface-variant">Campos a mostrar (coma-separados)</span>
-          <input
-            value={displayFields}
-            onChange={(e) => setDisplayFields(e.target.value)}
-            className="mt-1 w-full rounded border border-outline px-2 py-1.5"
-            placeholder={SUGGESTED_DISPLAY.join(', ')}
-          />
-          <span className="mt-1 block text-xs text-on-surface-variant">
-            Campos estándar (age, sex, nhc…) o importados (customField…).
-          </span>
-        </label>
+        <div className="text-sm md:col-span-2">
+          <span className="label-clinical">Campos a mostrar</span>
+          <div className="mt-1">
+            <ResearchFieldPicker
+              value={displayFields}
+              onChange={setDisplayFields}
+              disabled={!fieldDiscoveryEnabled}
+            />
+          </div>
+        </div>
 
-        <fieldset className="text-sm md:col-span-2">
-          <span className="font-medium text-on-surface-variant">Visualizaciones</span>
-          <div className="mt-1 flex flex-wrap gap-3">
-            {(['table', 'bar_chart', 'line_chart', 'scatter', 'stats'] as VisualizationType[]).map((v) => (
-              <label key={v} className="inline-flex items-center gap-1.5">
+        <fieldset className="card-secondary p-4 text-sm md:col-span-2">
+          <legend className="label-clinical">Qué quieres analizar</legend>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {VISUALIZATION_OPTIONS.map(({ value, label, description }) => (
+              <label key={value} className="flex cursor-pointer items-start gap-2 rounded-md border border-outline-variant bg-surface-lowest p-2.5 hover:border-secondary">
                 <input
                   type="checkbox"
-                  checked={visualizations.includes(v)}
-                  onChange={() => toggleViz(v)}
-                  className="rounded border-outline"
+                  checked={visualizations.includes(value)}
+                  onChange={() => toggleViz(value)}
+                  className="mt-0.5 rounded border-outline"
                 />
-                <span className="text-on-surface-variant">{v}</span>
+                <span>
+                  <span className="block font-medium text-on-surface">{label}</span>
+                  <span className="block text-xs text-on-surface-variant">{description}</span>
+                </span>
               </label>
             ))}
           </div>
         </fieldset>
       </div>
 
-      <div className="rounded-md border border-outline-variant p-4">
-        <h2 className="mb-2 text-sm font-semibold text-on-surface-variant">Filtros</h2>
+      <div className="card-primary p-5">
+        <p className="label-clinical mb-2">Define la cohorte</p>
+        <h2 className="mb-1 text-lg font-semibold text-on-surface">Filtros</h2>
+        <p className="mb-3 text-sm text-on-surface-variant">Acota los pacientes que quieres estudiar. Puedes empezar sin filtros y añadirlos después.</p>
         <FilterBuilderV2
           filters={filters}
           logic={logic}
           onChange={(f, l) => { setFilters(f); setLogic(l); }}
           dataSource={dataSource}
           importBatchIds={importBatchIdsArr}
-          previewFields={previewFieldsArr}
+          previewFields={displayFields}
           disabled={!fieldDiscoveryEnabled}
         />
       </div>
@@ -169,7 +175,7 @@ export default function NewResearchQueryPage() {
           size="sm"
           onClick={() => void onSaveAndRun()}
           disabled={save.isPending || !name.trim()}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          className="btn-primary"
         >
           {save.isPending ? 'Guardando…' : 'Guardar y ejecutar'}
         </Button>

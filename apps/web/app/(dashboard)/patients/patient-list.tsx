@@ -5,9 +5,12 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { usePatients } from '@/hooks/usePatients';
 
-function calculateAge(birthDate: string): number {
+function calculateAge(birthDate: string | null): number | null {
+  if (!birthDate || birthDate.slice(0, 10) === '1900-01-01') return null;
+
   const today = new Date();
   const birth = new Date(birthDate);
+  if (Number.isNaN(birth.getTime())) return null;
   let age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
@@ -142,7 +145,7 @@ export function PatientList() {
                           {SEX_LABEL[patient.sex] ?? patient.sex}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-sm text-on-surface-variant">
-                          {patient.age ?? calculateAge(patient.birthDate)}
+                          {patient.age ?? calculateAge(patient.birthDate) ?? '—'}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-sm text-on-surface-variant">
                           {patient.phone ?? '—'}

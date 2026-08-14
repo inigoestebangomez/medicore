@@ -26,7 +26,7 @@ export class FieldsController {
     @CurrentUser() user: JwtPayload,
   ) {
     const typed = type ? (type as FieldType) : undefined;
-    const entries = await this.fieldDiscovery.getCatalog(user.organizationId, q ?? '', typed);
-    return { data: { query: q ?? '', type: typed, entries } };
+    const catalog = await this.fieldDiscovery.getCatalogResponse(user.organizationId, q ?? '', typed);
+    return { data: { query: q ?? '', type: typed, ...catalog } };
   }
 }

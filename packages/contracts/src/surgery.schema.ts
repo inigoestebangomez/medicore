@@ -133,3 +133,31 @@ export const ListSurgeriesQuerySchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
 export type ListSurgeriesQuery = z.infer<typeof ListSurgeriesQuerySchema>;
+
+// ─────────────────────────────────────────────
+// Org-wide surgery list (top-level GET /v1/surgeries)
+// ─────────────────────────────────────────────
+
+export const ListOrgSurgeriesQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(100).default(20),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  status: SurgeryStatusSchema.optional(),
+  physicianId: z.string().uuid().optional(),
+  sortBy: z.enum(['date', 'createdAt']).default('date'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+export type ListOrgSurgeriesQuery = z.infer<typeof ListOrgSurgeriesQuerySchema>;
+
+export const OrgSurgeryListItemSchema = z.object({
+  id: z.string().uuid(),
+  patientId: z.string().uuid(),
+  patientFirstName: z.string(),
+  patientLastName: z.string(),
+  date: z.string(),
+  status: SurgeryStatusSchema,
+  procedureType: z.string(),
+  physicianId: z.string(),
+});
+export type OrgSurgeryListItem = z.infer<typeof OrgSurgeryListItemSchema>;

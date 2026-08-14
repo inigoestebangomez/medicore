@@ -123,6 +123,33 @@ describe('PatientsController', () => {
     });
   });
 
+  describe('GET /patients/:patientId/imported-events', () => {
+    it('returns imported history for an authorized patient', async () => {
+      const patient = await seedPatient();
+      await patientRepo.enrich(patient.id, orgId, {
+        importedData: { 'batch-synthetic': { diagnosis: 'synthetic diagnosis', _rowIndex: 4 } },
+        importSource: 'xlsx',
+      }, userId);
+      const result = await controller.listImportedEvents(patient.id, undefined, undefined, physicianUser);
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].type).toBe('import');
+      expect(result.items[0].rowIndex).toBe(4);
+    });
+
+    it('does not disclose another organization patient', async () => {
+      const patient = await patientRepo.create({
+        nhc: '2026-00001', firstName: 'Other', lastName: 'Org', birthDate: null, sex: 'UNKNOWN',
+        organizationId: 'org-2', createdBy: userId,
+      });
+      await expect(controller.listImportedEvents(patient.id, undefined, undefined, physicianUser)).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects an invalid cursor', async () => {
+      const patient = await seedPatient();
+      await expect(controller.listImportedEvents(patient.id, undefined, 'not-a-cursor', physicianUser)).rejects.toThrow('cursor');
+    });
+  });
+
   describe('GET /patients', () => {
     it('should return paginated list of patients', async () => {
       await seedPatient();

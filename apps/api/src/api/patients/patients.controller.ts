@@ -13,6 +13,7 @@ import {
   NotFoundException,
   ConflictException,
   Headers,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthGuard } from '@/api/shared/guards/auth.guard';
 import { RBACGuard } from '@/api/shared/guards/rbac.guard';
@@ -45,6 +46,8 @@ import {
   PaginationSchema,
 } from '@medicore/contracts';
 import { ZodValidationPipe } from '@/api/shared/pipes/zod-validation.pipe';
+import { ImportedClinicalEventProjector } from '@/application/patient/services/imported-clinical-event-projector';
+import { InvalidImportedEventsCursorError, ListImportedClinicalEventsUseCase } from '@/application/patient/queries/list-imported-clinical-events.use-case';
 
 @Controller('patients')
 @UseGuards(AuthGuard, RBACGuard)
@@ -59,6 +62,7 @@ export class PatientsController {
   private readonly getAllergyUseCase: GetAllergyUseCase;
   private readonly updateAllergyUseCase: UpdateAllergyUseCase;
   private readonly softDeleteAllergyUseCase: SoftDeleteAllergyUseCase;
+  private readonly listImportedClinicalEventsUseCase: ListImportedClinicalEventsUseCase;
 
   // Repositories injected for NestJS DI — used by use-case constructors
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -76,6 +80,10 @@ export class PatientsController {
     this.getAllergyUseCase = new GetAllergyUseCase(allergyRepo);
     this.updateAllergyUseCase = new UpdateAllergyUseCase(allergyRepo);
     this.softDeleteAllergyUseCase = new SoftDeleteAllergyUseCase(allergyRepo);
+    this.listImportedClinicalEventsUseCase = new ListImportedClinicalEventsUseCase(
+      patientRepo,
+      new ImportedClinicalEventProjector(),
+    );
   }
 
   @Post()
@@ -143,6 +151,32 @@ export class PatientsController {
       sortOrder: query.sortOrder,
     });
     return result;
+  }
+
+  @Get(':patientId/imported-events')
+  @Reflect.metadata(REQUIRED_ACTION_KEY, Action.READ_PATIENT)
+  async listImportedEvents(
+    @Param('patientId') patientId: string,
+    @Query('pageSize') pageSize: string | undefined,
+    @Query('cursor') cursor: string | undefined,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    try {
+      return await this.listImportedClinicalEventsUseCase.execute({
+        patientId,
+        organizationId: user.organizationId,
+        pageSize: pageSize === undefined ? undefined : Number(pageSize),
+        cursor,
+      });
+    } catch (error) {
+      if (error instanceof InvalidImportedEventsCursorError || (error instanceof Error && error.message.startsWith('pageSize'))) {
+        throw new BadRequestException(error.message);
+      }
+      if (error instanceof Error && error.message === 'Patient not found') {
+        throw new NotFoundException(error.message);
+      }
+      throw error;
+    }
   }
 
   @Get(':id')

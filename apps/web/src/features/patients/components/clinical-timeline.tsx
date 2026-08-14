@@ -2,8 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import type { ConsultationListItem, SurgeryResponse } from '@medicore/contracts';
+import type { ConsultationListItem, SurgeryResponse, ImportedClinicalEvent } from '@medicore/contracts';
 import { apiFetch } from '@/lib/api-fetch';
+import { useImportedClinicalEvents } from '@/hooks/useImportedClinicalEvents';
 
 const API_BASE = '/v1/patients';
 
@@ -81,7 +82,71 @@ const DOT_COLORS: Record<TimelineEvent['type'], string> = {
 
 const PAGE_SIZE = 20;
 
+function displayValue(value: string | number | boolean | null): string {
+  return value === null || value === '' ? '—' : String(value);
+}
+
+export function ImportedHistorySection({
+  items,
+  hasMore,
+  onLoadMore,
+  loading = false,
+}: {
+  items: ImportedClinicalEvent[];
+  hasMore: boolean;
+  onLoadMore: () => void;
+  loading?: boolean;
+}) {
+  if (items.length === 0 && !loading) return null;
+  return (
+    <section aria-labelledby="imported-history-heading" className="mt-8 border-t border-outline-variant pt-6">
+      <h3 id="imported-history-heading" className="mb-3 text-sm font-semibold text-on-surface">Imported history</h3>
+      <p className="mb-4 text-xs text-on-surface-variant">
+        Imported data is shown separately from consultations, surgeries, and imaging. It does not represent a native clinical entity.
+      </p>
+      {loading && items.length === 0 ? <p className="text-sm text-on-surface-variant">Loading imported history…</p> : null}
+      <div className="space-y-3">
+        {items.map((item) => {
+          const fields = [...Object.entries(item.standardFields), ...Object.entries(item.customFields)].slice(0, 5);
+          const provenance = item.rowIndices.length > 1
+            ? `Rows ${item.rowIndices[0]}–${item.rowIndices[item.rowIndices.length - 1]} (merged block)`
+            : item.rowIndex === null ? 'Source row unavailable' : `Row ${item.rowIndex}`;
+          return (
+            <article key={item.id} className="rounded-lg border border-outline-variant bg-surface-lowest p-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Imported data</span>
+                <time className="text-xs text-on-surface-variant/60">{item.date ? new Date(item.date).toLocaleDateString('es-ES') : 'Undated'}</time>
+              </div>
+              <p className="mt-2 text-xs font-medium text-on-surface-variant">{provenance}{item.batchId ? ` · Batch ${item.batchId}` : ''}</p>
+              {item.rowGranularity === 'merged-block' ? (
+                <p className="mt-1 text-xs text-on-surface-variant">Values are the surviving values for this merged persisted block.</p>
+              ) : null}
+              <dl className="mt-2 space-y-1 text-sm">
+                {fields.map(([key, value]) => {
+                  const text = displayValue(value);
+                  return (
+                    <div key={key}>
+                      <dt className="inline font-medium text-on-surface-variant">{key}: </dt>
+                      <dd className="inline whitespace-pre-wrap break-words text-on-surface">{text.length > 280 ? `${text.slice(0, 280)}…` : text}</dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </article>
+          );
+        })}
+      </div>
+      {hasMore ? (
+        <button type="button" onClick={onLoadMore} disabled={loading} className="mt-4 text-sm font-medium text-primary underline disabled:opacity-50">
+          Load more imported history
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
 export function ClinicalTimeline({ patientId }: ClinicalTimelineProps) {
+  const importedQuery = useImportedClinicalEvents(patientId);
   const consultationsQuery = useQuery<ListResponse<ConsultationListItem>>({
     queryKey: ['consultations', patientId, 'list'],
     queryFn: async () => {
@@ -172,12 +237,8 @@ export function ClinicalTimeline({ patientId }: ClinicalTimelineProps) {
     ),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  if (events.length === 0) {
-    return (
-      <div className="py-8 text-center text-sm text-on-surface-variant/60">
-        No clinical events recorded yet
-      </div>
-    );
+  if (events.length === 0 && importedQuery.items.length === 0 && !importedQuery.isLoading) {
+    return <div className="py-8 text-center text-sm text-on-surface-variant/60">No clinical events recorded yet</div>;
   }
 
   return (
@@ -223,6 +284,12 @@ export function ClinicalTimeline({ patientId }: ClinicalTimelineProps) {
           </Link>
         );
       })}
+      <ImportedHistorySection
+        items={importedQuery.items}
+        hasMore={Boolean(importedQuery.hasNextPage)}
+        loading={importedQuery.isLoading || importedQuery.isFetchingNextPage}
+        onLoadMore={() => void importedQuery.loadMore()}
+      />
     </div>
   );
 }

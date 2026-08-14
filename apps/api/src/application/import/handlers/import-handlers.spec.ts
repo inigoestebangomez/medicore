@@ -182,7 +182,37 @@ describe('Import use cases', () => {
       expect(res.autoMatchCount).toBe(1);
     });
 
-    it('returns zero counts on a cache miss (server restart scenario)', async () => {
+    it('confirms Nombre + Nº Paciente without overwriting the NHC field', async () => {
+      const { parse, confirm } = buildHandlers();
+      const parsed = await parse.execute({
+        buffer: Buffer.from('Nombre,Nº Paciente\nAna Garcia,123456\n'),
+        fileName: 'p.csv', organizationId: 'org-1', createdBy: 'u',
+      });
+
+      const result = await confirm.execute({
+        batchId: parsed.batchId,
+        organizationId: 'org-1',
+        columnMapping: { Nombre: 'patientName', 'Nº Paciente': 'nhc' },
+      });
+
+      expect(result.cleanedRowCount).toBe(1);
+      expect(result.matches).toHaveLength(1);
+    });
+
+    it('rejects a confirmed mapping with duplicate identity fields before cleaning', async () => {
+      const { parse, confirm } = buildHandlers();
+      const parsed = await parse.execute({
+        buffer: xlsxBuffer(), fileName: 'p.csv', organizationId: 'org-1', createdBy: 'u',
+      });
+
+      await expect(confirm.execute({
+        batchId: parsed.batchId,
+        organizationId: 'org-1',
+        columnMapping: { Paciente: 'patientName', Nombre: 'patientName' },
+      })).rejects.toThrow('"Paciente", "Nombre"');
+    });
+
+    it('falls back to persisted normalized rows after a cache miss', async () => {
       const { parse, confirm, cache } = buildHandlers();
       const parsed = await parse.execute({
         buffer: xlsxBuffer(), fileName: 'p.csv', organizationId: 'org-1', createdBy: 'u',
@@ -190,10 +220,100 @@ describe('Import use cases', () => {
       await cache.delete(parsed.batchId, 'org-1');
       const res = await confirm.execute({
         batchId: parsed.batchId, organizationId: 'org-1',
-        columnMapping: { 'Nº HISTORIA': 'nhc' },
+        columnMapping: { 'Nº HISTORIA': 'nhc', Paciente: 'patientName', Edad: 'age' },
       });
-      expect(res.cleanedRowCount).toBe(0);
-      expect(res.matches).toEqual([]);
+       expect(res.cleanedRowCount).toBe(1);
+       expect(res.matches.length).toBe(1);
+    });
+
+    it('returns an actionable error when cache and persisted rows are unavailable', async () => {
+      const { parse, confirm, cache, batchRepo } = buildHandlers();
+      const parsed = await parse.execute({
+        buffer: xlsxBuffer(), fileName: 'p.csv', organizationId: 'org-1', createdBy: 'u',
+      });
+      await cache.delete(parsed.batchId, 'org-1');
+      const batch = await batchRepo.findById(parsed.batchId, 'org-1');
+      batchRepo.store.set(parsed.batchId, new ImportBatch({ ...batch!, normalizedRows: null }));
+      await expect(confirm.execute({
+        batchId: parsed.batchId, organizationId: 'org-1',
+        columnMapping: { 'Nº HISTORIA': 'nhc' },
+      })).rejects.toThrow('Vuelve a subir el archivo para continuar');
+    });
+
+    it('persists overrides and exposes all row classification buckets', async () => {
+      const { parse, confirm, batchRepo } = buildHandlers();
+      const parsed = await parse.execute({
+        buffer: Buffer.from('NHC,Nombre,Notas,Edad,Sexo,Diagnóstico\n123456,,borrador,,,\n234567,Ana,ok,,,\n, ,pendiente,50,M,review\n345678,PENDIENTE REVISIÓN,,,,\n'),
+        fileName: 'p.csv', organizationId: 'org-1', createdBy: 'u',
+      });
+      const result = await confirm.execute({
+        batchId: parsed.batchId,
+        organizationId: 'org-1',
+        columnMapping: { NHC: 'nhc', Nombre: 'patientName', Notas: 'custom', Edad: 'age', Sexo: 'sex', Diagnóstico: 'diagnosis' },
+        previewOverrides: { '0': { Nombre: 'NHC patient' } },
+        ignoredColumns: [{ column: 'Notas', reason: 'draft' }],
+        cellOverrides: { '1': { Nombre: null } },
+      });
+
+      expect(result.cleanedRowCount).toBe(2);
+      expect(result.fullIdentityCount).toBe(1);
+      expect(result.identityLightCount).toBe(1);
+      expect(result.unidentifiableCount).toBe(1);
+      expect((await batchRepo.findById(parsed.batchId, 'org-1'))?.ignoredColumns).toEqual([
+        { column: 'Notas', reason: 'draft' },
+      ]);
+    });
+
+    it('reclassifies a pending row beyond the first five after reconfirming its override', async () => {
+      const { parse, confirm, batchRepo } = buildHandlers();
+      const rows = Array.from({ length: 12 }, (_, index) =>
+        index === 11 ? ',,pendiente' : `${index + 1},Paciente ${index + 1},ok`,
+      );
+      const parsed = await parse.execute({
+        buffer: Buffer.from(['NHC,Nombre,Notas', ...rows].join('\n')),
+        fileName: 'p.csv', organizationId: 'org-1', createdBy: 'u',
+      });
+      const mapping: ColumnMapping = { NHC: 'nhc', Nombre: 'patientName', Notas: 'custom' };
+
+      const first = await confirm.execute({
+        batchId: parsed.batchId, organizationId: 'org-1', columnMapping: mapping,
+      });
+      expect(first.unidentifiableRows).toEqual([{ rowIndex: 11, reason: 'pending_decision' }]);
+      expect(first.pendingResolutionCount).toBe(1);
+      expect((await batchRepo.findById(parsed.batchId, 'org-1'))?.pendingRows).toBe(1);
+
+      const corrected = await confirm.execute({
+        batchId: parsed.batchId,
+        organizationId: 'org-1',
+        columnMapping: mapping,
+        previewOverrides: { '11': { Nombre: 'Paciente corregido' } },
+      });
+      expect(corrected.unidentifiableRows).toEqual([]);
+      expect(corrected.fullIdentityRows).toContainEqual({ rowIndex: 11 });
+      expect(corrected.pendingResolutionCount).toBe(0);
+      expect((await batchRepo.findById(parsed.batchId, 'org-1'))?.pendingRows).toBe(0);
+    });
+
+    it('discards complete rows explicitly and excludes them from pending/importable counts', async () => {
+      const { parse, confirm, batchRepo } = buildHandlers();
+      const parsed = await parse.execute({
+        buffer: Buffer.from('NHC,Nombre\n123,Ana\n,\n456,Luisa\n'),
+        fileName: 'p.csv', organizationId: 'org-1', createdBy: 'u',
+      });
+      const result = await confirm.execute({
+        batchId: parsed.batchId,
+        organizationId: 'org-1',
+        columnMapping: { NHC: 'nhc', Nombre: 'patientName' },
+        ignoredRows: [{ rowIndex: 1, reason: 'cabecera repetida' }],
+      });
+
+      expect(result.cleanedRowCount).toBe(2);
+      expect(result.skippedRowCount).toBe(0);
+      expect(result.unidentifiableCount).toBe(0);
+      expect(result.discardedRowCount).toBe(1);
+      expect((await batchRepo.findById(parsed.batchId, 'org-1'))?.ignoredRows).toEqual([
+        { rowIndex: 1, reason: 'cabecera repetida' },
+      ]);
     });
   });
 

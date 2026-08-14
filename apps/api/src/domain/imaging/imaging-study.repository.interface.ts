@@ -15,6 +15,23 @@ export interface ListImagingStudiesParams {
   to?: Date;
 }
 
+export interface ListOrgImagingStudiesParams {
+  organizationId: string;
+  page: number;
+  pageSize: number;
+  sortBy: 'date' | 'createdAt';
+  sortOrder: 'asc' | 'desc';
+  type?: ImagingStudyType;
+  from?: Date;
+  to?: Date;
+}
+
+export interface ListOrgImagingStudiesResult {
+  items: ImagingStudy[];
+  total: number;
+  patientNames: Map<string, { firstName: string; lastName: string }>;
+}
+
 export interface CreateImagingStudyInput {
   organizationId: string;
   patientId: string;
@@ -44,6 +61,7 @@ export interface IImagingStudyRepository {
   findById(id: string, organizationId: string): Promise<ImagingStudy | null>;
   findByPatientId(id: string, patientId: string, organizationId: string): Promise<ImagingStudy | null>;
   listByPatient(params: ListImagingStudiesParams): Promise<{ items: ImagingStudy[]; total: number }>;
+  listByOrganization(params: ListOrgImagingStudiesParams): Promise<ListOrgImagingStudiesResult>;
   create(data: CreateImagingStudyInput): Promise<ImagingStudy>;
   update(id: string, organizationId: string, data: UpdateImagingStudyInput): Promise<ImagingStudy>;
   appendFiles(id: string, organizationId: string, files: FileMetadataEntry[]): Promise<ImagingStudy>;

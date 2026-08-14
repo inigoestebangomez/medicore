@@ -6,6 +6,11 @@ import type {
   ImportStatus,
   ColumnMapping,
   FileSample,
+  IgnoredColumn,
+  IgnoredRow,
+  PreviewOverrides,
+  CellOverrides,
+  ParsedFile,
 } from '@medicore/contracts';
 import { IMPORT_ALLOWED_TRANSITIONS } from '@medicore/contracts';
 import { InvalidImportTransitionError } from './errors/invalid-import-transition.error';
@@ -22,11 +27,17 @@ export interface ImportBatchProps {
 
   // Sample of the original file (first 20 rows) for the UI.
   sample: FileSample;
+  /** Normalized rows only; the uploaded binary is never persisted. */
+  normalizedRows?: Record<string, unknown>[] | null;
 
   // Result of AI analysis.
   columnMapping: ColumnMapping;
   customFieldNames?: Record<string, string>;
   junkRowIndices?: number[];
+  ignoredColumns?: IgnoredColumn[];
+  ignoredRows?: IgnoredRow[];
+  previewOverrides?: PreviewOverrides | null;
+  cellOverrides?: CellOverrides | null;
   aiConfidence?: number | null;
   aiProvider?: 'heuristic' | 'groq' | 'claude' | null;
   issues?: string[];
@@ -65,9 +76,14 @@ export class ImportBatch {
   readonly originalFormat: 'xlsx' | 'csv' | 'tsv';
 
   readonly sample: FileSample;
+  readonly normalizedRows: Record<string, unknown>[] | null;
   readonly columnMapping: ColumnMapping;
   readonly customFieldNames: Record<string, string>;
   readonly junkRowIndices: number[];
+  readonly ignoredColumns: IgnoredColumn[];
+  readonly ignoredRows: IgnoredRow[];
+  readonly previewOverrides: PreviewOverrides | null;
+  readonly cellOverrides: CellOverrides | null;
   readonly aiConfidence: number | null;
   readonly aiProvider: 'heuristic' | 'groq' | 'claude' | null;
   readonly issues: string[];
@@ -98,9 +114,14 @@ export class ImportBatch {
     this.fileHash = props.fileHash;
     this.originalFormat = props.originalFormat;
     this.sample = props.sample;
+    this.normalizedRows = props.normalizedRows ?? null;
     this.columnMapping = props.columnMapping ?? {};
     this.customFieldNames = props.customFieldNames ?? {};
     this.junkRowIndices = props.junkRowIndices ?? [];
+    this.ignoredColumns = props.ignoredColumns ?? [];
+    this.ignoredRows = props.ignoredRows ?? [];
+    this.previewOverrides = props.previewOverrides ?? null;
+    this.cellOverrides = props.cellOverrides ?? null;
     this.aiConfidence = props.aiConfidence ?? null;
     this.aiProvider = props.aiProvider ?? null;
     this.issues = props.issues ?? [];
@@ -137,6 +158,7 @@ export class ImportBatch {
     fileHash: string;
     originalFormat: 'xlsx' | 'csv' | 'tsv';
     sample: FileSample;
+    normalizedRows?: Record<string, unknown>[];
     totalRows: number;
   }): ImportBatch {
     return new ImportBatch({
@@ -148,6 +170,7 @@ export class ImportBatch {
       fileHash: props.fileHash,
       originalFormat: props.originalFormat,
       sample: props.sample,
+      normalizedRows: props.normalizedRows,
       columnMapping: {},
       totalRows: props.totalRows,
       status: 'PENDING',
@@ -183,6 +206,10 @@ export class ImportBatch {
     columnMapping: ColumnMapping;
     customFieldNames?: Record<string, string>;
     junkRowIndices?: number[];
+    ignoredColumns?: IgnoredColumn[];
+    ignoredRows?: IgnoredRow[];
+    previewOverrides?: PreviewOverrides;
+    cellOverrides?: CellOverrides;
     aiConfidence?: number | null;
     aiProvider?: 'heuristic' | 'groq' | 'claude' | null;
     issues?: string[];
@@ -205,6 +232,10 @@ export class ImportBatch {
     columnMapping: ColumnMapping;
     customFieldNames?: Record<string, string>;
     junkRowIndices?: number[];
+    ignoredColumns?: IgnoredColumn[];
+    ignoredRows?: IgnoredRow[];
+    previewOverrides?: PreviewOverrides | null;
+    cellOverrides?: CellOverrides | null;
   }): ImportBatch {
     if (this.isTerminal()) {
       throw new ImportAlreadyFinalizedError(this.status, 'apply confirmed mapping');
@@ -215,6 +246,10 @@ export class ImportBatch {
       columnMapping: input.columnMapping,
       customFieldNames: input.customFieldNames ?? this.customFieldNames,
       junkRowIndices: input.junkRowIndices ?? this.junkRowIndices,
+      ignoredColumns: input.ignoredColumns ?? this.ignoredColumns,
+      ignoredRows: input.ignoredRows ?? this.ignoredRows,
+      previewOverrides: input.previewOverrides ?? this.previewOverrides ?? undefined,
+      cellOverrides: input.cellOverrides ?? this.cellOverrides ?? undefined,
     });
   }
 
@@ -309,5 +344,17 @@ export class ImportBatch {
 
   get hasOnlyJunkRows(): boolean {
     return this.totalRows > 0 && this.skippedRows === this.totalRows;
+  }
+
+  /** Reconstruct the parsed workflow input after an in-memory cache restart. */
+  toParsedFile(): ParsedFile | null {
+    if (!Array.isArray(this.normalizedRows)) return null;
+    return {
+      columns: this.sample.columns,
+      rows: this.normalizedRows,
+      sample: this.sample,
+      totalRows: this.totalRows,
+      originalFormat: this.originalFormat,
+    };
   }
 }

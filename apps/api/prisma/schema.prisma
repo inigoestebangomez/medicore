@@ -66,6 +66,8 @@ model Organization {
   researchStudies     ResearchStudy[]
   variableTemplates   VariableTemplate[]
   studySubjects       StudySubject[]
+  calendarEvents      CalendarEvent[]
+  calendarTokens      CalendarToken[]
 
   @@index([slug])
   @@map("organizations")
@@ -140,6 +142,31 @@ enum InteractionType {
   LUNCH
   CONFERENCE
   OTHER
+}
+
+// Calendar (Phase 3) — persisted CalendarEvent + tokens for external sync.
+enum CalendarEventSource {
+  SURGERY
+  CONSULTATION
+  PHARMA_INTERACTION
+  MANUAL
+  PUBLIC_BOOKING
+  EXTERNAL_GOOGLE
+  EXTERNAL_MICROSOFT
+  EXTERNAL_ICLOUD
+}
+
+enum CalendarEventStatus {
+  RESERVED    // public booking pre-confirm
+  CONFIRMED
+  CANCELLED
+  TENTATIVE   // external mirror, not yet acknowledged
+}
+
+enum CalendarProvider {
+  GOOGLE
+  MICROSOFT
+  APPLE
 }
 
 enum MemberRole {
@@ -306,8 +333,8 @@ model Patient {
   nhc            String // Nº Historia Clínica — único por organización
 
   // Datos demográficos
-  firstName  String
-  lastName   String
+  firstName  String?
+  lastName   String?
   birthDate  DateTime? // nullable: imported records may lack birth date (no 1900-01-01 fallback)
   sex        Sex
   idDocument String? // Número del documento de identidad
@@ -376,9 +403,16 @@ model ImportBatch {
 
   // Muestra del archivo y resultado del análisis IA
   sample           Json // { columns, rows } primeras 20 filas para UI
+  // RGPD: normalized row values are persisted only to resume preview/finalize;
+  // the uploaded binary buffer is never stored. Retention follows ImportBatch.
+  normalizedRows   Json? // bounded by MAX_UPLOAD_BYTES; normalized values only
   columnMapping    Json // { "Nº HISTORIA": "nhc", "Edad": "age", ... }
   customFieldNames Json     @default("{}") // { "NombreColumnaOriginal": "nombre legible" }
   junkRowIndices   Int[] // índices de filas basura detectadas
+  ignoredColumns   Json? // explicit physician discard metadata: column + reason
+  ignoredRows      Json? // explicit physician discard metadata: rowIndex + reason
+  previewOverrides Json? // bounded, physician-edited preview cells
+  cellOverrides    Json? // bounded per-cell discard metadata
   aiConfidence     Float? // 0.0 - 1.0
   aiProvider       String? // "heuristic" | "groq" | "claude"
   issues           String[] @default([])
@@ -1254,4 +1288,65 @@ model PharmaInteraction {
   @@index([contactId, date])
   @@index([organizationId, date])
   @@map("pharma_interactions")
+}
+
+// ─────────────────────────────────────────────
+// CALENDAR (Phase 3) — persisted events and external-sync tokens
+// Manual + public-booking + external-mirror events live here; clinical
+// ( Surgery / Consultation / PharmaInteraction ) events are virtual and
+// mapped at query time by the calendar source mapper service.
+// ─────────────────────────────────────────────
+
+model CalendarEvent {
+  id                String              @id @default(uuid())
+  organizationId    String
+  userId            String              // owner doctor
+  source            CalendarEventSource
+  sourceId          String?             // FK to source record (string, not enforced — virtual too)
+  externalCalendarId String?            // provider-side event ID; nullable, for sync tracking
+  title             String
+  description       String?
+  startDateTime     DateTime
+  endDateTime       DateTime
+  status            CalendarEventStatus @default(CONFIRMED)
+  isPublic          Boolean             @default(false) // visible on public booking page
+  contactName       String?             // public-booking only
+  contactEmail      String?             // public-booking only
+  metadata          Json?
+  lastSyncedAt      DateTime?
+  deletedAt         DateTime?           // soft delete
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([userId, startDateTime])
+  @@index([organizationId, startDateTime])
+  @@index([externalCalendarId])
+  @@index([userId, isPublic])
+  @@map("calendar_events")
+}
+
+model CalendarToken {
+  id             String           @id @default(uuid())
+  organizationId String
+  userId         String
+  provider       CalendarProvider
+  accessToken    String           // AES-256-GCM encrypted at rest (Phase 4)
+  refreshToken   String?          // AES-256-GCM encrypted at rest (Phase 4)
+  expiresAt      DateTime
+  scope          String?
+  syncToken      String?          // incremental sync cursor (Google/Microsoft)
+  caldavUrl      String?          // iCloud
+  lastSyncedAt   DateTime?
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@map("calendar_tokens")
 }

@@ -1,34 +1,40 @@
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
-import { GeistSans } from 'geist/font/sans';
 import { Providers } from '@/components/providers';
 import { CookieConsent } from '@/components/cookie-consent';
+import { getTheme } from '@/lib/theme';
 import './globals.css';
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-body',
-});
-
-const geistSans = GeistSans;
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-});
 
 export const metadata: Metadata = {
   title: 'MediCore — Sistema de Gestión Clínica',
   description: 'Clinical management system for Otorhinolaryngology',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const theme = await getTheme();
+
   return (
     <html
       lang="es"
-      className={`${inter.variable} ${geistSans.variable} ${jetbrainsMono.variable}`}
+      className={theme === 'light' ? 'light-mode' : undefined}
+      style={{ colorScheme: theme }}
+      suppressHydrationWarning
     >
-      <body className="font-sans text-app antialiased bg-app">
+      <head>
+        {/* Geist — UI / display font. Loaded via Google Fonts CDN per Design decision
+            (user preference: "5-google fonts cdn"); avoids build-time font network fetch. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+        {/* Geist Mono — tabular numerals for CIE-10 codes, NHC, analytics columns. */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="font-sans antialiased">
         <Providers>
           {children}
           <CookieConsent />

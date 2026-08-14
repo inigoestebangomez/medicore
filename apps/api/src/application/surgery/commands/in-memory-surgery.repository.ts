@@ -1,7 +1,7 @@
 // apps/api/src/application/surgery/commands/in-memory-surgery.repository.ts
 // In-memory implementation of ISurgeryRepository for use in spec tests.
 
-import type { ISurgeryRepository, ListSurgeriesParams, CreateSurgeryInput, UpdateSurgeryInput } from '@/domain/surgery/surgery.repository.interface';
+import type { ISurgeryRepository, ListSurgeriesParams, ListOrgSurgeriesParams, ListOrgSurgeriesResult, CreateSurgeryInput, UpdateSurgeryInput } from '@/domain/surgery/surgery.repository.interface';
 import type { Surgery } from '@/domain/surgery/surgery.entity';
 import type { AsaClassification } from '@medicore/contracts';
 import { Surgery as SurgeryEntity } from '@/domain/surgery/surgery.entity';
@@ -61,6 +61,43 @@ export class InMemorySurgeryRepository implements ISurgeryRepository {
     items = items.slice(start, start + params.pageSize);
 
     return { items, total };
+  }
+
+  async listByOrganization(params: ListOrgSurgeriesParams): Promise<ListOrgSurgeriesResult> {
+    let items = Array.from(this.surgeries.values()).filter(
+      (s) => s.organizationId === params.organizationId && !s.deletedAt,
+    );
+
+    if (params.status) {
+      items = items.filter((s) => s.status === params.status);
+    }
+    if (params.physicianId) {
+      items = items.filter((s) => s.physicianId === params.physicianId);
+    }
+    if (params.from) {
+      items = items.filter((s) => s.date >= params.from!);
+    }
+    if (params.to) {
+      items = items.filter((s) => s.date <= params.to!);
+    }
+
+    const total = items.length;
+
+    items.sort((a, b) => {
+      const aVal = a[params.sortBy];
+      const bVal = b[params.sortBy];
+      if (aVal instanceof Date && bVal instanceof Date) {
+        return params.sortOrder === 'asc' ? aVal.getTime() - bVal.getTime() : bVal.getTime() - aVal.getTime();
+      }
+      return 0;
+    });
+
+    const start = (params.page - 1) * params.pageSize;
+    const paged = items.slice(start, start + params.pageSize);
+
+    // In-memory tests don't track patient names; return empty map.
+    const patientNames = new Map();
+    return { items: paged, total, patientNames };
   }
 
   async create(data: CreateSurgeryInput): Promise<Surgery> {

@@ -42,6 +42,8 @@ export type ResearchV4Flag =
   | 'RESEARCH_AGREEMENT_TESTS';
 
 export type ResearchFlag = ResearchV2Flag | ResearchV3Flag | ResearchV4Flag;
+export type ImportFlag = 'IMPORT_IDENTITY_LIGHT';
+export type FeatureFlag = ResearchFlag | ImportFlag;
 
 const ALL_FLAGS: ResearchFlag[] = [
   'RESEARCH_V2_FIELD_DISCOVERY',
@@ -62,23 +64,27 @@ const ALL_FLAGS: ResearchFlag[] = [
 @Injectable()
 export class FeatureFlagsService {
   /** Check whether a specific feature flag is enabled. */
-  isEnabled(flag: ResearchFlag): boolean {
+  isEnabled(flag: FeatureFlag): boolean {
     const value = process.env[flag];
+    // Identity-light is opt-in; existing research flags remain opt-out.
+    if (flag === 'IMPORT_IDENTITY_LIGHT') {
+      return value === 'true' || value === '1';
+    }
     // Absent → enabled (opt-out: flags default ON).
     if (value === undefined || value === '') return true;
     return value === 'true' || value === '1';
   }
 
   /** Resolve a single flag — throws if disabled (for use in guards). */
-  require(flag: ResearchFlag): void {
+  require(flag: FeatureFlag): void {
     if (!this.isEnabled(flag)) {
       throw new FeatureDisabledError(flag);
     }
   }
 
   /** All Research flags for seeding / health checks. */
-  getAllFlags(): ResearchFlag[] {
-    return ALL_FLAGS;
+  getAllFlags(): FeatureFlag[] {
+    return [...ALL_FLAGS, 'IMPORT_IDENTITY_LIGHT'];
   }
 }
 

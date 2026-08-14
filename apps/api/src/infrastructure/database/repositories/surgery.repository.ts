@@ -2,7 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Surgery } from '@/domain/surgery/surgery.entity';
-import type { ISurgeryRepository, CreateSurgeryInput, UpdateSurgeryInput, ListSurgeriesParams } from '@/domain/surgery/surgery.repository.interface';
+import type { ISurgeryRepository, CreateSurgeryInput, UpdateSurgeryInput, ListSurgeriesParams, ListOrgSurgeriesParams, ListOrgSurgeriesResult, PatientNameLite } from '@/domain/surgery/surgery.repository.interface';
 
 @Injectable()
 export class PrismaSurgeryRepository implements ISurgeryRepository {
@@ -53,6 +53,52 @@ export class PrismaSurgeryRepository implements ISurgeryRepository {
     ]);
 
     return { items: records.map((r) => this.toEntity(r)), total };
+  }
+
+  async listByOrganization(params: ListOrgSurgeriesParams): Promise<ListOrgSurgeriesResult> {
+    const where: Record<string, unknown> = {
+      organizationId: params.organizationId,
+      deletedAt: null,
+    };
+
+    if (params.status) {
+      where.status = params.status;
+    }
+
+    if (params.physicianId) {
+      where.physicianId = params.physicianId;
+    }
+
+    if (params.from || params.to) {
+      const dateFilter: Record<string, Date> = {};
+      if (params.from) dateFilter.gte = params.from;
+      if (params.to) dateFilter.lte = params.to;
+      where.date = dateFilter;
+    }
+
+    const [records, total] = await Promise.all([
+      this.prisma.surgery.findMany({
+        where,
+        orderBy: { [params.sortBy]: params.sortOrder },
+        skip: (params.page - 1) * params.pageSize,
+        take: params.pageSize,
+      }),
+      this.prisma.surgery.count({ where }),
+    ]);
+
+    const patientIds = Array.from(new Set(records.map((r) => r.patientId)));
+    const patientNames = new Map<string, PatientNameLite>();
+    if (patientIds.length > 0) {
+      const patients = await this.prisma.patient.findMany({
+        where: { id: { in: patientIds } },
+        select: { id: true, firstName: true, lastName: true },
+      });
+      for (const p of patients) {
+        patientNames.set(p.id, { firstName: p.firstName ?? '', lastName: p.lastName ?? '' });
+      }
+    }
+
+    return { items: records.map((r) => this.toEntity(r)), total, patientNames };
   }
 
   async create(data: CreateSurgeryInput): Promise<Surgery> {

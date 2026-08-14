@@ -5,6 +5,8 @@ import { PrismaModule } from '@/infrastructure/database/prisma.module';
 import { PrismaPatientRepository } from '@/infrastructure/database/repositories/patient.repository';
 import { PrismaAllergyRepository } from '@/infrastructure/database/repositories/allergy.repository';
 import { AuthModule } from '@/api/auth/auth.module';
+import { ImportedClinicalEventProjector } from '@/application/patient/services/imported-clinical-event-projector';
+import { ListImportedClinicalEventsUseCase } from '@/application/patient/queries/list-imported-clinical-events.use-case';
 
 @Module({
   imports: [PrismaModule, AuthModule],
@@ -17,6 +19,13 @@ import { AuthModule } from '@/api/auth/auth.module';
     {
       provide: 'IAllergyRepository',
       useClass: PrismaAllergyRepository,
+    },
+    ImportedClinicalEventProjector,
+    {
+      provide: ListImportedClinicalEventsUseCase,
+      useFactory: (repository: unknown, projector: ImportedClinicalEventProjector) =>
+        new ListImportedClinicalEventsUseCase(repository as any, projector),
+      inject: ['IPatientRepository', ImportedClinicalEventProjector],
     },
   ],
   exports: ['IPatientRepository', 'IAllergyRepository'],

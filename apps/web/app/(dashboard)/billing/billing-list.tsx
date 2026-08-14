@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { useBillingTransactions, type BillingType, type BillingStatus } from '@/hooks/useBilling';
+import { useBillingTransactions, type BillingType, type BillingStatus, type BillingTransaction } from '@/hooks/useBilling';
 
 const TYPE_OPTIONS: (BillingType | '')[] = ['', 'CONSULTATION', 'SURGERY', 'TREATMENT', 'SUBSCRIPTION', 'OTHER'];
 const STATUS_OPTIONS: (BillingStatus | '')[] = ['', 'PENDING', 'PAID', 'CANCELLED', 'REFUNDED'];
@@ -21,7 +21,11 @@ const STATUS_BADGE: Record<BillingStatus, string> = {
   REFUNDED: 'bg-red-100 text-red-800',
 };
 
-export function BillingList() {
+export function BillingList({
+  onEdit,
+}: {
+  onEdit?: (tx: BillingTransaction) => void;
+}) {
   const [page, setPage] = useState(1);
   const [type, setType] = useState<BillingType | ''>('');
   const [status, setStatus] = useState<BillingStatus | ''>('');
@@ -77,6 +81,11 @@ export function BillingList() {
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-on-surface-variant">Tipo</th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-on-surface-variant">Estado</th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-on-surface-variant">Importe</th>
+              {onEdit && (
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-on-surface-variant">
+                  <span className="sr-only">Acciones</span>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-outline-variant">

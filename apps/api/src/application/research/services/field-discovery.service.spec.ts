@@ -26,16 +26,26 @@ function makeService(opts: {
   counts?: Array<{ field: string; n: bigint }>;
   sample?: Array<{ field: string; value: string }>;
   total?: number;
+  batches?: Array<Record<string, unknown>>;
 }) {
   const cache = new FakeCache();
   const prisma: any = {
     $queryRawUnsafe: jest.fn(async (sql: string, ..._params: unknown[]) => {
-      if (sql.includes('COUNT(DISTINCT p.id)')) return opts.counts ?? [];
-      if (sql.includes('ORDER BY created_at DESC')) return opts.sample ?? [];
+      if (sql.includes('COUNT(DISTINCT p."id")') && sql.includes('jsonb_each(p."importedData")')) {
+        return opts.counts ?? [];
+      }
+      if (sql.includes('ORDER BY "createdAt" DESC') && sql.includes('jsonb_each(p."importedData")')) {
+        return opts.sample ?? [];
+      }
       if (sql.includes('COUNT(*)::bigint')) return [{ n: BigInt(opts.total ?? 100) }];
       return [];
     }),
   };
+  if (opts.batches) {
+    prisma.importBatch = {
+      findMany: jest.fn(async () => opts.batches),
+    };
+  }
   const svc = new FieldDiscoveryService(prisma as any, cache);
   return { svc, cache, prisma };
 }
@@ -64,6 +74,17 @@ describe('FieldDiscoveryService', () => {
     expect(eva?.type).toBe('number');
     expect(eva?.nonNullCount).toBe(80);
     expect(eva?.examples).toContain(8);
+
+    const rawQueries = (prisma.$queryRawUnsafe as any).mock.calls.map(
+      ([sql]: [string]) => sql,
+    );
+    expect(rawQueries).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('jsonb_each(p."importedData")'),
+        expect.stringContaining('jsonb_each_text(batch_val)'),
+        expect.stringContaining('jsonb_each(p."importedData")'),
+      ]),
+    );
 
     // second call — cache hit, no DB calls
     const before = (prisma.$queryRawUnsafe as any).mock.calls.length;
@@ -132,5 +153,66 @@ describe('FieldDiscoveryService', () => {
     const entries = await svc.getCatalog(ORG, 'EVA');
     const eva = entries.find((e) => e.field === 'EVA');
     expect(eva?.examples.length).toBeLessThanOrEqual(5);
+  });
+
+  it('enriches fields with import metadata without exposing sample rows', async () => {
+    const batchId = '00000000-0000-0000-0000-000000000010';
+    const { svc, prisma } = makeService({
+      counts: [
+        { field: 'EVA clínica', n: BigInt(80) },
+        { field: 'Edad paciente', n: BigInt(60) },
+      ],
+      sample: [
+        { field: 'EVA clínica', value: '8' },
+        { field: 'Edad paciente', value: '42' },
+      ],
+      total: 100,
+      batches: [{
+        id: batchId,
+        fileName: 'seguimiento.xlsx',
+        originalFormat: 'xlsx',
+        createdAt: new Date('2026-08-01T10:00:00.000Z'),
+        columnMapping: { 'EVA clínica': 'custom', 'Edad paciente': 'age' },
+        customFieldNames: { 'EVA clínica': 'Dolor percibido' },
+        sample: { rows: [{ secret: 'must not be returned' }] },
+      }],
+    });
+
+    const response = await svc.getCatalogResponse(ORG, '');
+    const eva = response.entries.find((entry) => entry.field === 'EVA clínica');
+    const age = response.entries.find((entry) => entry.field === 'age' && entry.source === 'standard');
+
+    expect(response.totalPatients).toBe(100);
+    expect(eva).toMatchObject({
+      label: 'Dolor percibido',
+      unit: 'puntos',
+      originalHeaders: ['EVA clínica'],
+      totalCount: 100,
+      completenessPercent: 80,
+      batches: [{
+        id: batchId,
+        fileName: 'seguimiento.xlsx',
+        originalFormat: 'xlsx',
+        importedAt: '2026-08-01T10:00:00.000Z',
+      }],
+    });
+    expect(age).toMatchObject({
+      label: 'Edad',
+      unit: 'años',
+      originalHeaders: ['Edad paciente'],
+      batches: [{ id: batchId }],
+    });
+    expect(JSON.stringify(response)).not.toContain('must not be returned');
+    expect(prisma.importBatch.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: ORG, deletedAt: null },
+      select: {
+        id: true,
+        fileName: true,
+        originalFormat: true,
+        createdAt: true,
+        columnMapping: true,
+        customFieldNames: true,
+      },
+    }));
   });
 });

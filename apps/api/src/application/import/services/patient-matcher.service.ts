@@ -206,8 +206,8 @@ export class PatientMatcherService {
     if (!rn) return 'none';
 
     // Candidate full name in both Spanish orders (firstName lastName, lastName firstName).
-    const cf = this.normalizeMatchable(`${candidate.firstName} ${candidate.lastName}`);
-    const cfReverse = this.normalizeMatchable(`${candidate.lastName} ${candidate.firstName}`);
+    const cf = this.normalizeMatchable(`${candidate.firstName ?? ''} ${candidate.lastName ?? ''}`);
+    const cfReverse = this.normalizeMatchable(`${candidate.lastName ?? ''} ${candidate.firstName ?? ''}`);
     const cl = this.normalizeMatchable(candidate.lastName);
 
     if (rn === cf || rn === cfReverse) return 'full';

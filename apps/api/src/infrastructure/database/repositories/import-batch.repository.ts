@@ -64,11 +64,16 @@ export class PrismaImportBatchRepository implements IImportBatchRepository {
         columnMapping: data.columnMapping as any,
         customFieldNames: data.customFieldNames ?? undefined,
         junkRowIndices: data.junkRowIndices ?? undefined,
+        ignoredColumns: data.ignoredColumns ?? undefined,
+        ignoredRows: data.ignoredRows ?? undefined,
+        previewOverrides: data.previewOverrides ? data.previewOverrides as any : undefined,
+        cellOverrides: data.cellOverrides ? data.cellOverrides as any : undefined,
         aiConfidence: data.aiConfidence ?? undefined,
         aiProvider: data.aiProvider ?? undefined,
         issues: data.issues ?? undefined,
         notes: data.notes ?? undefined,
         skippedRows: data.skippedRows ?? undefined,
+        pendingRows: data.pendingRows ?? undefined,
         status: 'CONFIRMING',
       },
     });
@@ -76,10 +81,11 @@ export class PrismaImportBatchRepository implements IImportBatchRepository {
     return this.toEntity(record);
   }
 
-  async updateStatus(id: string, organizationId: string, status: ImportStatus): Promise<ImportBatch> {
+  async updateStatus(id: string, organizationId: string, status: ImportStatus, errorMessage?: string | null): Promise<ImportBatch> {
     const updateData: Record<string, unknown> = { status };
+    if (status === 'PROCESSING' || status === 'COMPLETED') updateData.errorMessage = null;
     if (status === 'COMPLETED') updateData.completedAt = new Date();
-    if (status === 'FAILED') updateData.errorMessage = null;
+    if (status === 'FAILED') updateData.errorMessage = errorMessage ?? null;
     const record = await this.prisma.importBatch.update({ where: { id }, data: updateData });
     void organizationId;
     return this.toEntity(record);
@@ -131,9 +137,14 @@ export class PrismaImportBatchRepository implements IImportBatchRepository {
       fileHash: batch.fileHash,
       originalFormat: batch.originalFormat,
       sample: batch.sample as any,
+      normalizedRows: batch.normalizedRows as any,
       columnMapping: batch.columnMapping as any,
       customFieldNames: batch.customFieldNames ?? {},
       junkRowIndices: batch.junkRowIndices ?? [],
+      ignoredColumns: batch.ignoredColumns.length ? batch.ignoredColumns as any : null,
+      ignoredRows: batch.ignoredRows.length ? batch.ignoredRows as any : null,
+      previewOverrides: batch.previewOverrides as any,
+      cellOverrides: batch.cellOverrides as any,
       aiConfidence: batch.aiConfidence,
       aiProvider: batch.aiProvider,
       issues: batch.issues,
@@ -162,9 +173,14 @@ export class PrismaImportBatchRepository implements IImportBatchRepository {
       fileHash: record.fileHash,
       originalFormat: record.originalFormat,
       sample: record.sample,
+      normalizedRows: record.normalizedRows,
       columnMapping: record.columnMapping,
       customFieldNames: record.customFieldNames,
       junkRowIndices: record.junkRowIndices,
+      ignoredColumns: record.ignoredColumns ?? [],
+      ignoredRows: record.ignoredRows ?? [],
+      previewOverrides: record.previewOverrides,
+      cellOverrides: record.cellOverrides,
       aiConfidence: record.aiConfidence,
       aiProvider: record.aiProvider,
       issues: record.issues,

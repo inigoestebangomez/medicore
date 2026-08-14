@@ -29,6 +29,18 @@ export const CLINICAL_SECTIONS: ClinicalSection[] = [
   'Calculated',
 ];
 
+export const CLINICAL_SECTION_LABELS: Record<ClinicalSection, string> = {
+  Demographics: 'Datos demográficos',
+  Diagnoses: 'Diagnósticos',
+  Surgery: 'Cirugía',
+  Consultations: 'Consultas',
+  Medication: 'Medicación',
+  Scales: 'Escalas',
+  Imaging: 'Imagen',
+  Imported: 'Importados',
+  Calculated: 'Calculados',
+};
+
 const SECTION_ORDER = new Map(CLINICAL_SECTIONS.map((s, i) => [s, i]));
 
 /** Direct standard-field → section mapping. */

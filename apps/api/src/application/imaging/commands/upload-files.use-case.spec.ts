@@ -138,4 +138,19 @@ describe('UploadFilesUseCase', () => {
       }),
     ).rejects.toThrow(ImagingStudyNotFoundError);
   });
+
+  it('rejects an undefined study id before consulting the repository', async () => {
+    const findById = jest.spyOn(imagingRepo, 'findById');
+
+    await expect(
+      useCase.execute({
+        studyId: 'undefined',
+        organizationId: orgId,
+        patientId,
+        files: [],
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_IMAGING_STUDY_ID' });
+
+    expect(findById).not.toHaveBeenCalled();
+  });
 });

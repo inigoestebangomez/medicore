@@ -21,9 +21,9 @@ export function ImportReminderBanner() {
       : `han pasado ${data.daysSinceLastImport} días desde tu última importación`;
 
   return (
-    <div className="border-b border-blue-200 bg-secondary-container/20">
+    <div className="border-b border-outline-variant bg-clinical-warning/10 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-2 text-sm text-blue-800">
+        <div className="flex items-start gap-2 text-sm text-on-surface">
           <span aria-hidden>📥</span>
           <span>
             <strong className="font-semibold">{daysLabel}</strong>. Importa los pacientes de las
@@ -31,16 +31,10 @@ export function ImportReminderBanner() {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href="/imports"
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-          >
+          <Link href="/imports" className="btn-primary">
             Importar ahora
           </Link>
-          <Link
-            href="/settings"
-            className="rounded-md border border-secondary px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-100"
-          >
+          <Link href="/settings" className="btn-ghost">
             Recordarme luego
           </Link>
         </div>

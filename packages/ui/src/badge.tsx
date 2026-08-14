@@ -2,20 +2,18 @@ import { type HTMLAttributes, forwardRef } from 'react';
 import { cn } from './lib/utils';
 
 /* ── Badge ──
-   Clinical Precision: pill-shaped status indicators for:
-   - Allergies (Red / error)
-   - Appointment Status (Teal / secondary)
-   - Insurance Verification (Blue / primary-container)
-   Fully rounded to visually distinguish from interactive buttons. */
+   Clinical Precision: pill-shaped status indicators using the new
+   aqua/zinc signal palette. Glass-tinted backgrounds so badges sit
+   comfortably on glassmorphism cards without bleeding. */
 
 export type BadgeVariant = 'default' | 'secondary' | 'error' | 'warning' | 'info';
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default: 'bg-primary-container text-on-primary-container',
-  secondary: 'bg-secondary-container text-on-secondary-container',
-  error: 'bg-error-container text-on-error-container',
-  warning: 'bg-yellow-100 text-yellow-800',
-  info: 'bg-blue-100 text-blue-800',
+  default: 'bg-aqua-500/15 text-aqua-400',
+  secondary: 'bg-zinc-500/15 text-zinc-400',
+  error: 'bg-rose-500/15 text-rose-400',
+  warning: 'bg-amber-500/15 text-amber-400',
+  info: 'bg-sky-500/15 text-sky-400',
 };
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
@@ -48,8 +46,8 @@ export type StatusDotColor = 'green' | 'amber' | 'red' | 'slate';
 const dotColors: Record<StatusDotColor, string> = {
   green: 'bg-emerald-500',
   amber: 'bg-amber-500',
-  red: 'bg-error',
-  slate: 'bg-on-surface-variant',
+  red: 'bg-rose-500',
+  slate: 'bg-zinc-500',
 };
 
 export interface StatusDotProps {

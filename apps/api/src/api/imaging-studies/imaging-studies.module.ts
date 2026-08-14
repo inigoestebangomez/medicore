@@ -2,6 +2,7 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bull';
 import { ImagingStudiesController } from './imaging-studies.controller';
+import { OrgImagingStudiesController } from './org-imaging-studies.controller';
 import { PrismaModule } from '@/infrastructure/database/prisma.module';
 import { PrismaImagingStudyRepository } from '@/infrastructure/database/repositories/imaging-study.repository';
 import { PrismaPendingDeletionRepository } from '@/infrastructure/database/repositories/pending-deletion.repository';
@@ -20,7 +21,7 @@ import { PendingDeletionsProcessor } from '@/infrastructure/queues/pending-delet
       { name: 'pending-deletions', redis: { maxRetriesPerRequest: null } },
     ),
   ],
-  controllers: [ImagingStudiesController],
+  controllers: [ImagingStudiesController, OrgImagingStudiesController],
   providers: [
     {
       provide: 'IImagingStudyRepository',

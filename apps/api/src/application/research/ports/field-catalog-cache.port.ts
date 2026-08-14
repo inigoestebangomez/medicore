@@ -7,6 +7,7 @@
 
 export interface CachedCatalog {
   entries: import('@medicore/contracts').FieldCatalogEntry[];
+  totalPatients?: number;
   generatedAt: string; // ISO timestamp
 }
 

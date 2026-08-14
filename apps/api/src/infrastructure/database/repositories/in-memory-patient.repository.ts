@@ -1,7 +1,7 @@
 // apps/api/src/infrastructure/database/repositories/in-memory-patient.repository.ts
 // In-memory implementation of IPatientRepository for unit tests
 
-import type { IPatientRepository, FindAllParams, SearchParams, CreatePatientInput, UpdatePatientInput, EnrichPatientInput } from '@/domain/patient/patient.repository.interface';
+import type { IPatientRepository, FindAllParams, SearchParams, CreatePatientInput, UpdatePatientInput, EnrichPatientInput, ImportedDataSnapshot } from '@/domain/patient/patient.repository.interface';
 import type { Patient } from '@/domain/patient/patient.entity';
 import { Patient as PatientEntity } from '@/domain/patient/patient.entity';
 import { NHC } from '@/domain/patient/value-objects/nhc.vo';
@@ -20,6 +20,12 @@ export class InMemoryPatientRepository implements IPatientRepository {
 
   async findByIdWithAllergies(id: string, organizationId: string): Promise<Patient | null> {
     return this.findById(id, organizationId);
+  }
+
+  async findImportedDataById(id: string, organizationId: string): Promise<ImportedDataSnapshot | null> {
+    const patient = await this.findById(id, organizationId);
+    if (!patient) return null;
+    return { importedData: patient.importedData, importSource: patient.importSource, updatedAt: patient.updatedAt };
   }
 
   async findAll(params: FindAllParams): Promise<{ items: Patient[]; total: number }> {
@@ -54,8 +60,8 @@ export class InMemoryPatientRepository implements IPatientRepository {
         (p) =>
           p.organizationId === params.organizationId &&
           !p.deletedAt &&
-          (p.lastName.toLowerCase().includes(query) ||
-            p.firstName.toLowerCase().includes(query) ||
+          (p.lastName?.toLowerCase().includes(query) ||
+            p.firstName?.toLowerCase().includes(query) ||
             p.nhc.toLowerCase().includes(query) ||
             (p.idDocument && p.idDocument.toLowerCase().includes(query))),
       );
@@ -85,7 +91,7 @@ export class InMemoryPatientRepository implements IPatientRepository {
       (p) =>
         p.organizationId === organizationId &&
         !p.deletedAt &&
-        p.lastName.toLowerCase() === lastName.toLowerCase() &&
+        p.lastName?.toLowerCase() === lastName.toLowerCase() &&
         // SDD import-data-quality: a candidate with a null birthDate cannot
         // match by birthDate (unknown DOB). Compare only when both are dates.
         p.birthDate !== null &&
@@ -141,6 +147,12 @@ export class InMemoryPatientRepository implements IPatientRepository {
     return p ?? null;
   }
 
+  async findByNhcIncludingDeleted(nhc: string, organizationId: string): Promise<Patient | null> {
+    return Array.from(this.patients.values()).find(
+      (x) => x.organizationId === organizationId && x.nhc === nhc,
+    ) ?? null;
+  }
+
   async searchByNameFuzzy(organizationId: string, lastName: string, firstName?: string): Promise<Patient[]> {
     const qLast = lastName.toLowerCase();
     const qFirst = firstName?.toLowerCase();
@@ -148,8 +160,8 @@ export class InMemoryPatientRepository implements IPatientRepository {
       (p) =>
         p.organizationId === organizationId &&
         !p.deletedAt &&
-        (p.lastName.toLowerCase().includes(qLast) ||
-          (qFirst ? p.firstName.toLowerCase().includes(qFirst) : false)),
+        (p.lastName?.toLowerCase().includes(qLast) ||
+          (qFirst ? p.firstName?.toLowerCase().includes(qFirst) : false)),
     );
   }
 
@@ -190,6 +202,16 @@ export class InMemoryPatientRepository implements IPatientRepository {
       count++;
     }
     return count;
+  }
+
+  async findByImportBatchRow(batchId: string, organizationId: string, rowIndex: number): Promise<Patient | null> {
+    const patient = Array.from(this.patients.values()).find((candidate) => {
+      if (candidate.organizationId !== organizationId || candidate.deletedAt) return false;
+      const block = candidate.importedData?.[batchId] as Record<string, unknown> | undefined;
+      const rowIndices = block?._rowIndices;
+      return block?._rowIndex === rowIndex || (Array.isArray(rowIndices) && rowIndices.includes(rowIndex));
+    });
+    return patient ?? null;
   }
 
   async softDelete(id: string, organizationId: string): Promise<Patient> {
