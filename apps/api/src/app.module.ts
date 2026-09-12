@@ -19,6 +19,7 @@ import { ResearchModule } from './api/research/research.module';
 import { ScheduleModule } from './api/schedule/schedule.module';
 import { PharmaModule } from './api/pharma/pharma.module';
 import { CalendarModule } from './api/calendar/calendar.module';
+import { ClinicalRecordModule } from './api/clinical-record/clinical-record.module';
 import { AuditModule } from './infrastructure/audit/audit.module';
 import { PrismaModule } from './infrastructure/database/prisma.module';
 import { SubscriptionInterceptor } from './api/shared/interceptors/subscription.interceptor';
@@ -46,6 +47,7 @@ import { ResponseWrapperInterceptor } from './api/shared/interceptors/response-w
     ScheduleModule,
     PharmaModule,
     CalendarModule,
+    ClinicalRecordModule,
     AuditModule,
   ],
   controllers: [],

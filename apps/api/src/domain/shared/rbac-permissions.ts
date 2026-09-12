@@ -80,6 +80,11 @@ export enum Action {
 
   // Audit
   VIEW_AUDIT_LOG = 'VIEW_AUDIT_LOG',
+
+  // Clinical Record (seven categories)
+  READ_CLINICAL_RECORD = 'READ_CLINICAL_RECORD',
+  CREATE_CLINICAL_RECORD = 'CREATE_CLINICAL_RECORD',
+  REVIEW_CLINICAL_RECORD = 'REVIEW_CLINICAL_RECORD',
 }
 
 const { OWNER, PHYSICIAN, VIEWER, ADMIN } = MemberRoleSchema.Enum;
@@ -113,6 +118,7 @@ export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
     Action.SCHEDULE_MANAGE,
     Action.PHARMA_READ, Action.PHARMA_MANAGE,
     Action.VIEW_AUDIT_LOG,
+    Action.READ_CLINICAL_RECORD, Action.CREATE_CLINICAL_RECORD, Action.REVIEW_CLINICAL_RECORD,
   ]),
 
   [PHYSICIAN]: new Set<Action>([
@@ -137,6 +143,7 @@ export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
     Action.PHARMA_READ, Action.PHARMA_MANAGE,
     Action.CREATE_REPORT, Action.READ_REPORT, Action.SIGN_REPORT,
     Action.IMPORT_DATA, Action.READ_IMPORT, Action.REVERT_IMPORT,
+    Action.READ_CLINICAL_RECORD, Action.CREATE_CLINICAL_RECORD, Action.REVIEW_CLINICAL_RECORD,
   ]),
 
   [VIEWER]: new Set<Action>([
@@ -149,6 +156,7 @@ export const PERMISSIONS: Record<MemberRole, Set<Action>> = {
     Action.PHARMA_READ,
     Action.READ_REPORT,
     Action.READ_IMPORT,
+    Action.READ_CLINICAL_RECORD,
   ]),
 
   [ADMIN]: new Set<Action>([
