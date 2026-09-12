@@ -34,6 +34,9 @@ export interface PatientProps {
   importedData?: Record<string, unknown> | null;
   importSource?: string | null;       // "xlsx" | "csv" | "tsv" | "manual" | null
   importBatchId?: string | null;
+  // Seven Categories — age semantics (spec §1)
+  ageReferenceDate?: { day: number; month: number; year: number } | null;
+  ageAtReferenceDate?: number | null;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
@@ -61,6 +64,8 @@ export class Patient {
   readonly importedData: Record<string, unknown> | null;
   readonly importSource: string | null;
   readonly importBatchId: string | null;
+  readonly ageReferenceDate: { day: number; month: number; year: number } | null;
+  readonly ageAtReferenceDate: number | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
   readonly deletedAt: Date | null;
@@ -87,6 +92,8 @@ export class Patient {
     this.importedData = (props.importedData as Record<string, unknown>) ?? null;
     this.importSource = props.importSource ?? null;
     this.importBatchId = props.importBatchId ?? null;
+    this.ageReferenceDate = props.ageReferenceDate ?? null;
+    this.ageAtReferenceDate = props.ageAtReferenceDate ?? null;
     this.createdAt = props.createdAt ?? new Date();
     this.updatedAt = props.updatedAt ?? new Date();
     this.deletedAt = props.deletedAt ?? null;
@@ -96,6 +103,9 @@ export class Patient {
    * Calculate age in years based on birthDate.
    * BR-PAT-007: isPediatric = age < 14
    * SDD import-data-quality: returns null when birthDate is null (unknown DOB).
+   * SDD seven-categories: when birthDate is null but ageReferenceDate is set,
+   * derives age from the reference date with visible provenance (spec §1).
+   * Never fabricates a birth date.
    */
   age(referenceDate: Date = new Date()): number | null {
     if (this.birthDate === null) return null;
@@ -105,6 +115,31 @@ export class Patient {
       age--;
     }
     return age;
+  }
+
+  /**
+   * Age with reference date fallback (spec §1).
+   * When birthDate is absent, uses ageReferenceDate (full day/month/year) to
+   * compute a reference-based age. Returns null if neither is available.
+   * The `provenance` field indicates how the age was derived.
+   */
+  ageWithFallback(): { age: number | null; provenance: 'birth-date' | 'reference-date' | 'none' } {
+    if (this.birthDate !== null) {
+      return { age: this.age(), provenance: 'birth-date' };
+    }
+    if (this.ageReferenceDate !== null && this.ageAtReferenceDate !== null) {
+      // Calculate years elapsed since the reference date
+      const refDate = new Date(
+        this.ageReferenceDate.year,
+        this.ageReferenceDate.month - 1,
+        this.ageReferenceDate.day,
+      );
+      const now = new Date();
+      const yearsSinceRef = now.getFullYear() - refDate.getFullYear();
+      const adjustedAge = this.ageAtReferenceDate + yearsSinceRef;
+      return { age: Math.max(0, adjustedAge), provenance: 'reference-date' };
+    }
+    return { age: null, provenance: 'none' };
   }
 
   /**
