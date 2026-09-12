@@ -40,7 +40,7 @@ export class ConfirmLabResultsUseCase {
 
       await this.labRepo.updateResultReview({
         resultId: updated.id,
-        reviewState: updated.reviewState,
+        reviewState: updated.reviewState as 'CONFIRMED' | 'REJECTED',
         reviewedBy: cmd.reviewerId,
         reviewedAt: new Date(),
       });

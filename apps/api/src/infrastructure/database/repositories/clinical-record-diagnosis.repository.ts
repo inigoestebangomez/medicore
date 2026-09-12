@@ -2,11 +2,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Diagnosis } from '@/domain/clinical-record/diagnosis/diagnosis.entity';
+import type { DiagnosisCodeSystem, DiagnosisStatus } from '@/domain/clinical-record/diagnosis/diagnosis.entity';
 import type {
   IDiagnosisRepository,
   CreateDiagnosisInput,
 } from '@/domain/clinical-record/diagnosis/diagnosis.repository.interface';
-import type { DiagnosisStatus } from '@/domain/clinical-record/diagnosis/diagnosis.entity';
+
+// Map domain enum (hyphens) to Prisma enum (underscores)
+function toPrismaCodeSystem(system: DiagnosisCodeSystem): 'CIE_10_ES' | 'SNOMED' {
+  return system === 'CIE-10-ES' ? 'CIE_10_ES' : 'SNOMED';
+}
+
+function fromPrismaCodeSystem(system: 'CIE_10_ES' | 'SNOMED'): DiagnosisCodeSystem {
+  return system === 'CIE_10_ES' ? 'CIE-10-ES' : 'SNOMED';
+}
 
 @Injectable()
 export class PrismaDiagnosisRepository implements IDiagnosisRepository {
@@ -40,7 +49,7 @@ export class PrismaDiagnosisRepository implements IDiagnosisRepository {
       data: {
         organizationId: data.organizationId,
         patientId: data.patientId,
-        system: data.system,
+        system: toPrismaCodeSystem(data.system),
         code: data.code,
         description: data.description,
         catalogVersion: data.catalogVersion,
@@ -82,7 +91,7 @@ export class PrismaDiagnosisRepository implements IDiagnosisRepository {
       id: record.id,
       organizationId: record.organizationId,
       patientId: record.patientId,
-      system: record.system,
+      system: fromPrismaCodeSystem(record.system),
       code: record.code,
       description: record.description,
       catalogVersion: record.catalogVersion,

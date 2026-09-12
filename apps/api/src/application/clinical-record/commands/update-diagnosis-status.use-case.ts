@@ -28,9 +28,9 @@ export class UpdateDiagnosisStatusUseCase {
         : diagnosis.discard(cmd.reviewerId);
 
     return this.diagnosisRepo.updateStatus(cmd.diagnosisId, cmd.organizationId, updated.status, {
-      resolvedAt: updated.resolvedAt,
-      discardedAt: updated.discardedAt,
-      discardedBy: updated.discardedBy,
+      resolvedAt: updated.resolvedAt ?? undefined,
+      discardedAt: updated.discardedAt ?? undefined,
+      discardedBy: updated.discardedBy ?? undefined,
     });
   }
 }

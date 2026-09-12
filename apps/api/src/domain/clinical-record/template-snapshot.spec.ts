@@ -11,12 +11,6 @@ describe('Exam template versioning (spec §4)', () => {
     { key: 'polyps', label: 'Polyps', type: 'BOOLEAN' as const, required: false },
   ];
 
-  const v2Fields = [
-    { key: 'nasal_obstruction', label: 'Nasal Obstruction', type: 'SELECT' as const, required: true, options: ['none', 'mild', 'moderate', 'severe'] },
-    { key: 'polyps', label: 'Polyps', type: 'BOOLEAN' as const, required: false },
-    { key: 'septal_deviation', label: 'Septal Deviation', type: 'SELECT' as const, required: false, options: ['left', 'right', 'none'] },
-  ];
-
   it('should create a template with version', () => {
     const template = new PhysicalExamTemplate({
       id: 'tpl-1',
