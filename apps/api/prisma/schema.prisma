@@ -157,10 +157,10 @@ enum CalendarEventSource {
 }
 
 enum CalendarEventStatus {
-  RESERVED    // public booking pre-confirm
+  RESERVED // public booking pre-confirm
   CONFIRMED
   CANCELLED
-  TENTATIVE   // external mirror, not yet acknowledged
+  TENTATIVE // external mirror, not yet acknowledged
 }
 
 enum CalendarProvider {
@@ -324,6 +324,45 @@ enum ConsentType {
 }
 
 // ─────────────────────────────────────────────
+// SEVEN CATEGORIES — enums (SDD patient-seven-categories)
+// ─────────────────────────────────────────────
+
+enum HistoryEntryType {
+  PERSONAL
+  ALLERGY
+  SURGICAL
+  TOXIC_HABIT
+  PROFESSION
+  FAMILY
+  ECOG
+}
+
+enum DurationUnit {
+  HOURS
+  DAYS
+  WEEKS
+  MONTHS
+  YEARS
+}
+
+enum ReviewState {
+  UNREVIEWED
+  CONFIRMED
+  REJECTED
+}
+
+enum DiagnosisStatus {
+  ACTIVE
+  RESOLVED
+  DISCARDED
+}
+
+enum DiagnosisCodeSystem {
+  CIE_10_ES // CIE-10-ES (ICD-10-CM Spanish adaptation)
+  SNOMED
+}
+
+// ─────────────────────────────────────────────
 // CLINICAL CORE
 // ─────────────────────────────────────────────
 
@@ -355,6 +394,12 @@ model Patient {
   importSource  String? // "xlsx" | "csv" | "tsv" | "manual" (null = registro manual)
   importBatchId String? // último batch que creó o enriqueció esta ficha
 
+  // Seven Categories — age semantics (spec §1)
+  // Full reference date (day/month/year) for age when birthDate is absent.
+  // Never fabricates a birth date; provenance is visible to the user.
+  ageReferenceDate   Json? // { day: Int, month: Int, year: Int } | null
+  ageAtReferenceDate Int? // reported age at the reference date (informational)
+
   // Metadata
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -376,6 +421,11 @@ model Patient {
   collectionMemberships PatientCollectionMember[]
   billingTransactions   BillingTransaction[]
   studySubjects         StudySubject[]
+  historyEntries        PatientHistoryEntry[]
+  currentIllnesses      CurrentIllnessEntry[]
+  physicalExamRecords   PhysicalExamRecord[]
+  labReports            LabReport[]
+  diagnoses             Diagnosis[]
 
   @@unique([organizationId, nhc]) // El NHC es único dentro de la organización
   @@index([organizationId])
@@ -984,6 +1034,14 @@ model ImagingStudy {
   // Archivo(s) almacenados en R2
   files Json @default("[]")
 
+  // Seven Categories — DICOM/DICOMweb metadata (spec §5)
+  // Private R2 storage; identifiers are DICOM-compatible but never expose source file publicly.
+  dicomStudyInstanceUid  String?
+  dicomSeriesInstanceUid String?
+  dicomSopInstanceUid    String?
+  dicomModality          String?
+  dicomStorageKey        String? // R2 key for DICOM data (private, never public)
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -995,6 +1053,7 @@ model ImagingStudy {
 
   @@index([organizationId, patientId])
   @@index([organizationId, type])
+  @@index([dicomStudyInstanceUid])
   @@map("imaging_studies")
 }
 
@@ -1298,26 +1357,26 @@ model PharmaInteraction {
 // ─────────────────────────────────────────────
 
 model CalendarEvent {
-  id                String              @id @default(uuid())
-  organizationId    String
-  userId            String              // owner doctor
-  source            CalendarEventSource
-  sourceId          String?             // FK to source record (string, not enforced — virtual too)
-  externalCalendarId String?            // provider-side event ID; nullable, for sync tracking
-  title             String
-  description       String?
-  startDateTime     DateTime
-  endDateTime       DateTime
-  status            CalendarEventStatus @default(CONFIRMED)
-  isPublic          Boolean             @default(false) // visible on public booking page
-  contactName       String?             // public-booking only
-  contactEmail      String?             // public-booking only
-  metadata          Json?
-  lastSyncedAt      DateTime?
-  deletedAt         DateTime?           // soft delete
+  id                 String              @id @default(uuid())
+  organizationId     String
+  userId             String // owner doctor
+  source             CalendarEventSource
+  sourceId           String? // FK to source record (string, not enforced — virtual too)
+  externalCalendarId String? // provider-side event ID; nullable, for sync tracking
+  title              String
+  description        String?
+  startDateTime      DateTime
+  endDateTime        DateTime
+  status             CalendarEventStatus @default(CONFIRMED)
+  isPublic           Boolean             @default(false) // visible on public booking page
+  contactName        String? // public-booking only
+  contactEmail       String? // public-booking only
+  metadata           Json?
+  lastSyncedAt       DateTime?
+  deletedAt          DateTime? // soft delete
 
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
@@ -1333,20 +1392,197 @@ model CalendarToken {
   organizationId String
   userId         String
   provider       CalendarProvider
-  accessToken    String           // AES-256-GCM encrypted at rest (Phase 4)
-  refreshToken   String?          // AES-256-GCM encrypted at rest (Phase 4)
+  accessToken    String // AES-256-GCM encrypted at rest (Phase 4)
+  refreshToken   String? // AES-256-GCM encrypted at rest (Phase 4)
   expiresAt      DateTime
   scope          String?
-  syncToken      String?          // incremental sync cursor (Google/Microsoft)
-  caldavUrl      String?          // iCloud
+  syncToken      String? // incremental sync cursor (Google/Microsoft)
+  caldavUrl      String? // iCloud
   lastSyncedAt   DateTime?
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([userId, provider])
   @@index([userId])
   @@map("calendar_tokens")
+}
+
+// ─────────────────────────────────────────────
+// SEVEN CATEGORIES — Clinical Record Models
+// (SDD patient-seven-categories)
+// ─────────────────────────────────────────────
+
+// History (Antecedentes) — spec §2
+// Typed key/value entries with provenance; independently queryable.
+model PatientHistoryEntry {
+  id             String           @id @default(uuid())
+  organizationId String
+  patientId      String
+  entryType      HistoryEntryType
+  key            String // e.g. "Penicilina", "Tabaquismo", "Madre: diabetes"
+  value          String // free-text value
+  sourceType     String // "manual" | "import" | "dual-write"
+  sourceId       String? // FK to source record if dual-written
+  authorId       String // userId who recorded this
+  recordedAt     DateTime         @default(now())
+  reviewState    ReviewState      @default(UNREVIEWED)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId, patientId])
+  @@index([organizationId, patientId, entryType])
+  @@map("patient_history_entries")
+}
+
+// Current Illness (Enfermedad actual) — spec §3
+// Structured symptoms, temporal data, and narrative linked to source consultation.
+model CurrentIllnessEntry {
+  id             String        @id @default(uuid())
+  organizationId String
+  patientId      String
+  symptoms       String // structured symptom description
+  durationValue  Int? // numeric duration
+  durationUnit   DurationUnit?
+  onset          DateTime? // when symptoms started
+  evolution      String? // how symptoms evolved
+  narrative      String? // supporting free-text narrative
+  consultationId String? // source consultation (nullable for standalone entries)
+  sourceType     String        @default("manual")
+  authorId       String
+  recordedAt     DateTime      @default(now())
+  reviewState    ReviewState   @default(UNREVIEWED)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId, patientId])
+  @@index([organizationId, patientId, createdAt])
+  @@map("current_illness_entries")
+}
+
+// Physical Exam Template — spec §4
+// Versioned specialty templates; records pin the template version + schema snapshot.
+model PhysicalExamTemplate {
+  id             String   @id @default(uuid())
+  organizationId String
+  specialty      String // e.g. "ORL", "Cardiología"
+  version        Int // immutable once published
+  fields         Json // [{ key, label, type, required, options? }]
+  publishedAt    DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, specialty, version])
+  @@index([organizationId, specialty])
+  @@map("physical_exam_templates")
+}
+
+// Physical Exam Record — spec §4
+// Pins template version + schema snapshot so historical exams remain renderable.
+model PhysicalExamRecord {
+  id                     String      @id @default(uuid())
+  organizationId         String
+  patientId              String
+  templateId             String
+  templateVersion        Int // pinned at creation time
+  templateSchemaSnapshot Json // immutable snapshot of template fields at record time
+  values                 Json // { fieldKey: value }
+  customFindings         Json        @default("[]") // [{ label, value }] for non-predefined findings
+  consultationId         String?
+  sourceType             String      @default("manual")
+  authorId               String
+  recordedAt             DateTime    @default(now())
+  reviewState            ReviewState @default(UNREVIEWED)
+  createdAt              DateTime    @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId, patientId])
+  @@index([organizationId, patientId, createdAt])
+  @@index([templateId, templateVersion])
+  @@map("physical_exam_records")
+}
+
+// Lab Report — spec §5
+// PDF in private S3; OCR output starts UNREVIEWED; only CONFIRMED values become clinical data.
+model LabReport {
+  id                 String      @id @default(uuid())
+  organizationId     String
+  patientId          String
+  s3Key              String // private S3 key for the PDF
+  fileName           String // original file name
+  ocrPayload         Json? // raw OCR extraction; null until processed
+  overallReviewState ReviewState @default(UNREVIEWED)
+  sourceType         String      @default("ocr")
+  authorId           String // who uploaded / initiated OCR
+  recordedAt         DateTime    @default(now())
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  patient Patient     @relation(fields: [patientId], references: [id])
+  results LabResult[]
+
+  @@index([organizationId, patientId])
+  @@index([organizationId, patientId, createdAt])
+  @@index([organizationId, overallReviewState])
+  @@map("lab_reports")
+}
+
+// Lab Result — individual values extracted from a LabReport
+// Each result has its own review state; only CONFIRMED results are clinical data.
+model LabResult {
+  id             String      @id @default(uuid())
+  labReportId    String
+  index          Int // position in the OCR extraction
+  name           String // test name (e.g. "Hemoglobin")
+  value          String // result value
+  unit           String?
+  referenceRange String?
+  reviewState    ReviewState @default(UNREVIEWED)
+  reviewedBy     String? // userId who confirmed/rejected
+  reviewedAt     DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  labReport LabReport @relation(fields: [labReportId], references: [id], onDelete: Cascade)
+
+  @@index([labReportId])
+  @@index([labReportId, reviewState])
+  @@map("lab_results")
+}
+
+// Diagnosis — spec §6
+// First-class entity with CIE-10-ES/SNOMED code, status lifecycle, and clinical variables.
+model Diagnosis {
+  id             String              @id @default(uuid())
+  organizationId String
+  patientId      String
+  system         DiagnosisCodeSystem
+  code           String // e.g. "J32.0"
+  description    String // snapshot of description at creation (decoupled from catalog updates)
+  catalogVersion String // e.g. "2024" — the catalog version used for validation
+  status         DiagnosisStatus     @default(ACTIVE)
+  variables      Json                @default("{}") // clinical variables { severity, side, ... }
+  consultationId String?
+  sourceType     String              @default("manual")
+  authorId       String
+  recordedAt     DateTime            @default(now())
+  resolvedAt     DateTime? // set when status → RESOLVED
+  discardedAt    DateTime? // set when status → DISCARDED
+  discardedBy    String? // userId who discarded
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId, patientId])
+  @@index([organizationId, patientId, status])
+  @@index([organizationId, system, code])
+  @@map("diagnoses")
 }
