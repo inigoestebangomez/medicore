@@ -10,6 +10,8 @@ import type { ICurrentIllnessRepository } from '@/domain/clinical-record/current
 import type { IPhysicalExamRepository } from '@/domain/clinical-record/physical-exam/physical-exam.repository.interface';
 import type { ILabReportRepository } from '@/domain/clinical-record/lab/lab-report.repository.interface';
 import type { IDiagnosisRepository } from '@/domain/clinical-record/diagnosis/diagnosis.repository.interface';
+import type { ISurgeryRepository } from '@/domain/surgery/surgery.repository.interface';
+import type { IMedicationRepository } from '@/domain/medication/medication.repository.interface';
 
 export interface GetClinicalRecordQuery {
   organizationId: string;
@@ -32,6 +34,8 @@ export class GetClinicalRecordUseCase {
     private readonly examRepo: IPhysicalExamRepository,
     private readonly labRepo: ILabReportRepository,
     private readonly diagnosisRepo: IDiagnosisRepository,
+    private readonly surgeryRepo: ISurgeryRepository,
+    private readonly medicationRepo: IMedicationRepository,
   ) {}
 
   async execute(query: GetClinicalRecordQuery): Promise<ClinicalRecordResult> {
@@ -82,10 +86,50 @@ export class GetClinicalRecordUseCase {
         return { patientId, category, data: diagnoses, totalCount: diagnoses.length };
       }
 
-      case 'treatment':
-        // Treatment is a projection over surgeries + medications + follow-up.
-        // For now, return an empty array — Phase 3 will wire the full projection.
-        return { patientId, category, data: [], totalCount: 0 };
+      case 'treatment': {
+        // Treatment is a projection over surgeries + medications (spec §7).
+        const [surgeries, medications] = await Promise.all([
+          this.surgeryRepo.listByPatient({
+            patientId,
+            organizationId,
+            page: 1,
+            pageSize: 100,
+            sortBy: 'date',
+            sortOrder: 'desc',
+          }),
+          this.medicationRepo.listByPatient({
+            patientId,
+            organizationId,
+            page: 1,
+            pageSize: 100,
+          }),
+        ]);
+        const items = [
+          ...surgeries.items.map((s) => ({
+            type: 'surgery' as const,
+            id: s.id,
+            date: s.date,
+            status: s.status,
+            procedureType: s.procedureType,
+            procedureCodes: s.procedureCodes,
+            physicianId: s.physicianId,
+          })),
+          ...medications.items.map((m) => ({
+            type: 'medication' as const,
+            id: m.id,
+            drugName: m.drugName,
+            drugCode: m.drugCode,
+            activeIngredient: m.activeIngredient,
+            dosage: m.dosage,
+            frequency: m.frequency,
+            route: m.route,
+            status: m.status,
+            startDate: m.startDate,
+            endDate: m.endDate,
+          })),
+        ];
+        return { patientId, category, data: items, totalCount: items.length };
+      }
 
       default:
         throw new Error(`Unknown category: ${category}`);

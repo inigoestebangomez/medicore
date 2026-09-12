@@ -16,7 +16,8 @@ import type { ICurrentIllnessRepository } from '@/domain/clinical-record/current
 import type { IPhysicalExamRepository, CreateExamTemplateInput, CreateExamRecordInput } from '@/domain/clinical-record/physical-exam/physical-exam.repository.interface';
 import type { ILabReportRepository, CreateLabReportInput } from '@/domain/clinical-record/lab/lab-report.repository.interface';
 import type { IDiagnosisRepository } from '@/domain/clinical-record/diagnosis/diagnosis.repository.interface';
-import type { IPatientRepository } from '@/domain/patient/patient.repository.interface';
+import type { ISurgeryRepository } from '@/domain/surgery/surgery.repository.interface';
+import type { IMedicationRepository } from '@/domain/medication/medication.repository.interface';
 
 import { PatientHistoryEntry } from '@/domain/clinical-record/history/patient-history-entry.entity';
 import { CurrentIllnessEntry } from '@/domain/clinical-record/current-illness/current-illness-entry.entity';
@@ -25,6 +26,8 @@ import { PhysicalExamRecord } from '@/domain/clinical-record/physical-exam/physi
 import { LabReport, LabResult } from '@/domain/clinical-record/lab/lab-report.entity';
 import { Diagnosis } from '@/domain/clinical-record/diagnosis/diagnosis.entity';
 import { Patient } from '@/domain/patient/patient.entity';
+import { Surgery } from '@/domain/surgery/surgery.entity';
+import { Medication } from '@/domain/medication/medication.entity';
 
 // ─────────────────────────────────────────────
 // In-memory fakes (tenant-scoped)
@@ -216,6 +219,26 @@ class FakePatientRepository {
   }
 }
 
+class FakeSurgeryRepository implements ISurgeryRepository {
+  async findByPatientId() { return null; }
+  async listByPatient() { return { items: [], total: 0 }; }
+  async listByOrganization() { return { items: [], total: 0, patientNames: new Map() }; }
+  async findById() { return null; }
+  async create(): Promise<Surgery> { throw new Error('not implemented'); }
+  async update(): Promise<Surgery> { throw new Error('not implemented'); }
+  async softDelete(): Promise<Surgery> { throw new Error('not implemented'); }
+  async hasScheduledSurgeries() { return false; }
+}
+
+class FakeMedicationRepository implements IMedicationRepository {
+  async findById() { return null; }
+  async listByPatient() { return { items: [], total: 0 }; }
+  async create(): Promise<Medication> { throw new Error('not implemented'); }
+  async update(): Promise<Medication> { throw new Error('not implemented'); }
+  async softDelete(): Promise<Medication> { throw new Error('not implemented'); }
+  async findActiveByActiveIngredient() { return []; }
+}
+
 // ─────────────────────────────────────────────
 // Tests
 // ─────────────────────────────────────────────
@@ -232,6 +255,8 @@ describe('Clinical Record Integration', () => {
   let labRepo: FakeLabRepository;
   let diagnosisRepo: FakeDiagnosisRepository;
   let patientRepo: FakePatientRepository;
+  let surgeryRepo: FakeSurgeryRepository;
+  let medicationRepo: FakeMedicationRepository;
 
   beforeEach(() => {
     historyRepo = new FakeHistoryRepository();
@@ -240,6 +265,8 @@ describe('Clinical Record Integration', () => {
     labRepo = new FakeLabRepository();
     diagnosisRepo = new FakeDiagnosisRepository();
     patientRepo = new FakePatientRepository();
+    surgeryRepo = new FakeSurgeryRepository();
+    medicationRepo = new FakeMedicationRepository();
     patientRepo.addPatient(PATIENT_A, ORG_A);
   });
 
@@ -552,6 +579,8 @@ describe('Clinical Record Integration', () => {
         examRepo,
         labRepo,
         diagnosisRepo,
+        surgeryRepo,
+        medicationRepo,
       );
 
       const result = await queryUc.execute({
@@ -573,6 +602,8 @@ describe('Clinical Record Integration', () => {
         examRepo,
         labRepo,
         diagnosisRepo,
+        surgeryRepo,
+        medicationRepo,
       );
 
       await expect(
@@ -582,6 +613,31 @@ describe('Clinical Record Integration', () => {
           category: 'history',
         }),
       ).rejects.toThrow(PatientNotFoundError);
+    });
+
+    it('returns treatment projection (surgeries + medications) for spec §7', async () => {
+      const queryUc = new GetClinicalRecordUseCase(
+        patientRepo as any,
+        historyRepo,
+        illnessRepo,
+        examRepo,
+        labRepo,
+        diagnosisRepo,
+        surgeryRepo,
+        medicationRepo,
+      );
+
+      const result = await queryUc.execute({
+        organizationId: ORG_A,
+        patientId: PATIENT_A,
+        category: 'treatment',
+      });
+
+      expect(result.category).toBe('treatment');
+      expect(result.patientId).toBe(PATIENT_A);
+      expect(Array.isArray(result.data)).toBe(true);
+      // Fake repos return empty lists, so totalCount should be 0
+      expect(result.totalCount).toBe(0);
     });
   });
 });
