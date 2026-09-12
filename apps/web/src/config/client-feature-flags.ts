@@ -14,6 +14,8 @@ export const CLIENT_FLAGS = [
   'RESEARCH_FORM_BUILDER',
   'RESEARCH_VARIABLE_LIBRARY',
   'RESEARCH_AGREEMENT_TESTS',
+  // Seven clinical categories (sdd/patient-seven-categories)
+  'CLINICAL_RECORD_V2',
 ] as const;
 
 export type ClientFlag = (typeof CLIENT_FLAGS)[number];
