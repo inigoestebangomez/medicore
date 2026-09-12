@@ -12,11 +12,11 @@ import {
   Query,
   Body,
   Inject,
+  UseGuards,
   BadRequestException,
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { Reflect } from '@nestjs/core';
 import {
   ClinicalRecordCategorySchema,
   CreateHistoryEntrySchema,
@@ -26,11 +26,12 @@ import {
   CreateDiagnosisSchema,
   UpdateDiagnosisStatusSchema,
 } from '@medicore/contracts';
+import type { JwtPayload } from '@medicore/contracts';
+import { AuthGuard } from '@/api/shared/guards/auth.guard';
 import { RBACGuard, REQUIRED_ACTION_KEY } from '@/api/shared/guards/rbac.guard';
 import { Action } from '@/domain/shared/rbac-permissions';
 import { ZodValidationPipe } from '@/api/shared/pipes/zod-validation.pipe';
-import { CurrentUser } from '@/api/auth/current-user.decorator';
-import type { JwtPayload } from '@/api/auth/jwt.strategy';
+import { CurrentUser } from '@/api/shared/decorators/current-user.decorator';
 
 import { GetClinicalRecordUseCase, PatientNotFoundError } from '@/application/clinical-record/queries/get-clinical-record.use-case';
 import { CreateHistoryEntryUseCase } from '@/application/clinical-record/commands/create-history-entry.use-case';
@@ -46,8 +47,11 @@ import type { IPhysicalExamRepository } from '@/domain/clinical-record/physical-
 import type { ILabReportRepository } from '@/domain/clinical-record/lab/lab-report.repository.interface';
 import type { IDiagnosisRepository } from '@/domain/clinical-record/diagnosis/diagnosis.repository.interface';
 import type { IPatientRepository } from '@/domain/patient/patient.repository.interface';
+import type { ISurgeryRepository } from '@/domain/surgery/surgery.repository.interface';
+import type { IMedicationRepository } from '@/domain/medication/medication.repository.interface';
 
 @Controller('v1/patients/:patientId/clinical-record')
+@UseGuards(AuthGuard, RBACGuard)
 export class ClinicalRecordController {
   private readonly getClinicalRecordUseCase: GetClinicalRecordUseCase;
   private readonly createHistoryEntryUseCase: CreateHistoryEntryUseCase;
@@ -64,9 +68,11 @@ export class ClinicalRecordController {
     @Inject('IPhysicalExamRepository') examRepo: IPhysicalExamRepository,
     @Inject('ILabReportRepository') labRepo: ILabReportRepository,
     @Inject('IDiagnosisRepository') diagnosisRepo: IDiagnosisRepository,
+    @Inject('ISurgeryRepository') surgeryRepo: ISurgeryRepository,
+    @Inject('IMedicationRepository') medicationRepo: IMedicationRepository,
   ) {
     this.getClinicalRecordUseCase = new GetClinicalRecordUseCase(
-      patientRepo, historyRepo, illnessRepo, examRepo, labRepo, diagnosisRepo,
+      patientRepo, historyRepo, illnessRepo, examRepo, labRepo, diagnosisRepo, surgeryRepo, medicationRepo,
     );
     this.createHistoryEntryUseCase = new CreateHistoryEntryUseCase(historyRepo);
     this.createCurrentIllnessUseCase = new CreateCurrentIllnessUseCase(illnessRepo);

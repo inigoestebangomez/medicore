@@ -9,6 +9,8 @@ import { PrismaCurrentIllnessRepository } from '@/infrastructure/database/reposi
 import { PrismaPhysicalExamRepository } from '@/infrastructure/database/repositories/clinical-record-exam.repository';
 import { PrismaLabReportRepository } from '@/infrastructure/database/repositories/clinical-record-lab.repository';
 import { PrismaDiagnosisRepository } from '@/infrastructure/database/repositories/clinical-record-diagnosis.repository';
+import { PrismaSurgeryRepository } from '@/infrastructure/database/repositories/surgery.repository';
+import { PrismaMedicationRepository } from '@/infrastructure/database/repositories/medication.repository';
 
 @Module({
   imports: [PrismaModule, AuthModule],
@@ -20,6 +22,8 @@ import { PrismaDiagnosisRepository } from '@/infrastructure/database/repositorie
     { provide: 'IPhysicalExamRepository', useClass: PrismaPhysicalExamRepository },
     { provide: 'ILabReportRepository', useClass: PrismaLabReportRepository },
     { provide: 'IDiagnosisRepository', useClass: PrismaDiagnosisRepository },
+    { provide: 'ISurgeryRepository', useClass: PrismaSurgeryRepository },
+    { provide: 'IMedicationRepository', useClass: PrismaMedicationRepository },
   ],
   exports: [
     'IHistoryRepository',
@@ -27,6 +31,8 @@ import { PrismaDiagnosisRepository } from '@/infrastructure/database/repositorie
     'IPhysicalExamRepository',
     'ILabReportRepository',
     'IDiagnosisRepository',
+    'ISurgeryRepository',
+    'IMedicationRepository',
   ],
 })
 export class ClinicalRecordModule {}
