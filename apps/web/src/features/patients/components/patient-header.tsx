@@ -4,7 +4,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 interface PatientHeaderProps {
@@ -15,7 +15,17 @@ interface PatientHeaderProps {
 interface TabDef {
   href: string;
   label: string;
-  match: (pathname: string, href: string) => boolean;
+  match: (pathname: string, searchParams: URLSearchParams, href: string) => boolean;
+}
+
+function matchesSection(
+  pathname: string,
+  searchParams: URLSearchParams,
+  href: string,
+  section: string,
+): boolean {
+  const path = href.split('?')[0];
+  return (pathname === path || pathname.startsWith(`${path}/`)) && searchParams.get('section') === section;
 }
 
 function buildTabs(patientId: string): TabDef[] {
@@ -23,44 +33,67 @@ function buildTabs(patientId: string): TabDef[] {
   return [
     {
       href: base,
-      label: 'Overview',
-      match: (pathname, href) => pathname === href,
+      label: 'Datos del paciente',
+      match: (pathname, _searchParams, href) => pathname === href,
     },
     {
-      href: `${base}/medications`,
-      label: 'Medications',
-      match: (pathname, href) => pathname === href || pathname.startsWith(`${href}/`),
+      // Seven-category clinical record (gated by CLINICAL_RECORD_V2 flag)
+      href: `${base}/clinical-record`,
+      label: 'Historia clínica',
+      match: (pathname, _searchParams, href) =>
+        pathname === href || pathname.startsWith(`${href}/`),
     },
     {
-      href: `${base}/consultations`,
-      label: 'Consultations',
-      match: (pathname, href) => pathname === href || pathname.startsWith(`${href}/`),
+      href: `${base}/medications?section=background`,
+      label: 'Antecedentes',
+      match: (pathname, searchParams, href) => matchesSection(pathname, searchParams, href, 'background'),
     },
     {
-      href: `${base}/scales`,
-      label: 'Clinical Scales',
-      match: (pathname, href) => pathname === href || pathname.startsWith(`${href}/`),
+      href: `${base}/consultations?section=chief-complaint`,
+      label: 'Motivo de consulta',
+      match: (pathname, searchParams, href) => matchesSection(pathname, searchParams, href, 'chief-complaint'),
     },
     {
-      href: `${base}/surgeries`,
-      label: 'Surgeries',
-      match: (pathname, href) => pathname === href || pathname.startsWith(`${href}/`),
-    },
-    {
-      href: `${base}/reports`,
-      label: 'Reports',
-      match: (pathname, href) => pathname === href || pathname.startsWith(`${href}/`),
+      href: `${base}/consultations?section=physical-exam`,
+      label: 'Exploración física',
+      match: (pathname, searchParams, href) => matchesSection(pathname, searchParams, href, 'physical-exam'),
     },
     {
       href: `${base}/imaging`,
-      label: 'Imaging',
-      match: (pathname, href) => pathname === href || pathname.startsWith(`${href}/`),
+      label: 'Pruebas complementarias',
+      match: (pathname, _searchParams, href) => pathname === href || pathname.startsWith(`${href}/`),
+    },
+    {
+      href: `${base}/scales`,
+      label: 'Escalas clínicas',
+      match: (pathname, _searchParams, href) => pathname === href || pathname.startsWith(`${href}/`),
+    },
+    {
+      href: `${base}/surgeries`,
+      label: 'Intervenciones',
+      match: (pathname, _searchParams, href) => pathname === href || pathname.startsWith(`${href}/`),
+    },
+    {
+      href: `${base}/consultations?section=diagnosis`,
+      label: 'Diagnóstico',
+      match: (pathname, searchParams, href) => matchesSection(pathname, searchParams, href, 'diagnosis'),
+    },
+    {
+      href: `${base}/medications?section=treatment`,
+      label: 'Tratamiento',
+      match: (pathname, searchParams, href) => matchesSection(pathname, searchParams, href, 'treatment'),
+    },
+    {
+      href: `${base}/reports`,
+      label: 'Informes',
+      match: (pathname, _searchParams, href) => pathname === href || pathname.startsWith(`${href}/`),
     },
   ];
 }
 
 export function PatientHeader({ patientId, patientName }: PatientHeaderProps) {
   const pathname = usePathname() ?? '';
+  const searchParams = useSearchParams();
   const tabs = buildTabs(patientId);
   // patientName is optional; if not provided, the header shows just tabs.
   const [showId] = useState(patientId);
@@ -71,14 +104,14 @@ export function PatientHeader({ patientId, patientName }: PatientHeaderProps) {
         <div className="flex items-baseline justify-between py-3">
           <div>
             <h1 className="text-xl font-semibold text-on-surface">
-              {patientName ?? 'Patient'}
+              {patientName ?? 'Paciente'}
             </h1>
             <p className="text-xs text-on-surface-variant/60">ID: {showId}</p>
           </div>
         </div>
-        <nav className="flex gap-1" aria-label="Patient sections">
+        <nav className="flex gap-1" aria-label="Secciones del paciente">
           {tabs.map((tab) => {
-            const active = tab.match(pathname, tab.href);
+            const active = tab.match(pathname, searchParams, tab.href);
             return (
               <Link
                 key={tab.href}
