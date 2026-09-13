@@ -16,6 +16,8 @@ import type { ICurrentIllnessRepository } from '@/domain/clinical-record/current
 import type { IPhysicalExamRepository, CreateExamTemplateInput, CreateExamRecordInput } from '@/domain/clinical-record/physical-exam/physical-exam.repository.interface';
 import type { ILabReportRepository, CreateLabReportInput } from '@/domain/clinical-record/lab/lab-report.repository.interface';
 import type { IDiagnosisRepository } from '@/domain/clinical-record/diagnosis/diagnosis.repository.interface';
+import type { ISurgeryRepository, ListSurgeriesParams } from '@/domain/surgery/surgery.repository.interface';
+import type { IMedicationRepository, ListMedicationsParams } from '@/domain/medication/medication.repository.interface';
 
 import { PatientHistoryEntry } from '@/domain/clinical-record/history/patient-history-entry.entity';
 import { CurrentIllnessEntry } from '@/domain/clinical-record/current-illness/current-illness-entry.entity';
@@ -189,6 +191,78 @@ class FakeDiagnosisRepository implements IDiagnosisRepository {
     const updated = new Diagnosis({ ...old, status, ...extra });
     this.diagnoses[idx] = updated;
     return updated;
+  }
+}
+
+class FakeSurgeryRepository implements ISurgeryRepository {
+  private surgeries: any[] = [];
+
+  async listByPatient(params: ListSurgeriesParams) {
+    const items = this.surgeries.filter((s) => s.patientId === params.patientId && s.organizationId === params.organizationId);
+    return { items, total: items.length };
+  }
+  async findById(id: string, organizationId: string) {
+    return this.surgeries.find((s) => s.id === id && s.organizationId === organizationId) ?? null;
+  }
+  async findByPatientId(id: string, patientId: string, organizationId: string) {
+    return this.surgeries.find((s) => s.id === id && s.patientId === patientId && s.organizationId === organizationId) ?? null;
+  }
+  async listByOrganization() {
+    return { items: this.surgeries, total: this.surgeries.length, patientNames: new Map() };
+  }
+  async create(data: any) {
+    const s = { ...data, id: crypto.randomUUID() };
+    this.surgeries.push(s);
+    return s;
+  }
+  async update(id: string, organizationId: string, data: any) {
+    const idx = this.surgeries.findIndex((s) => s.id === id && s.organizationId === organizationId);
+    if (idx < 0) throw new Error('Surgery not found');
+    this.surgeries[idx] = { ...this.surgeries[idx], ...data };
+    return this.surgeries[idx];
+  }
+  async softDelete(id: string, organizationId: string) {
+    const idx = this.surgeries.findIndex((s) => s.id === id && s.organizationId === organizationId);
+    if (idx < 0) throw new Error('Surgery not found');
+    this.surgeries[idx].deletedAt = new Date();
+    return this.surgeries[idx];
+  }
+  async hasScheduledSurgeries(patientId: string, organizationId: string) {
+    return this.surgeries.some((s) => s.patientId === patientId && s.organizationId === organizationId && s.status === 'SCHEDULED');
+  }
+}
+
+class FakeMedicationRepository implements IMedicationRepository {
+  private medications: any[] = [];
+
+  async listByPatient(params: ListMedicationsParams) {
+    const items = this.medications.filter((m) => m.patientId === params.patientId && m.organizationId === params.organizationId);
+    return { items, total: items.length };
+  }
+  async findById(id: string, organizationId: string) {
+    return this.medications.find((m) => m.id === id && m.organizationId === organizationId) ?? null;
+  }
+  async create(data: any) {
+    const m = { ...data, id: crypto.randomUUID() };
+    this.medications.push(m);
+    return m;
+  }
+  async update(id: string, organizationId: string, data: any) {
+    const idx = this.medications.findIndex((m) => m.id === id && m.organizationId === organizationId);
+    if (idx < 0) throw new Error('Medication not found');
+    this.medications[idx] = { ...this.medications[idx], ...data };
+    return this.medications[idx];
+  }
+  async softDelete(id: string, organizationId: string) {
+    const idx = this.medications.findIndex((m) => m.id === id && m.organizationId === organizationId);
+    if (idx < 0) throw new Error('Medication not found');
+    this.medications[idx].deletedAt = new Date();
+    return this.medications[idx];
+  }
+  async findActiveByActiveIngredient(patientId: string, organizationId: string, activeIngredient: string) {
+    return this.medications.filter(
+      (m) => m.patientId === patientId && m.organizationId === organizationId && m.activeIngredient === activeIngredient && m.status === 'ACTIVE'
+    );
   }
 }
 
@@ -551,6 +625,8 @@ describe('Clinical Record Integration', () => {
         examRepo,
         labRepo,
         diagnosisRepo,
+        new FakeSurgeryRepository(),
+        new FakeMedicationRepository(),
       );
 
       const result = await queryUc.execute({
@@ -572,6 +648,8 @@ describe('Clinical Record Integration', () => {
         examRepo,
         labRepo,
         diagnosisRepo,
+        new FakeSurgeryRepository(),
+        new FakeMedicationRepository(),
       );
 
       await expect(

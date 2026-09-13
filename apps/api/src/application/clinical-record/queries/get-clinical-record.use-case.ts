@@ -88,13 +88,25 @@ export class GetClinicalRecordUseCase {
 
       case 'treatment': {
         // Treatment is a projection over surgeries + medications + follow-up.
-        const [surgeries, medications] = await Promise.all([
-          this.surgeryRepo.findByPatient(patientId, organizationId),
-          this.medicationRepo.findByPatient(patientId, organizationId),
+        const [surgeriesResult, medicationsResult] = await Promise.all([
+          this.surgeryRepo.listByPatient({
+            patientId,
+            organizationId,
+            page: 1,
+            pageSize: 1000,
+            sortBy: 'date',
+            sortOrder: 'desc',
+          }),
+          this.medicationRepo.listByPatient({
+            patientId,
+            organizationId,
+            page: 1,
+            pageSize: 1000,
+          }),
         ]);
         const treatmentData = [
-          ...surgeries.map((s) => ({ type: 'surgery', ...s })),
-          ...medications.map((m) => ({ type: 'medication', ...m })),
+          ...surgeriesResult.items.map((s: { id: string; date: Date; procedureType: string }) => ({ type: 'surgery', id: s.id, date: s.date, procedureType: s.procedureType })),
+          ...medicationsResult.items.map((m: { id: string; drugName: string; startDate: Date }) => ({ type: 'medication', id: m.id, drugName: m.drugName, startDate: m.startDate })),
         ];
         return { patientId, category, data: treatmentData, totalCount: treatmentData.length };
       }
