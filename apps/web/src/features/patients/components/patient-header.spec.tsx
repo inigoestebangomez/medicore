@@ -12,15 +12,17 @@ vi.mock('next/link', () => ({
 }));
 
 describe('PatientHeader', () => {
-  it('renders patient sections in Spanish', () => {
+  it('renders the 7 clinical categories in Spanish', () => {
     render(<PatientHeader patientId="p-1" />);
 
     expect(screen.getByRole('heading', { name: 'Paciente' })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Secciones del paciente' })).toBeInTheDocument();
-    expect(screen.getByText('Resumen')).toBeInTheDocument();
-    expect(screen.getByText('Historia clínica')).toBeInTheDocument();
-    expect(screen.getByText('Cirugías')).toBeInTheDocument();
-    expect(screen.getByText('Imágenes')).toBeInTheDocument();
-    expect(screen.getByText('Informes')).toBeInTheDocument();
+    expect(screen.getByText('Datos del paciente')).toBeInTheDocument();
+    expect(screen.getByText('Antecedentes')).toBeInTheDocument();
+    expect(screen.getByText('Enfermedad actual')).toBeInTheDocument();
+    expect(screen.getByText('Exploración física')).toBeInTheDocument();
+    expect(screen.getByText('Pruebas complementarias')).toBeInTheDocument();
+    expect(screen.getByText('Diagnóstico')).toBeInTheDocument();
+    expect(screen.getByText('Tratamiento')).toBeInTheDocument();
   });
 });

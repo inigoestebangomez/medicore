@@ -29,33 +29,42 @@ function matchesSection(
 }
 
 function buildTabs(patientId: string): TabDef[] {
-  const base = `/patients/${patientId}`;
+  const base = `/patients/${patientId}/clinical-record`;
   return [
     {
-      href: base,
-      label: 'Resumen',
-      match: (pathname, _searchParams, href) => pathname === href,
-    },
-    {
-      // Seven-category clinical record (gated by CLINICAL_RECORD_V2 flag)
-      href: `${base}/clinical-record`,
-      label: 'Historia clínica',
+      href: `${base}/patient-data`,
+      label: 'Datos del paciente',
       match: (pathname, _searchParams, href) =>
-        pathname === href || pathname.startsWith(`${href}/`),
+        pathname === href || pathname === `${href}/` || pathname === `${base}`,
     },
     {
-      href: `${base}/surgeries`,
-      label: 'Cirugías',
+      href: `${base}/history`,
+      label: 'Antecedentes',
       match: (pathname, _searchParams, href) => pathname === href || pathname.startsWith(`${href}/`),
     },
     {
-      href: `${base}/imaging`,
-      label: 'Imágenes',
+      href: `${base}/current-illness`,
+      label: 'Enfermedad actual',
       match: (pathname, _searchParams, href) => pathname === href || pathname.startsWith(`${href}/`),
     },
     {
-      href: `${base}/reports`,
-      label: 'Informes',
+      href: `${base}/physical-exam`,
+      label: 'Exploración física',
+      match: (pathname, _searchParams, href) => pathname === href || pathname.startsWith(`${href}/`),
+    },
+    {
+      href: `${base}/complementary-tests`,
+      label: 'Pruebas complementarias',
+      match: (pathname, _searchParams, href) => pathname === href || pathname.startsWith(`${href}/`),
+    },
+    {
+      href: `${base}/diagnosis`,
+      label: 'Diagnóstico',
+      match: (pathname, _searchParams, href) => pathname === href || pathname.startsWith(`${href}/`),
+    },
+    {
+      href: `${base}/treatment`,
+      label: 'Tratamiento',
       match: (pathname, _searchParams, href) => pathname === href || pathname.startsWith(`${href}/`),
     },
   ];
