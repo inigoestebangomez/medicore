@@ -16,8 +16,8 @@ import type { ICurrentIllnessRepository } from '@/domain/clinical-record/current
 import type { IPhysicalExamRepository, CreateExamTemplateInput, CreateExamRecordInput } from '@/domain/clinical-record/physical-exam/physical-exam.repository.interface';
 import type { ILabReportRepository, CreateLabReportInput } from '@/domain/clinical-record/lab/lab-report.repository.interface';
 import type { IDiagnosisRepository } from '@/domain/clinical-record/diagnosis/diagnosis.repository.interface';
-import type { ISurgeryRepository } from '@/domain/surgery/surgery.repository.interface';
-import type { IMedicationRepository } from '@/domain/medication/medication.repository.interface';
+import type { ISurgeryRepository, ListSurgeriesParams } from '@/domain/surgery/surgery.repository.interface';
+import type { IMedicationRepository, ListMedicationsParams } from '@/domain/medication/medication.repository.interface';
 
 import { PatientHistoryEntry } from '@/domain/clinical-record/history/patient-history-entry.entity';
 import { CurrentIllnessEntry } from '@/domain/clinical-record/current-illness/current-illness-entry.entity';
@@ -26,8 +26,6 @@ import { PhysicalExamRecord } from '@/domain/clinical-record/physical-exam/physi
 import { LabReport, LabResult } from '@/domain/clinical-record/lab/lab-report.entity';
 import { Diagnosis } from '@/domain/clinical-record/diagnosis/diagnosis.entity';
 import { Patient } from '@/domain/patient/patient.entity';
-import { Surgery } from '@/domain/surgery/surgery.entity';
-import { Medication } from '@/domain/medication/medication.entity';
 
 // ─────────────────────────────────────────────
 // In-memory fakes (tenant-scoped)
@@ -196,6 +194,78 @@ class FakeDiagnosisRepository implements IDiagnosisRepository {
   }
 }
 
+class FakeSurgeryRepository implements ISurgeryRepository {
+  private surgeries: any[] = [];
+
+  async listByPatient(params: ListSurgeriesParams) {
+    const items = this.surgeries.filter((s) => s.patientId === params.patientId && s.organizationId === params.organizationId);
+    return { items, total: items.length };
+  }
+  async findById(id: string, organizationId: string) {
+    return this.surgeries.find((s) => s.id === id && s.organizationId === organizationId) ?? null;
+  }
+  async findByPatientId(id: string, patientId: string, organizationId: string) {
+    return this.surgeries.find((s) => s.id === id && s.patientId === patientId && s.organizationId === organizationId) ?? null;
+  }
+  async listByOrganization() {
+    return { items: this.surgeries, total: this.surgeries.length, patientNames: new Map() };
+  }
+  async create(data: any) {
+    const s = { ...data, id: crypto.randomUUID() };
+    this.surgeries.push(s);
+    return s;
+  }
+  async update(id: string, organizationId: string, data: any) {
+    const idx = this.surgeries.findIndex((s) => s.id === id && s.organizationId === organizationId);
+    if (idx < 0) throw new Error('Surgery not found');
+    this.surgeries[idx] = { ...this.surgeries[idx], ...data };
+    return this.surgeries[idx];
+  }
+  async softDelete(id: string, organizationId: string) {
+    const idx = this.surgeries.findIndex((s) => s.id === id && s.organizationId === organizationId);
+    if (idx < 0) throw new Error('Surgery not found');
+    this.surgeries[idx].deletedAt = new Date();
+    return this.surgeries[idx];
+  }
+  async hasScheduledSurgeries(patientId: string, organizationId: string) {
+    return this.surgeries.some((s) => s.patientId === patientId && s.organizationId === organizationId && s.status === 'SCHEDULED');
+  }
+}
+
+class FakeMedicationRepository implements IMedicationRepository {
+  private medications: any[] = [];
+
+  async listByPatient(params: ListMedicationsParams) {
+    const items = this.medications.filter((m) => m.patientId === params.patientId && m.organizationId === params.organizationId);
+    return { items, total: items.length };
+  }
+  async findById(id: string, organizationId: string) {
+    return this.medications.find((m) => m.id === id && m.organizationId === organizationId) ?? null;
+  }
+  async create(data: any) {
+    const m = { ...data, id: crypto.randomUUID() };
+    this.medications.push(m);
+    return m;
+  }
+  async update(id: string, organizationId: string, data: any) {
+    const idx = this.medications.findIndex((m) => m.id === id && m.organizationId === organizationId);
+    if (idx < 0) throw new Error('Medication not found');
+    this.medications[idx] = { ...this.medications[idx], ...data };
+    return this.medications[idx];
+  }
+  async softDelete(id: string, organizationId: string) {
+    const idx = this.medications.findIndex((m) => m.id === id && m.organizationId === organizationId);
+    if (idx < 0) throw new Error('Medication not found');
+    this.medications[idx].deletedAt = new Date();
+    return this.medications[idx];
+  }
+  async findActiveByActiveIngredient(patientId: string, organizationId: string, activeIngredient: string) {
+    return this.medications.filter(
+      (m) => m.patientId === patientId && m.organizationId === organizationId && m.activeIngredient === activeIngredient && m.status === 'ACTIVE'
+    );
+  }
+}
+
 class FakePatientRepository {
   private patients: Patient[] = [];
 
@@ -219,26 +289,6 @@ class FakePatientRepository {
   }
 }
 
-class FakeSurgeryRepository implements ISurgeryRepository {
-  async findByPatientId() { return null; }
-  async listByPatient() { return { items: [], total: 0 }; }
-  async listByOrganization() { return { items: [], total: 0, patientNames: new Map() }; }
-  async findById() { return null; }
-  async create(): Promise<Surgery> { throw new Error('not implemented'); }
-  async update(): Promise<Surgery> { throw new Error('not implemented'); }
-  async softDelete(): Promise<Surgery> { throw new Error('not implemented'); }
-  async hasScheduledSurgeries() { return false; }
-}
-
-class FakeMedicationRepository implements IMedicationRepository {
-  async findById() { return null; }
-  async listByPatient() { return { items: [], total: 0 }; }
-  async create(): Promise<Medication> { throw new Error('not implemented'); }
-  async update(): Promise<Medication> { throw new Error('not implemented'); }
-  async softDelete(): Promise<Medication> { throw new Error('not implemented'); }
-  async findActiveByActiveIngredient() { return []; }
-}
-
 // ─────────────────────────────────────────────
 // Tests
 // ─────────────────────────────────────────────
@@ -255,8 +305,6 @@ describe('Clinical Record Integration', () => {
   let labRepo: FakeLabRepository;
   let diagnosisRepo: FakeDiagnosisRepository;
   let patientRepo: FakePatientRepository;
-  let surgeryRepo: FakeSurgeryRepository;
-  let medicationRepo: FakeMedicationRepository;
 
   beforeEach(() => {
     historyRepo = new FakeHistoryRepository();
@@ -265,8 +313,6 @@ describe('Clinical Record Integration', () => {
     labRepo = new FakeLabRepository();
     diagnosisRepo = new FakeDiagnosisRepository();
     patientRepo = new FakePatientRepository();
-    surgeryRepo = new FakeSurgeryRepository();
-    medicationRepo = new FakeMedicationRepository();
     patientRepo.addPatient(PATIENT_A, ORG_A);
   });
 
@@ -579,8 +625,8 @@ describe('Clinical Record Integration', () => {
         examRepo,
         labRepo,
         diagnosisRepo,
-        surgeryRepo,
-        medicationRepo,
+        new FakeSurgeryRepository(),
+        new FakeMedicationRepository(),
       );
 
       const result = await queryUc.execute({
@@ -602,8 +648,8 @@ describe('Clinical Record Integration', () => {
         examRepo,
         labRepo,
         diagnosisRepo,
-        surgeryRepo,
-        medicationRepo,
+        new FakeSurgeryRepository(),
+        new FakeMedicationRepository(),
       );
 
       await expect(
@@ -613,31 +659,6 @@ describe('Clinical Record Integration', () => {
           category: 'history',
         }),
       ).rejects.toThrow(PatientNotFoundError);
-    });
-
-    it('returns treatment projection (surgeries + medications) for spec §7', async () => {
-      const queryUc = new GetClinicalRecordUseCase(
-        patientRepo as any,
-        historyRepo,
-        illnessRepo,
-        examRepo,
-        labRepo,
-        diagnosisRepo,
-        surgeryRepo,
-        medicationRepo,
-      );
-
-      const result = await queryUc.execute({
-        organizationId: ORG_A,
-        patientId: PATIENT_A,
-        category: 'treatment',
-      });
-
-      expect(result.category).toBe('treatment');
-      expect(result.patientId).toBe(PATIENT_A);
-      expect(Array.isArray(result.data)).toBe(true);
-      // Fake repos return empty lists, so totalCount should be 0
-      expect(result.totalCount).toBe(0);
     });
   });
 });

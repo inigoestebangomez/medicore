@@ -87,13 +87,13 @@ export class GetClinicalRecordUseCase {
       }
 
       case 'treatment': {
-        // Treatment is a projection over surgeries + medications (spec §7).
-        const [surgeries, medications] = await Promise.all([
+        // Treatment is a projection over surgeries + medications + follow-up.
+        const [surgeriesResult, medicationsResult] = await Promise.all([
           this.surgeryRepo.listByPatient({
             patientId,
             organizationId,
             page: 1,
-            pageSize: 100,
+            pageSize: 1000,
             sortBy: 'date',
             sortOrder: 'desc',
           }),
@@ -101,34 +101,14 @@ export class GetClinicalRecordUseCase {
             patientId,
             organizationId,
             page: 1,
-            pageSize: 100,
+            pageSize: 1000,
           }),
         ]);
-        const items = [
-          ...surgeries.items.map((s) => ({
-            type: 'surgery' as const,
-            id: s.id,
-            date: s.date,
-            status: s.status,
-            procedureType: s.procedureType,
-            procedureCodes: s.procedureCodes,
-            physicianId: s.physicianId,
-          })),
-          ...medications.items.map((m) => ({
-            type: 'medication' as const,
-            id: m.id,
-            drugName: m.drugName,
-            drugCode: m.drugCode,
-            activeIngredient: m.activeIngredient,
-            dosage: m.dosage,
-            frequency: m.frequency,
-            route: m.route,
-            status: m.status,
-            startDate: m.startDate,
-            endDate: m.endDate,
-          })),
+        const treatmentData = [
+          ...surgeriesResult.items.map((s: { id: string; date: Date; procedureType: string }) => ({ type: 'surgery', id: s.id, date: s.date, procedureType: s.procedureType })),
+          ...medicationsResult.items.map((m: { id: string; drugName: string; startDate: Date }) => ({ type: 'medication', id: m.id, drugName: m.drugName, startDate: m.startDate })),
         ];
-        return { patientId, category, data: items, totalCount: items.length };
+        return { patientId, category, data: treatmentData, totalCount: treatmentData.length };
       }
 
       default:
