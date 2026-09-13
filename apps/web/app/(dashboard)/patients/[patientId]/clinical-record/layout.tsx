@@ -68,10 +68,10 @@ export default function ClinicalRecordLayout({
               key={tab.category}
               href={href}
               data-testid={`tab-${tab.category}`}
-              className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
                 isActive
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-on-surface-variant hover:border-outline hover:text-on-surface-variant'
+                  : 'border-transparent text-on-surface-variant hover:border-outline hover:text-on-surface'
               }`}
             >
               {tab.label}

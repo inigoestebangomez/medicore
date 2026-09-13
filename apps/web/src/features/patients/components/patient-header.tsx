@@ -33,7 +33,7 @@ function buildTabs(patientId: string): TabDef[] {
   return [
     {
       href: base,
-      label: 'Datos del paciente',
+      label: 'Resumen',
       match: (pathname, _searchParams, href) => pathname === href,
     },
     {
@@ -44,44 +44,14 @@ function buildTabs(patientId: string): TabDef[] {
         pathname === href || pathname.startsWith(`${href}/`),
     },
     {
-      href: `${base}/medications?section=background`,
-      label: 'Antecedentes',
-      match: (pathname, searchParams, href) => matchesSection(pathname, searchParams, href, 'background'),
-    },
-    {
-      href: `${base}/consultations?section=chief-complaint`,
-      label: 'Motivo de consulta',
-      match: (pathname, searchParams, href) => matchesSection(pathname, searchParams, href, 'chief-complaint'),
-    },
-    {
-      href: `${base}/consultations?section=physical-exam`,
-      label: 'Exploración física',
-      match: (pathname, searchParams, href) => matchesSection(pathname, searchParams, href, 'physical-exam'),
+      href: `${base}/surgeries`,
+      label: 'Cirugías',
+      match: (pathname, _searchParams, href) => pathname === href || pathname.startsWith(`${href}/`),
     },
     {
       href: `${base}/imaging`,
-      label: 'Pruebas complementarias',
+      label: 'Imágenes',
       match: (pathname, _searchParams, href) => pathname === href || pathname.startsWith(`${href}/`),
-    },
-    {
-      href: `${base}/scales`,
-      label: 'Escalas clínicas',
-      match: (pathname, _searchParams, href) => pathname === href || pathname.startsWith(`${href}/`),
-    },
-    {
-      href: `${base}/surgeries`,
-      label: 'Intervenciones',
-      match: (pathname, _searchParams, href) => pathname === href || pathname.startsWith(`${href}/`),
-    },
-    {
-      href: `${base}/consultations?section=diagnosis`,
-      label: 'Diagnóstico',
-      match: (pathname, searchParams, href) => matchesSection(pathname, searchParams, href, 'diagnosis'),
-    },
-    {
-      href: `${base}/medications?section=treatment`,
-      label: 'Tratamiento',
-      match: (pathname, searchParams, href) => matchesSection(pathname, searchParams, href, 'treatment'),
     },
     {
       href: `${base}/reports`,
@@ -116,10 +86,10 @@ export function PatientHeader({ patientId, patientName }: PatientHeaderProps) {
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+                className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
                   active
                     ? 'border-primary text-primary'
-                    : 'border-transparent text-on-surface-variant hover:border-outline hover:text-on-surface-variant'
+                    : 'border-transparent text-on-surface-variant hover:border-outline hover:text-on-surface'
                 }`}
               >
                 {tab.label}
