@@ -10,6 +10,8 @@ import type { ICurrentIllnessRepository } from '@/domain/clinical-record/current
 import type { IPhysicalExamRepository } from '@/domain/clinical-record/physical-exam/physical-exam.repository.interface';
 import type { ILabReportRepository } from '@/domain/clinical-record/lab/lab-report.repository.interface';
 import type { IDiagnosisRepository } from '@/domain/clinical-record/diagnosis/diagnosis.repository.interface';
+import type { ISurgeryRepository } from '@/domain/surgery/surgery.repository.interface';
+import type { IMedicationRepository } from '@/domain/medication/medication.repository.interface';
 
 export interface GetClinicalRecordQuery {
   organizationId: string;
@@ -32,6 +34,8 @@ export class GetClinicalRecordUseCase {
     private readonly examRepo: IPhysicalExamRepository,
     private readonly labRepo: ILabReportRepository,
     private readonly diagnosisRepo: IDiagnosisRepository,
+    private readonly surgeryRepo: ISurgeryRepository,
+    private readonly medicationRepo: IMedicationRepository,
   ) {}
 
   async execute(query: GetClinicalRecordQuery): Promise<ClinicalRecordResult> {
@@ -82,10 +86,18 @@ export class GetClinicalRecordUseCase {
         return { patientId, category, data: diagnoses, totalCount: diagnoses.length };
       }
 
-      case 'treatment':
+      case 'treatment': {
         // Treatment is a projection over surgeries + medications + follow-up.
-        // For now, return an empty array — Phase 3 will wire the full projection.
-        return { patientId, category, data: [], totalCount: 0 };
+        const [surgeries, medications] = await Promise.all([
+          this.surgeryRepo.findByPatient(patientId, organizationId),
+          this.medicationRepo.findByPatient(patientId, organizationId),
+        ]);
+        const treatmentData = [
+          ...surgeries.map((s) => ({ type: 'surgery', ...s })),
+          ...medications.map((m) => ({ type: 'medication', ...m })),
+        ];
+        return { patientId, category, data: treatmentData, totalCount: treatmentData.length };
+      }
 
       default:
         throw new Error(`Unknown category: ${category}`);

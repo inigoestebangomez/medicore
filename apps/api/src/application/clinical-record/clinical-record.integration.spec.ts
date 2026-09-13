@@ -16,7 +16,6 @@ import type { ICurrentIllnessRepository } from '@/domain/clinical-record/current
 import type { IPhysicalExamRepository, CreateExamTemplateInput, CreateExamRecordInput } from '@/domain/clinical-record/physical-exam/physical-exam.repository.interface';
 import type { ILabReportRepository, CreateLabReportInput } from '@/domain/clinical-record/lab/lab-report.repository.interface';
 import type { IDiagnosisRepository } from '@/domain/clinical-record/diagnosis/diagnosis.repository.interface';
-import type { IPatientRepository } from '@/domain/patient/patient.repository.interface';
 
 import { PatientHistoryEntry } from '@/domain/clinical-record/history/patient-history-entry.entity';
 import { CurrentIllnessEntry } from '@/domain/clinical-record/current-illness/current-illness-entry.entity';
