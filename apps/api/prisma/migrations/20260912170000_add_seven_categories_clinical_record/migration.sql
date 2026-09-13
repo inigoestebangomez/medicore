@@ -1,3 +1,18 @@
+-- CreateEnum: HistoryEntryType
+CREATE TYPE "HistoryEntryType" AS ENUM ('PERSONAL', 'ALLERGY', 'SURGICAL', 'TOXIC_HABIT', 'PROFESSION');
+
+-- CreateEnum: DurationUnit
+CREATE TYPE "DurationUnit" AS ENUM ('HOURS', 'DAYS', 'WEEKS', 'MONTHS', 'YEARS');
+
+-- CreateEnum: ReviewState
+CREATE TYPE "ReviewState" AS ENUM ('UNREVIEWED', 'CONFIRMED', 'REJECTED');
+
+-- CreateEnum: DiagnosisStatus
+CREATE TYPE "DiagnosisStatus" AS ENUM ('ACTIVE', 'RESOLVED', 'DISCARDED');
+
+-- CreateEnum: DiagnosisCodeSystem
+CREATE TYPE "DiagnosisCodeSystem" AS ENUM ('CIE_10_ES', 'SNOMED');
+
 -- CreateTable: patient_history_entries
 CREATE TABLE "patient_history_entries" (
     "id" TEXT NOT NULL,
