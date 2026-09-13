@@ -2,8 +2,6 @@
 // Domain entity: Diagnosis — first-class entity with status lifecycle.
 // Spec §6: CIE-10-ES/SNOMED codes, active/resolved/discarded state, clinical variables.
 
-import type { ReviewState } from '@medicore/contracts';
-
 export type DiagnosisCodeSystem = 'CIE-10-ES' | 'SNOMED';
 export type DiagnosisStatus = 'ACTIVE' | 'RESOLVED' | 'DISCARDED';
 
