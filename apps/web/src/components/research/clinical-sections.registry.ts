@@ -44,7 +44,7 @@ export const CLINICAL_SECTION_LABELS: Record<ClinicalSection, string> = {
 const SECTION_ORDER = new Map(CLINICAL_SECTIONS.map((s, i) => [s, i]));
 
 /** Direct standard-field → section mapping. */
-const FIELD_TO_SECTION: Record<string, ClinicalSection> = {
+export const FIELD_TO_SECTION: Record<string, ClinicalSection> = {
   nhc: 'Demographics',
   firstName: 'Demographics',
   lastName: 'Demographics',
