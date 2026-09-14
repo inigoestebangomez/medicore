@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -214,4 +215,151 @@ def spearman(x, y, alpha=0.05):
         "statistic": float(r), "pValue": float(p),
         "effectSize": {"name": "rho", "value": float(r), "ci95Lower": None, "ci95Upper": None},
         "assumptionsChecked": [], "warnings": [],
+    }
+
+
+# ─────────────────────────────────────────────
+# Effect measures: Relative Risk + Odds Ratio (guided analysis)
+# No continuity correction — suppress when cells are zero/unsafe.
+# ─────────────────────────────────────────────
+
+def relative_risk(
+    exposed_cases: int,
+    exposed_non_cases: int,
+    unexposed_cases: int,
+    unexposed_non_cases: int,
+    alpha: float = 0.05,
+) -> dict:
+    """
+    Compute relative risk (RR) and odds ratio (OR) from a 2x2 table.
+    Suppresses estimates when any cell is zero (no continuity correction).
+    Returns a dict matching RelativeRiskResultSchema.
+    """
+    a, b = int(exposed_cases), int(exposed_non_cases)
+    c, d = int(unexposed_cases), int(unexposed_non_cases)
+
+    warnings: List[Dict] = []
+    total_exposed = a + b
+    total_unexposed = c + d
+
+    # Check for zero/unsafe cells
+    has_zero = a == 0 or b == 0 or c == 0 or d == 0
+    has_zero_total = total_exposed == 0 or total_unexposed == 0
+
+    if has_zero_total:
+        return {
+            "relativeRisk": None, "ci95Lower": None, "ci95Upper": None,
+            "oddsRatio": None, "orCi95Lower": None, "orCi95Upper": None,
+            "exposedCases": a, "exposedNonCases": b,
+            "unexposedCases": c, "unexposedNonCases": d,
+            "suppressed": True,
+            "suppressReason": "zero_total_in_one_exposure_group",
+            "warnings": [{"code": "zero_cell", "message": "One exposure group has zero subjects; estimates suppressed."}],
+        }
+
+    if has_zero:
+        warnings.append({
+            "code": "sparse_cell",
+            "message": "One or more cells are zero; RR/OR suppressed to avoid fabricated estimates.",
+            "suggestion": "Consider collecting more data or using exact methods.",
+        })
+        return {
+            "relativeRisk": None, "ci95Lower": None, "ci95Upper": None,
+            "oddsRatio": None, "orCi95Lower": None, "orCi95Upper": None,
+            "exposedCases": a, "exposedNonCases": b,
+            "unexposedCases": c, "unexposedNonCases": d,
+            "suppressed": True,
+            "suppressReason": "zero_cell_no_continuity_correction",
+            "warnings": warnings,
+        }
+
+    # Risk in exposed and unexposed
+    risk_exposed = a / total_exposed
+    risk_unexposed = c / total_unexposed
+    rr = risk_exposed / risk_unexposed if risk_unexposed > 0 else None
+
+    # CI for RR: log method
+    ci_lower_rr, ci_upper_rr = None, None
+    if rr is not None and rr > 0:
+        _need_scipy()
+        se_log_rr = math.sqrt((1 / a) - (1 / total_exposed) + (1 / c) - (1 / total_unexposed))
+        z = sp_stats.norm.ppf(1 - alpha / 2)
+        log_rr = math.log(rr)
+        ci_lower_rr = math.exp(log_rr - z * se_log_rr)
+        ci_upper_rr = math.exp(log_rr + z * se_log_rr)
+
+    # Odds ratio
+    or_val = (a * d) / (b * c) if (b * c) > 0 else None
+    ci_lower_or, ci_upper_or = None, None
+    if or_val is not None and or_val > 0:
+        se_log_or = math.sqrt(1 / a + 1 / b + 1 / c + 1 / d)
+        z = sp_stats.norm.ppf(1 - alpha / 2)
+        log_or = math.log(or_val)
+        ci_lower_or = math.exp(log_or - z * se_log_or)
+        ci_upper_or = math.exp(log_or + z * se_log_or)
+
+    return {
+        "relativeRisk": float(rr) if rr is not None else None,
+        "ci95Lower": float(ci_lower_rr) if ci_lower_rr is not None else None,
+        "ci95Upper": float(ci_upper_rr) if ci_upper_rr is not None else None,
+        "oddsRatio": float(or_val) if or_val is not None else None,
+        "orCi95Lower": float(ci_lower_or) if ci_lower_or is not None else None,
+        "orCi95Upper": float(ci_upper_or) if ci_upper_or is not None else None,
+        "exposedCases": a, "exposedNonCases": b,
+        "unexposedCases": c, "unexposedNonCases": d,
+        "suppressed": False,
+        "suppressReason": None,
+        "warnings": warnings,
+    }
+
+
+# ─────────────────────────────────────────────
+# P-value adjustment: Holm step-down and Benjamini-Hochberg FDR
+# ─────────────────────────────────────────────
+
+def p_adjust(p_values: List[float], method: str = "holm") -> dict:
+    """
+    Adjust p-values for multiple comparisons.
+    method: 'holm' (step-down Bonferroni) or 'fdr' (Benjamini-Hochberg).
+    Returns a dict matching PAdjustResultSchema.
+    """
+    n = len(p_values)
+    if n == 0:
+        return {"method": method, "originalP": [], "adjustedP": [], "n": 0}
+
+    pvals = [float(p) for p in p_values]
+
+    if method == "holm":
+        # Holm step-down: sort p-values, adjust sequentially
+        indexed = sorted(enumerate(pvals), key=lambda x: x[1])
+        adjusted = [0.0] * n
+        cummax = 0.0
+        for rank, (orig_idx, p) in enumerate(indexed):
+            adj = p * (n - rank)
+            adj = min(max(adj, cummax), 1.0)
+            cummax = adj
+            adjusted[orig_idx] = adj
+
+    elif method == "fdr":
+        # Benjamini-Hochberg step-up
+        indexed = sorted(enumerate(pvals), key=lambda x: x[1])
+        adjusted = [0.0] * n
+        # Process from largest to smallest
+        cummin = 1.0
+        for rank_rev in range(n):
+            rank = n - 1 - rank_rev
+            orig_idx, p = indexed[rank]
+            adj = p * n / (rank + 1)
+            adj = min(adj, cummin)
+            adj = min(adj, 1.0)
+            cummin = adj
+            adjusted[orig_idx] = adj
+    else:
+        raise ValueError(f"Unknown adjustment method: {method}. Use 'holm' or 'fdr'.")
+
+    return {
+        "method": method,
+        "originalP": pvals,
+        "adjustedP": [round(a, 10) for a in adjusted],
+        "n": n,
     }

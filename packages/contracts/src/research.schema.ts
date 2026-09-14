@@ -560,3 +560,155 @@ export const ExportV2ResponseSchema = z.object({
   status: z.enum(['queued', 'processing', 'completed', 'failed']),
 });
 export type ExportV2Response = z.infer<typeof ExportV2ResponseSchema>;
+
+// ─────────────────────────────────────────────
+// RESEARCH V5 — Guided Statistical Analysis (spec §guided)
+// Two-path wizard: descriptive (Path 1) and inferential (Path 2).
+// Replaces raw test selection with automatic test choice + rationale.
+// ─────────────────────────────────────────────
+
+export const GuidedAnalysisPathSchema = z.enum(['descriptive', 'inferential']);
+export type GuidedAnalysisPath = z.infer<typeof GuidedAnalysisPathSchema>;
+
+export const GuidedExposureSchema = z.object({
+  domain: z.string().min(1), // "diagnosis" | "treatment" | "surgery" | "procedure"
+  elementIds: z.array(z.string().min(1)).min(2), // ≥2 valid elements required
+});
+export type GuidedExposure = z.infer<typeof GuidedExposureSchema>;
+
+export const GuidedPairedSchema = z.object({
+  pre: z.string().min(1),
+  post: z.string().min(1),
+});
+export type GuidedPaired = z.infer<typeof GuidedPairedSchema>;
+
+export const CorrectionMethodSchema = z.enum(['holm', 'fdr']);
+export type CorrectionMethod = z.infer<typeof CorrectionMethodSchema>;
+
+export const GuidedAnalysisRequestSchema = z.object({
+  queryId: z.string().uuid(),
+  path: GuidedAnalysisPathSchema,
+  variables: z.array(z.string().min(1)).default([]),
+  exposure: GuidedExposureSchema.optional(),
+  outcome: z.string().min(1).optional(),
+  paired: GuidedPairedSchema.optional(),
+  correction: CorrectionMethodSchema.optional(),
+  alpha: z.number().min(0.001).max(0.1).default(0.05),
+});
+export type GuidedAnalysisRequest = z.infer<typeof GuidedAnalysisRequestSchema>;
+
+// Effect measures — RR and OR with CI (no continuity correction)
+export const EffectMeasureSchema = z.object({
+  name: z.enum(['relative_risk', 'odds_ratio']),
+  value: z.number().nullable(), // null when suppressed (zero/unsafe cells)
+  ci95Lower: z.number().nullable(),
+  ci95Upper: z.number().nullable(),
+  suppressed: z.boolean().default(false),
+  suppressReason: z.string().optional(),
+});
+export type EffectMeasure = z.infer<typeof EffectMeasureSchema>;
+
+// Relative risk result from Python service
+export const RelativeRiskResultSchema = z.object({
+  relativeRisk: z.number().nullable(),
+  ci95Lower: z.number().nullable(),
+  ci95Upper: z.number().nullable(),
+  oddsRatio: z.number().nullable(),
+  orCi95Lower: z.number().nullable(),
+  orCi95Upper: z.number().nullable(),
+  exposedCases: z.number().int(),
+  exposedNonCases: z.number().int(),
+  unexposedCases: z.number().int(),
+  unexposedNonCases: z.number().int(),
+  suppressed: z.boolean().default(false),
+  suppressReason: z.string().optional(),
+  warnings: z.array(AssumptionWarningSchema).default([]),
+});
+export type RelativeRiskResult = z.infer<typeof RelativeRiskResultSchema>;
+
+// P-value adjustment result
+export const PAdjustResultSchema = z.object({
+  method: CorrectionMethodSchema,
+  originalP: z.array(z.number()),
+  adjustedP: z.array(z.number()),
+  n: z.number().int(),
+});
+export type PAdjustResult = z.infer<typeof PAdjustResultSchema>;
+
+// Correction entry in the guided result
+export const GuidedCorrectionSchema = z.object({
+  method: CorrectionMethodSchema,
+  adjustedP: z.number().nullable(),
+  originalP: z.number().nullable(),
+  label: z.string().optional(),
+});
+export type GuidedCorrection = z.infer<typeof GuidedCorrectionSchema>;
+
+// Descriptive summary per variable
+export const GuidedDescriptiveSummarySchema = z.object({
+  variable: z.string(),
+  kind: z.enum(['quantitative', 'qualitative']),
+  n: z.number().int(),
+  missing: z.number().int().default(0),
+  // Quantitative: mean, sd, median, q1, q3, min, max
+  mean: z.number().nullable(),
+  sd: z.number().nullable(),
+  median: z.number().nullable(),
+  q1: z.number().nullable(),
+  q3: z.number().nullable(),
+  min: z.number().nullable(),
+  max: z.number().nullable(),
+  // Qualitative: category counts + percentages
+  categories: z.array(z.object({
+    label: z.string(),
+    count: z.number().int(),
+    percent: z.number(),
+  })).default([]),
+  suppressed: z.boolean().default(false),
+  suppressReason: z.string().optional(),
+});
+export type GuidedDescriptiveSummary = z.infer<typeof GuidedDescriptiveSummarySchema>;
+
+// Inferential result entry
+export const GuidedInferentialResultSchema = z.object({
+  variable: z.string().optional(),
+  test: z.string(),
+  statistic: z.number().nullable(),
+  pValue: z.number().nullable(),
+  effectMeasures: z.array(EffectMeasureSchema).default([]),
+  groups: z.array(z.object({
+    key: z.string(),
+    n: z.number().int(),
+  })).default([]),
+  rationale: z.string().optional(),
+  warnings: z.array(AssumptionWarningSchema).default([]),
+});
+export type GuidedInferentialResult = z.infer<typeof GuidedInferentialResultSchema>;
+
+// Cohort context returned with every guided result
+export const GuidedCohortContextSchema = z.object({
+  queryId: z.string().uuid(),
+  n: z.number().int(),
+  filters: z.array(FilterSchema).default([]),
+});
+export type GuidedCohortContext = z.infer<typeof GuidedCohortContextSchema>;
+
+// Main guided analysis result
+export const GuidedAnalysisResultSchema = z.object({
+  runId: z.string().uuid(),
+  cohort: GuidedCohortContextSchema,
+  path: GuidedAnalysisPathSchema,
+  summaries: z.array(GuidedDescriptiveSummarySchema).default([]),
+  results: z.array(GuidedInferentialResultSchema).default([]),
+  rationale: z.array(z.string()).default([]),
+  corrections: z.array(GuidedCorrectionSchema).default([]),
+  warnings: z.array(AssumptionWarningSchema).default([]),
+});
+export type GuidedAnalysisResult = z.infer<typeof GuidedAnalysisResultSchema>;
+
+// Guided export request (extends V3 with guided-specific payload)
+export const GuidedExportRequestSchema = z.object({
+  runId: z.string().uuid(),
+  formats: z.array(z.enum(['pdf', 'docx', 'text', 'zip'])).min(1),
+});
+export type GuidedExportRequest = z.infer<typeof GuidedExportRequestSchema>;

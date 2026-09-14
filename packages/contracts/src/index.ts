@@ -424,6 +424,21 @@ export {
   ExportV2StyleSchema,
   ExportV2RequestSchema,
   ExportV2ResponseSchema,
+  // Guided Statistical Analysis (V5)
+  GuidedAnalysisPathSchema,
+  GuidedExposureSchema,
+  GuidedPairedSchema,
+  CorrectionMethodSchema,
+  GuidedAnalysisRequestSchema,
+  EffectMeasureSchema,
+  RelativeRiskResultSchema,
+  PAdjustResultSchema,
+  GuidedCorrectionSchema,
+  GuidedDescriptiveSummarySchema,
+  GuidedInferentialResultSchema,
+  GuidedCohortContextSchema,
+  GuidedAnalysisResultSchema,
+  GuidedExportRequestSchema,
 } from './research.schema';
 
 export type {
@@ -480,6 +495,21 @@ export type {
   ExportV2Style,
   ExportV2Request,
   ExportV2Response,
+  // Guided Statistical Analysis (V5)
+  GuidedAnalysisPath,
+  GuidedExposure,
+  GuidedPaired,
+  CorrectionMethod,
+  GuidedAnalysisRequest,
+  EffectMeasure,
+  RelativeRiskResult,
+  PAdjustResult,
+  GuidedCorrection,
+  GuidedDescriptiveSummary,
+  GuidedInferentialResult,
+  GuidedCohortContext,
+  GuidedAnalysisResult,
+  GuidedExportRequest,
 } from './research.schema';
 
 // Research Engine V4 — Form Builder (REQ-FB-001..013)

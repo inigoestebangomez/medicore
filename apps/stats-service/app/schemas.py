@@ -181,3 +181,46 @@ class DescribeAutoResult(BaseModel):
     n: int = 0
     normality: Optional[NormalityResult] = None
     warnings: List[str] = Field(default_factory=list)
+
+
+# ─────────────────────────────────────────────
+# Guided analysis: relative risk + p-value adjustment
+# ─────────────────────────────────────────────
+
+class RelativeRiskRequest(BaseModel):
+    exposedCases: int
+    exposedNonCases: int
+    unexposedCases: int
+    unexposedNonCases: int
+    alpha: float = 0.05
+
+
+class RelativeRiskResult(BaseModel):
+    relativeRisk: Optional[float] = None
+    ci95Lower: Optional[float] = None
+    ci95Upper: Optional[float] = None
+    oddsRatio: Optional[float] = None
+    orCi95Lower: Optional[float] = None
+    orCi95Upper: Optional[float] = None
+    exposedCases: int
+    exposedNonCases: int
+    unexposedCases: int
+    unexposedNonCases: int
+    suppressed: bool = False
+    suppressReason: Optional[str] = None
+    warnings: List[AssumptionWarning] = Field(default_factory=list)
+
+
+PAdjustMethod = Literal["holm", "fdr"]
+
+
+class PAdjustRequest(BaseModel):
+    method: PAdjustMethod = "holm"
+    pValues: List[float] = Field(default_factory=list)
+
+
+class PAdjustResult(BaseModel):
+    method: PAdjustMethod
+    originalP: List[float]
+    adjustedP: List[float]
+    n: int

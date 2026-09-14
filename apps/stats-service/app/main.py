@@ -18,6 +18,7 @@ from fastapi import FastAPI
 from .routers import inferential, regression, survival, crosstab
 from .routers import normality
 from .routers import agreement
+from .routers import guided
 
 app = FastAPI(
     title="MediCore Stats Service",
@@ -38,3 +39,4 @@ app.include_router(survival.router)
 app.include_router(crosstab.router)
 app.include_router(normality.router)
 app.include_router(agreement.router)
+app.include_router(guided.router)
