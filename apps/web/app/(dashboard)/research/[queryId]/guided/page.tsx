@@ -71,6 +71,7 @@ export default function GuidedAnalysisPage({
         queryId={isNewQuery ? null : params.queryId}
         cohortSize={cohortSize}
         availableVariables={availableVariables}
+        organizationId={query?.organizationId}
       />
     </div>
   );

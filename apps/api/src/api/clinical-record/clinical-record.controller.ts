@@ -50,7 +50,7 @@ import type { IPatientRepository } from '@/domain/patient/patient.repository.int
 import type { ISurgeryRepository } from '@/domain/surgery/surgery.repository.interface';
 import type { IMedicationRepository } from '@/domain/medication/medication.repository.interface';
 
-@Controller('v1/patients/:patientId/clinical-record')
+@Controller('patients/:patientId/clinical-record')
 @UseGuards(AuthGuard, RBACGuard)
 export class ClinicalRecordController {
   private readonly getClinicalRecordUseCase: GetClinicalRecordUseCase;

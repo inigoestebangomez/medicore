@@ -44,7 +44,7 @@ export function MyStudiesDashboard({ onNewPatients }: MyStudiesDashboardProps) {
             Cohortes en vivo sobre consultas guardadas — recálculo automático al importar.
           </p>
         </div>
-        <Button size="sm" onClick={() => router.push('/research/new')}>
+        <Button size="sm" onClick={() => router.push('/research/new/guided')}>
           Nuevo estudio
         </Button>
       </div>

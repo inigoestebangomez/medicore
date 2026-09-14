@@ -20,6 +20,7 @@ interface GuidedAnalysisWizardProps {
   queryId: string | null;
   cohortSize: number;
   availableVariables: string[];
+  organizationId?: string;
 }
 
 type WizardStep = 'path' | 'config' | 'results';
@@ -28,6 +29,7 @@ export function GuidedAnalysisWizard({
   queryId,
   cohortSize,
   availableVariables,
+  organizationId,
 }: GuidedAnalysisWizardProps) {
   const [step, setStep] = useState<WizardStep>('path');
   const [path, setPath] = useState<GuidedAnalysisPath | null>(null);
@@ -75,18 +77,6 @@ export function GuidedAnalysisWizard({
     setResult(null);
     setError(null);
   }, []);
-
-  if (cohortSize === 0) {
-    return (
-      <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
-        <h3 className="text-lg font-semibold text-destructive">Cohort vacía</h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          No se puede realizar el análisis guiado con una cohorte vacía.
-          Ejecute primero una consulta con resultados.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
