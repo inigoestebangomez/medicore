@@ -52,6 +52,7 @@ export interface SavedQuery {
   displayFields: string[];
   visualizations: VisualizationType[];
   sharedWith: string[];
+  lastRunCount: number | null;
   createdAt: string;
   updatedAt: string;
 }

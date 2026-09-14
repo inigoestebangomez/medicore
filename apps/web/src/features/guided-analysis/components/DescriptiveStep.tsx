@@ -29,7 +29,7 @@ export function DescriptiveStep({
 
   const handleRun = () => {
     if (selected.length === 0) return;
-    onRun({ path: 'descriptive', variables: selected });
+    onRun({ path: 'descriptive', variables: selected, alpha: 0.05 });
   };
 
   return (
