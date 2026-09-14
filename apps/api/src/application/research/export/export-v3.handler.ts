@@ -18,6 +18,9 @@ import {
 } from './r-syntax.generator';
 import { generateSpssSyntax } from './spss-syntax.generator';
 import { ExportV3JobRegistry } from './export-v3.job-registry';
+import { GuidedPdfGenerator } from './guided-pdf.generator';
+import { generateGuidedText } from './guided-text.generator';
+import type { GuidedAnalysisResult } from '@medicore/contracts';
 
 export type ExportFormat = 'docx' | 'tiff' | 'csv' | 'r_syntax' | 'spss_syntax' | 'zip';
 
@@ -36,6 +39,10 @@ export interface ExportV3Request {
   /** list of performed tests driving the R/SPSS syntax */
   tests?: RSupportedTest[] | RSynRequest['tests'];
   testDetails?: RSynRequest['tests'];
+  /** Guided analysis snapshot for V5 exports (pdf/docx/text) */
+  guidedResult?: GuidedAnalysisResult;
+  /** Guided export formats */
+  guidedFormats?: Array<'pdf' | 'docx' | 'text' | 'zip'>;
 }
 
 export interface ExportV3Result {
@@ -51,11 +58,17 @@ export class ExportV3Handler {
     private readonly tiff: TiffConverter,
     private readonly zip: ZipBundler,
     private readonly registry: ExportV3JobRegistry,
+    private readonly guidedPdf: GuidedPdfGenerator = new GuidedPdfGenerator(),
   ) {}
 
   async execute(req: ExportV3Request): Promise<ExportV3Result> {
     const artifacts: Map<ExportFormat, Buffer | string> = new Map();
     const testList = (req.testDetails ?? (req.tests ?? []).map((t) => ({ test: t as RSupportedTest }))) as RSynRequest['tests'];
+
+    // ── Guided analysis exports (V5) ──
+    if (req.guidedResult && req.guidedFormats?.length) {
+      return this.executeGuidedExport(req);
+    }
 
     if (req.formats.includes('docx') || req.formats.includes('zip')) {
       const buf = await this.docx.generate({
@@ -120,6 +133,73 @@ export class ExportV3Handler {
 
   /** Convenience used by the download handler / controller. */
   getJob(jobId: string) { return this.registry.get(jobId); }
+
+  /**
+   * V5 guided analysis export: generates PDF, Word (text-based), plain text,
+   * and/or ZIP from a guided result snapshot.
+   */
+  private async executeGuidedExport(req: ExportV3Request): Promise<ExportV3Result> {
+    const result = req.guidedResult!;
+    const formats = req.guidedFormats!;
+    const artifacts: Map<string, Buffer | string> = new Map();
+
+    if (formats.includes('pdf') || formats.includes('zip')) {
+      const buf = await this.guidedPdf.generate({ result, title: req.studyName });
+      artifacts.set('pdf', buf);
+    }
+    if (formats.includes('docx') || formats.includes('zip')) {
+      // Generate a text-based docx placeholder using the text generator
+      const text = generateGuidedText({ result, title: req.studyName });
+      artifacts.set('docx', text);
+    }
+    if (formats.includes('text') || formats.includes('zip')) {
+      const text = generateGuidedText({ result, title: req.studyName });
+      artifacts.set('text', text);
+    }
+
+    const wantZip = formats.includes('zip');
+    const isZip = wantZip && artifacts.size > 1;
+    let buffer: Buffer;
+    let filename: string;
+    let mimeType: string;
+
+    if (isZip) {
+      const pairs: ArchivePair[] = [];
+      const nameMap: Record<string, string> = {
+        pdf: 'guided-analysis.pdf',
+        docx: 'guided-analysis.docx',
+        text: 'guided-analysis.txt',
+      };
+      for (const [fmt, payload] of artifacts) {
+        pairs.push({
+          filename: nameMap[fmt] ?? `${fmt}.bin`,
+          buffer: typeof payload === 'string' ? Buffer.from(payload, 'utf-8') : payload,
+        });
+      }
+      buffer = await this.zip.bundle(pairs);
+      filename = `${slug(req.studyName)}-guided-export.zip`;
+      mimeType = 'application/zip';
+    } else {
+      const single = formats.find((f) => artifacts.has(f)) ?? formats[0];
+      const payload = artifacts.get(single) ?? null;
+      if (payload == null) throw new Error(`Guided format '${single}' produced no artifact`);
+      if (typeof payload === 'string') buffer = Buffer.from(payload, 'utf-8');
+      else buffer = payload;
+      const extMap: Record<string, string> = { pdf: 'pdf', docx: 'docx', text: 'txt' };
+      filename = `${slug(req.studyName)}.${extMap[single] ?? 'bin'}`;
+      mimeType = single === 'pdf' ? 'application/pdf'
+        : single === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        : 'text/plain';
+    }
+
+    const jobId = randomUUID();
+    this.registry.set({ id: jobId, status: 'done', filename, mimeType, buffer });
+    return {
+      jobId,
+      format: isZip ? 'zip' : (formats.find((f) => artifacts.has(f)) ?? formats[0]) as ExportFormat,
+      filename,
+    };
+  }
 }
 
 function slug(s: string): string {
