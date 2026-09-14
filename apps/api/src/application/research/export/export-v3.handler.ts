@@ -148,9 +148,9 @@ export class ExportV3Handler {
       artifacts.set('pdf', buf);
     }
     if (formats.includes('docx') || formats.includes('zip')) {
-      // Generate a text-based docx placeholder using the text generator
-      const text = generateGuidedText({ result, title: req.studyName });
-      artifacts.set('docx', text);
+      // Generate a real Word document from the guided result
+      const buf = await this.generateGuidedDocx(result, req.studyName);
+      artifacts.set('docx', buf);
     }
     if (formats.includes('text') || formats.includes('zip')) {
       const text = generateGuidedText({ result, title: req.studyName });
@@ -199,6 +199,55 @@ export class ExportV3Handler {
       format: isZip ? 'zip' : (formats.find((f) => artifacts.has(f)) ?? formats[0]) as ExportFormat,
       filename,
     };
+  }
+
+  /**
+   * Generates a real Word (.docx) document from a guided analysis result
+   * by mapping the result into the existing DocxGenerator contract.
+   */
+  private async generateGuidedDocx(
+    result: GuidedAnalysisResult,
+    title: string,
+  ): Promise<Buffer> {
+    const analyses: import('./docx.generator').DocxAnalysisBlock[] = result.results.map((r) => ({
+      test: r.test,
+      statistic: r.statistic,
+      pValue: r.pValue !== null ? r.pValue.toFixed(4) : null,
+      notes: [
+        ...result.rationale,
+        ...r.warnings.map((w) => `[${w.code}] ${w.message}`),
+        ...r.effectMeasures
+          .filter((em) => !em.suppressed)
+          .map(
+            (em) =>
+              `${em.name}=${em.value?.toFixed(3)} [95% CI: ${em.ci95Lower?.toFixed(3)}–${em.ci95Upper?.toFixed(3)}]`,
+          ),
+        ...r.effectMeasures
+          .filter((em) => em.suppressed)
+          .map((em) => `${em.name}: [SUPPRESSED — ${em.suppressReason ?? 'unsafe cells'}]`),
+      ],
+    }));
+
+    // For descriptive path, map summaries to table1-like rows
+    const table1 =
+      result.path === 'descriptive'
+        ? result.summaries.map((s) => ({
+            field: s.variable,
+            n: s.n,
+            representation: s.kind,
+            summary: s.suppressed
+              ? `[SUPPRESSED: ${s.suppressReason}]`
+              : s.kind === 'quantitative'
+                ? `${s.mean} ± ${s.sd}, median ${s.median} [${s.q1}–${s.q3}]`
+                : s.categories.map((c) => `${c.label}: ${c.count} (${c.percent}%)`).join('; '),
+          }))
+        : undefined;
+
+    return this.docx.generate({
+      studyName: title,
+      table1,
+      analyses: analyses.length > 0 ? analyses : undefined,
+    });
   }
 }
 
