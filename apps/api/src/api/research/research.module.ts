@@ -77,6 +77,11 @@ import { ExportV3JobRegistry } from '@/application/research/export/export-v3.job
 import { ExportV3Handler } from '@/application/research/export/export-v3.handler';
 import { ExportV3StatusHandler } from '@/application/research/queries/export-v3-status.handler';
 import { ExportV3DownloadHandler } from '@/application/research/queries/export-v3-download.handler';
+// Research V5 — guided statistical analysis
+import { GuidedAnalysisController } from './guided-analysis.controller';
+import { GuidedAnalysisService } from '@/application/research/services/guided-analysis.service';
+import { TestSelectionPolicy } from '@/application/research/services/test-selection.policy';
+import { ExposureDomainResolver } from '@/application/research/services/exposure-domain.resolver';
 // Research V4 — form builder (REQ-FB-001 through REQ-FB-013).
 import { VariableBuilderController } from './variable-builder.controller';
 import { SubjectController } from './subject.controller';
@@ -140,6 +145,8 @@ import { PrismaStatisticalAnalysisRepository } from '@/infrastructure/database/r
     SubjectController,
     AnalysisController,
     TemplateController,
+    // Research V5 — guided analysis controller (behind RESEARCH_GUIDED_ANALYSIS flag).
+    GuidedAnalysisController,
   ],
   providers: [
     // Repositories (interface-typed DI tokens).
@@ -250,6 +257,10 @@ import { PrismaStatisticalAnalysisRepository } from '@/infrastructure/database/r
     ListAnalysesHandler,
     // Research V4 — registration form query (REQ-FB-007).
     GetRegistrationFormHandler,
+    // Research V5 — guided statistical analysis.
+    GuidedAnalysisService,
+    TestSelectionPolicy,
+    ExposureDomainResolver,
   ],
   exports: [
     FieldDiscoveryService,

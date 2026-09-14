@@ -1586,3 +1586,38 @@ model Diagnosis {
   @@index([organizationId, system, code])
   @@map("diagnoses")
 }
+
+// ─────────────────────────────────────────────
+// GUIDED ANALYSIS RUN (V5 — Guided Statistical Analysis)
+// Tenant-scoped snapshot of a guided analysis execution.
+// Stores query/path/request/cohort/result JSON — never patient rows or identifiers.
+// ─────────────────────────────────────────────
+
+model GuidedAnalysisRun {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  createdBy      String @map("created_by")
+
+  // Source query (cohort)
+  queryId String @map("query_id")
+
+  // Analysis path: "descriptive" | "inferential"
+  path String
+
+  // Full request JSON (GuidedAnalysisRequest)
+  request Json
+
+  // Cohort context (queryId, n, filters) — no patient identifiers
+  cohortContext Json @default("{}") @map("cohort_context")
+
+  // Result JSON (GuidedAnalysisResult) — summaries, results, rationale, corrections, warnings
+  result Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, createdBy])
+  @@index([queryId])
+  @@map("guided_analysis_runs")
+}

@@ -16,8 +16,34 @@ import type {
   CrossTabResult,
   SurvivalResult,
   InferentialRequest,
+  AssumptionWarning,
 } from '@medicore/contracts';
 import { CircuitBreaker } from './circuit-breaker';
+
+/** Relative risk result from Python /internal/stats/relative-risk. */
+export interface RelativeRiskServiceResult {
+  relativeRisk: number | null;
+  ci95Lower: number | null;
+  ci95Upper: number | null;
+  oddsRatio: number | null;
+  orCi95Lower: number | null;
+  orCi95Upper: number | null;
+  exposedCases: number;
+  exposedNonCases: number;
+  unexposedCases: number;
+  unexposedNonCases: number;
+  suppressed: boolean;
+  suppressReason: string | null;
+  warnings: AssumptionWarning[];
+}
+
+/** P-value adjustment result from Python /internal/stats/p-adjust. */
+export interface PAdjustServiceResult {
+  method: 'holm' | 'fdr';
+  originalP: number[];
+  adjustedP: number[];
+  n: number;
+}
 
 export interface RunInferentialInput {
   queryId?: string;
@@ -259,6 +285,68 @@ private async callAgreement(
       return (await res.json()) as DescribeAutoResult;
     } catch (err) {
       this.breaker.recordFailure();
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // V5 — Guided analysis: RR/OR + p-value adjustment
+  // Same circuit-breaker + timeout pattern.
+  // ─────────────────────────────────────────────
+
+  async computeRelativeRisk(input: {
+    exposedCases: number;
+    exposedNonCases: number;
+    unexposedCases: number;
+    unexposedNonCases: number;
+    alpha?: number;
+  }): Promise<RelativeRiskServiceResult> {
+    if (!this.breaker.allowCall()) throw new Error('stats_service_circuit_open');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5_000);
+    try {
+      const res = await fetch(`${PYTHON_BASE_URL}/internal/stats/relative-risk`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(input),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error(`stats_service_http_${res.status}`);
+      this.breaker.recordSuccess();
+      return (await res.json()) as RelativeRiskServiceResult;
+    } catch (err) {
+      this.breaker.recordFailure();
+      this.logger.warn(`Relative risk computation failed: ${(err as Error).message}`);
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async adjustPValues(input: {
+    method: 'holm' | 'fdr';
+    pValues: number[];
+  }): Promise<PAdjustServiceResult> {
+    if (!this.breaker.allowCall()) throw new Error('stats_service_circuit_open');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5_000);
+    try {
+      const res = await fetch(`${PYTHON_BASE_URL}/internal/stats/p-adjust`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(input),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error(`stats_service_http_${res.status}`);
+      this.breaker.recordSuccess();
+      return (await res.json()) as PAdjustServiceResult;
+    } catch (err) {
+      this.breaker.recordFailure();
+      this.logger.warn(`P-value adjustment failed: ${(err as Error).message}`);
       throw err;
     } finally {
       clearTimeout(timer);

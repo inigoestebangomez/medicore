@@ -41,7 +41,12 @@ export type ResearchV4Flag =
   | 'RESEARCH_VARIABLE_LIBRARY'
   | 'RESEARCH_AGREEMENT_TESTS';
 
-export type ResearchFlag = ResearchV2Flag | ResearchV3Flag | ResearchV4Flag;
+// Research Engine V5 flags — guided statistical analysis:
+//   RESEARCH_GUIDED_ANALYSIS — Two-path guided wizard (descriptive + inferential)
+// Default OFF (opt-in) for gradual rollout.
+export type ResearchV5Flag = 'RESEARCH_GUIDED_ANALYSIS';
+
+export type ResearchFlag = ResearchV2Flag | ResearchV3Flag | ResearchV4Flag | ResearchV5Flag;
 export type ImportFlag = 'IMPORT_IDENTITY_LIGHT';
 export type FeatureFlag = ResearchFlag | ImportFlag;
 
@@ -59,13 +64,24 @@ const ALL_FLAGS: ResearchFlag[] = [
   'RESEARCH_FORM_BUILDER',
   'RESEARCH_VARIABLE_LIBRARY',
   'RESEARCH_AGREEMENT_TESTS',
+  'RESEARCH_GUIDED_ANALYSIS',
 ];
+
+// Flags that default to OFF (opt-in) rather than ON (opt-out).
+const OPT_IN_FLAGS: Set<FeatureFlag> = new Set([
+  'IMPORT_IDENTITY_LIGHT',
+  'RESEARCH_GUIDED_ANALYSIS',
+]);
 
 @Injectable()
 export class FeatureFlagsService {
   /** Check whether a specific feature flag is enabled. */
   isEnabled(flag: FeatureFlag): boolean {
     const value = process.env[flag];
+    // Opt-in flags default to OFF; require explicit enable.
+    if (OPT_IN_FLAGS.has(flag)) {
+      return value === 'true' || value === '1';
+    }
     // Identity-light is opt-in; existing research flags remain opt-out.
     if (flag === 'IMPORT_IDENTITY_LIGHT') {
       return value === 'true' || value === '1';
