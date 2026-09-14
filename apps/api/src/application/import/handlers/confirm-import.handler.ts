@@ -109,6 +109,7 @@ export class ConfirmImportHandler {
       ignoredColumns: confirmed.ignoredColumns,
       ignoredRows: confirmed.ignoredRows,
       cellOverrides: confirmed.cellOverrides ?? undefined,
+      referenceDate: batch.createdAt,
     });
 
     // Keep the pending count on the aggregate so finalize can reject the

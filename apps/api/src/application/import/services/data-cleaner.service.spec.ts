@@ -104,22 +104,43 @@ describe('DataCleanerService', () => {
     });
   });
 
-  describe('ageToBirthDate (SDD import-data-quality)', () => {
-    const utc = (y: number, m: number, d: number) => Date.UTC(y, m, d);
+  describe('imported age and birthDate provenance', () => {
+    it('keeps age-only rows without fabricating a birthDate', () => {
+      const result = cleaner.clean(makeFile([
+        { NHC: '1', Paciente: 'JUAN PEREZ', Edad: 50 },
+      ]), { NHC: 'nhc', Paciente: 'patientName', Edad: 'age' });
 
-    it('age 50 with ref 2026-07-22 → Jan 1, 1976', () => {
-      const ref = new Date(2026, 6, 22);
-      expect(cleaner.ageToBirthDate(50, ref)?.getTime()).toBe(utc(1976, 0, 1));
+      expect(result.cleanedRows[0]).toMatchObject({ age: 50, ageAtImport: 50, birthDate: null });
     });
 
-    it('age 0 with ref 2026-07-22 → Jan 1, 2026', () => {
-      const ref = new Date(2026, 6, 22);
-      expect(cleaner.ageToBirthDate(0, ref)?.getTime()).toBe(utc(2026, 0, 1));
+    it('sanitizes every year-1900 birth placeholder but keeps clinical 1900 dates', () => {
+      const result = cleaner.clean(makeFile([
+        { NHC: '1', Paciente: 'JUAN PEREZ', Nacimiento: '1900-01-01', Ingreso: '10/04/1900' },
+        { NHC: '2', Paciente: 'ANA PEREZ', Nacimiento: '31/12/1900', Ingreso: '1900-07-22' },
+      ]), {
+        NHC: 'nhc', Paciente: 'patientName', Nacimiento: 'birthDate', Ingreso: 'admissionDate',
+      });
+
+      expect(result.cleanedRows[0].birthDate).toBeNull();
+      expect(result.cleanedRows[0].admissionDate?.toISOString().slice(0, 10)).toBe('1900-04-10');
+      expect(result.cleanedRows[1].birthDate).toBeNull();
+      expect(result.cleanedRows[1].admissionDate?.toISOString().slice(0, 10)).toBe('1900-07-22');
     });
 
-    it('age 130 with ref 2026-07-22 → Jan 1, 1896', () => {
-      const ref = new Date(2026, 6, 22);
-      expect(cleaner.ageToBirthDate(130, ref)?.getTime()).toBe(utc(1896, 0, 1));
+    it('estimates 01-01 from age and the stable import reference year', () => {
+      const result = cleaner.clean(makeFile([
+        { NHC: '1', Paciente: 'JUAN PEREZ', Edad: 50 },
+      ]), { NHC: 'nhc', Paciente: 'patientName', Edad: 'age' }, {
+        referenceDate: new Date('2026-08-19T12:00:00.000Z'),
+      });
+
+      expect(result.cleanedRows[0]).toMatchObject({
+        birthDate: new Date('1976-01-01T00:00:00.000Z'),
+        age: 50,
+        ageAtImport: 50,
+        birthDateEstimated: true,
+        birthDateReferenceYear: 2026,
+      });
     });
   });
 
@@ -274,19 +295,6 @@ describe('DataCleanerService', () => {
       expect(result.unidentifiableRows).toEqual([]);
     });
 
-    it('should compute birthDate from age when no birthDate column is present', () => {
-      const mapping: ColumnMapping = { 'NHC': 'nhc', 'Paciente': 'patientName', 'Edad': 'age' };
-      const file = makeFile([
-        { NHC: '1', Paciente: 'JUAN PEREZ', Edad: 50 },
-      ], ['NHC', 'Paciente', 'Edad']);
-
-      const result = cleaner.clean(file, mapping);
-
-      // age 50 → Jan 1 of (currentYear - 50)
-      const expectedYear = new Date().getFullYear() - 50;
-      expect(result.cleanedRows[0].birthDate?.toISOString()).toMatch(new RegExp(`^${expectedYear}-01-01T00:00:00`));
-    });
-
     it('should let a phone-named column mapped to custom flow through (no longer stripped)', () => {
       const mapping: ColumnMapping = {
         'NHC': 'nhc',
@@ -303,6 +311,71 @@ describe('DataCleanerService', () => {
       expect(row.customFields['Móvil']).toBe('612345678');
       // The extractor still scanned the original row and captured the phone.
       expect(row.phone).toBe('612345678');
+    });
+
+    it('maps native demographic fields and normalizes safe enum values', () => {
+      const result = cleaner.clean(makeFile([
+        {
+          NHC: '1', Paciente: 'ANA GARCIA', Teléfono: '666111222', Email: 'ana@example.com',
+          Documento: '12345678Z', TipoDocumento: 'NIE', Dirección: 'Calle Mayor 1', Sangre: 'A+',
+          Contacto: 'Luis García', ContactoTel: '677222333', Relación: 'Cónyuge', Notas: 'Importada',
+        },
+      ]), {
+        NHC: 'nhc', Paciente: 'patientName', Teléfono: 'phone', Email: 'email', Documento: 'idDocument',
+        TipoDocumento: 'idDocType', Dirección: 'address', Sangre: 'bloodType', Contacto: 'emergencyContactName',
+        ContactoTel: 'emergencyContactPhone', Relación: 'emergencyContactRelationship', Notas: 'notes',
+      });
+
+      expect(result.cleanedRows[0]).toMatchObject({
+        phone: '666111222', email: 'ana@example.com', idDocument: '12345678Z', idDocType: 'NIE',
+        address: 'Calle Mayor 1', bloodType: 'A_POS', emergencyContactName: 'Luis García',
+        emergencyContactPhone: '677222333', emergencyContactRelationship: 'Cónyuge', notes: 'Importada',
+      });
+      expect(result.cleanedRows[0].importedFields).toMatchObject({ idDocType: 'NIE', bloodType: 'A+' });
+    });
+
+    it('preserves an unrecognized enum source without setting the native value', () => {
+      const result = cleaner.clean(makeFile([
+        { NHC: '1', Paciente: 'ANA GARCIA', Sangre: 'Grupo raro', TipoDocumento: 'Tarjeta sanitaria' },
+      ]), { NHC: 'nhc', Paciente: 'patientName', Sangre: 'bloodType', TipoDocumento: 'idDocType' });
+
+      expect(result.cleanedRows[0].bloodType).toBeNull();
+      expect(result.cleanedRows[0].idDocType).toBeNull();
+      expect(result.cleanedRows[0].importedFields).toMatchObject({ bloodType: 'Grupo raro', idDocType: 'Tarjeta sanitaria' });
+    });
+
+    it('parses consultation and surgery fields while preserving invalid enum provenance', () => {
+      const result = cleaner.clean(makeFile([{
+        NHC: '1', Paciente: 'ANA GARCIA', Consulta: '15/01/2026', Motivo: 'Dolor', Enfermedad: 'Desde ayer',
+        Exploración: 'TA 120/80', Valoración: 'Sin alarma', Códigos: 'R51 / pendiente de validar', Plan: 'Reposo',
+        Seguimiento: '20/01/2026', NotasSeguimiento: 'Revisar evolución', Cirugía: '16/01/2026',
+        TipoConsulta: 'seguimiento', EstadoCirugía: 'realizada', ASA: 'ASA III', Anestesia: 'General',
+        Técnica: 'Endoscópica', Hallazgos: 'Sin hallazgos', Complicaciones: 'Ninguna',
+        Postoperatorio: 'Buena evolución', Resultado: 'Alta',
+      }]), {
+        NHC: 'nhc', Paciente: 'patientName', Consulta: 'consultationDate', Motivo: 'chiefComplaint', Enfermedad: 'currentIllness',
+        Exploración: 'physicalExam', Valoración: 'assessment', Códigos: 'diagnosisCodes', Plan: 'plan',
+        Seguimiento: 'followUpDate', NotasSeguimiento: 'followUpNotes', Cirugía: 'surgeryDate',
+        TipoConsulta: 'consultationType', EstadoCirugía: 'surgeryStatus', ASA: 'asa', Anestesia: 'anesthesiaType',
+        Técnica: 'technique', Hallazgos: 'findings', Complicaciones: 'complications', Postoperatorio: 'postOpNotes',
+        Resultado: 'outcome',
+      });
+
+      expect(result.cleanedRows[0]).toMatchObject({
+        consultationDate: new Date('2026-01-15T00:00:00.000Z'), chiefComplaint: 'Dolor', currentIllness: 'Desde ayer',
+        physicalExam: 'TA 120/80', assessment: 'Sin alarma', diagnosisCodes: 'R51 / pendiente de validar', plan: 'Reposo',
+        followUpDate: new Date('2026-01-20T00:00:00.000Z'), followUpNotes: 'Revisar evolución',
+        surgeryDate: new Date('2026-01-16T00:00:00.000Z'), consultationType: 'FOLLOW_UP', surgeryStatus: 'COMPLETED',
+        asa: 'ASA_III', anesthesiaType: 'General', technique: 'Endoscópica', findings: 'Sin hallazgos',
+        complications: 'Ninguna', postOpNotes: 'Buena evolución', outcome: 'Alta',
+      });
+
+      const invalid = cleaner.clean(makeFile([{ NHC: '2', Paciente: 'LUIS PEREZ', Estado: 'realizada?', ASA: 'ASA VII' }]), {
+        NHC: 'nhc', Paciente: 'patientName', Estado: 'surgeryStatus', ASA: 'asa',
+      }).cleanedRows[0];
+      expect(invalid.surgeryStatus).toBeNull();
+      expect(invalid.asa).toBeNull();
+      expect(invalid.importedFields).toMatchObject({ surgeryStatus: 'realizada?', asa: 'ASA VII' });
     });
 
     it('should skip rows lacking minimum identifiable info (no NHC and no name)', () => {
@@ -384,6 +457,45 @@ describe('DataCleanerService', () => {
 
       expect(result.cleanedRows).toHaveLength(21);
       expect(result.cleanedRows[20]).toMatchObject({ rowIndex: 20, nhc: '20', age: 20 });
+    });
+  });
+
+  describe('clinical duration normalization', () => {
+    it('normalizes hospital stay days and surgery duration minutes with common units', () => {
+      const result = cleaner.clean(makeFile([
+        {
+          NHC: '1', Paciente: 'ANA GARCIA', Estancia: '3 días', Quirófano: '138 min',
+        },
+      ]), {
+        NHC: 'nhc', Paciente: 'patientName', Estancia: 'hospitalStayDays', Quirófano: 'surgeryDurationMinutes',
+      });
+
+      expect(result.cleanedRows[0]).toMatchObject({
+        hospitalStayDays: 3,
+        surgeryDurationMinutes: 138,
+      });
+      expect(result.cleanedRows[0].importedFields).toEqual({
+        nhc: '1', patientName: 'ANA GARCIA', hospitalStayDays: '3 días', surgeryDurationMinutes: '138 min',
+      });
+    });
+
+    it('accepts bare numeric values and keeps invalid values only as provenance', () => {
+      const result = cleaner.clean(makeFile([
+        {
+          NHC: '1', Paciente: 'ANA GARCIA', Estancia: 3, Quirófano: 138,
+        },
+        {
+          NHC: '2', Paciente: 'LUIS PEREZ', Estancia: 'tres días', Quirófano: 'una hora',
+        },
+      ]), {
+        NHC: 'nhc', Paciente: 'patientName', Estancia: 'hospitalStayDays', Quirófano: 'surgeryDurationMinutes',
+      });
+
+      expect(result.cleanedRows[0]).toMatchObject({ hospitalStayDays: 3, surgeryDurationMinutes: 138 });
+      expect(result.cleanedRows[1]).toMatchObject({ hospitalStayDays: null, surgeryDurationMinutes: null });
+      expect(result.cleanedRows[1].importedFields).toEqual({
+        nhc: '2', patientName: 'LUIS PEREZ', hospitalStayDays: 'tres días', surgeryDurationMinutes: 'una hora',
+      });
     });
   });
 });

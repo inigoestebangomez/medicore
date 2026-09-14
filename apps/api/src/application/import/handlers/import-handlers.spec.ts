@@ -1,5 +1,5 @@
 // apps/api/src/application/import/handlers/import-handlers.spec.ts
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, jest } from '@jest/globals';
 import { FileParserService } from '../services/file-parser.service';
 import { DataCleanerService } from '../services/data-cleaner.service';
 import { PatientMatcherService } from '../services/patient-matcher.service';
@@ -352,6 +352,38 @@ describe('Import use cases', () => {
       await revert.execute({ batchId: parsed.batchId, organizationId: 'org-1', revertedBy: 'u' });
       const second = await revert.execute({ batchId: parsed.batchId, organizationId: 'org-1', revertedBy: 'u' });
       expect(second.affectedPatients).toBe(0);
+    });
+
+    it('soft-deletes only native records marked with this import provenance', async () => {
+      const { parse, confirm, batchRepo, cache, patientRepo } = buildHandlers();
+      const parsed = await parse.execute({
+        buffer: xlsxBuffer(), fileName: 'p.csv', organizationId: 'org-1', createdBy: 'u',
+      });
+      await confirm.execute({
+        batchId: parsed.batchId, organizationId: 'org-1',
+        columnMapping: { 'Nº HISTORIA': 'nhc', Paciente: 'patientName' },
+      });
+      await batchRepo.updateStatus(parsed.batchId, 'org-1', 'COMPLETED');
+
+      const consultationRepo = { removeImportedBatch: jest.fn(() => Promise.resolve(1)) } as any;
+      const surgeryRepo = { removeImportedBatch: jest.fn(() => Promise.resolve(1)) } as any;
+      const revert = new RevertImportHandler(
+        batchRepo,
+        patientRepo as any,
+        cache,
+        consultationRepo,
+        surgeryRepo,
+      );
+
+      await expect(revert.execute({ batchId: parsed.batchId, organizationId: 'org-1', revertedBy: 'u' })).resolves.toEqual({
+        batchId: parsed.batchId,
+        reverted: true,
+        affectedPatients: 2,
+        affectedConsultations: 1,
+        affectedSurgeries: 1,
+      });
+      expect(consultationRepo.removeImportedBatch).toHaveBeenCalledWith(parsed.batchId, 'org-1');
+      expect(surgeryRepo.removeImportedBatch).toHaveBeenCalledWith(parsed.batchId, 'org-1');
     });
   });
 

@@ -6,6 +6,7 @@ import type { Surgery } from '@/domain/surgery/surgery.entity';
 import type { AsaClassification } from '@medicore/contracts';
 import { Surgery as SurgeryEntity } from '@/domain/surgery/surgery.entity';
 import { SurgeryNotFoundError } from '@/domain/surgery/errors/surgery-not-found.error';
+import { hasImportMaterializedMarker } from '@/domain/import/import-provenance';
 
 export class InMemorySurgeryRepository implements ISurgeryRepository {
   private surgeries: Map<string, SurgeryEntity> = new Map();
@@ -162,5 +163,22 @@ export class InMemorySurgeryRepository implements ISurgeryRepository {
         !s.deletedAt &&
         (s.status === 'SCHEDULED' || s.status === 'POSTPONED'),
     );
+  }
+
+  async findByImportBatchRow(batchId: string, organizationId: string, rowIndex: number): Promise<Surgery | null> {
+    return Array.from(this.surgeries.values()).find((s) =>
+      s.organizationId === organizationId && !s.deletedAt && hasImportMaterializedMarker(s.auditLog, batchId, rowIndex),
+    ) ?? null;
+  }
+
+  async removeImportedBatch(batchId: string, organizationId: string): Promise<number> {
+    let count = 0;
+    for (const [id, surgery] of this.surgeries.entries()) {
+      if (surgery.organizationId !== organizationId || surgery.deletedAt) continue;
+      if (!hasImportMaterializedMarker(surgery.auditLog, batchId)) continue;
+      this.surgeries.set(id, surgery.softDelete());
+      count++;
+    }
+    return count;
   }
 }

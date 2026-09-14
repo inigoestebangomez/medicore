@@ -2,8 +2,10 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { PrismaPatientRepository, shouldReplaceBirthDate } from './patient.repository';
 
 describe('shouldReplaceBirthDate', () => {
-  it('replaces the exact import placeholder with a valid date', () => {
+  it('replaces any year-1900 import placeholder with a valid date', () => {
     expect(shouldReplaceBirthDate(new Date('1900-01-01'), new Date('1984-03-12'))).toBe(true);
+    expect(shouldReplaceBirthDate(new Date('1900-04-10'), new Date('1984-03-12'))).toBe(true);
+    expect(shouldReplaceBirthDate(new Date('1900-12-31'), new Date('1984-03-12'))).toBe(true);
   });
 
   it('does not replace a real birth date', () => {
@@ -64,6 +66,62 @@ describe('PrismaPatientRepository.enrich', () => {
       where: { id: 'p-1' },
       data: expect.not.objectContaining({ notes: expect.anything() }),
     });
+  });
+
+  it('fills only empty standard fields and treats UNKNOWN sex as empty', async () => {
+    const existing = {
+      id: 'p-1', organizationId: 'org-1', nhc: '123', firstName: null, lastName: 'Manual',
+      birthDate: null, sex: 'UNKNOWN', phone: null, email: null, address: null,
+      emergencyContact: null, idDocument: null, idDocType: 'DNI', bloodType: 'UNKNOWN', notes: null,
+      createdBy: 'u-1', updatedBy: null, importedData: null, importSource: null, importBatchId: null,
+      createdAt: new Date(), updatedAt: new Date(), deletedAt: null,
+    };
+    const prisma = {
+      patient: {
+        findFirst: jest.fn<() => Promise<typeof existing>>().mockResolvedValue(existing),
+        update: jest.fn<(args: { data: Record<string, unknown> }) => Promise<typeof existing>>()
+          .mockImplementation(async ({ data }) => ({ ...existing, ...data })),
+      },
+    };
+
+    await new PrismaPatientRepository(prisma as any).enrich('p-1', 'org-1', {
+      firstName: 'Ana', lastName: 'Importada', phone: '666111222', sex: 'UNKNOWN',
+      importedData: {},
+    }, 'u-2');
+
+    expect(prisma.patient.update).toHaveBeenCalledWith({
+      where: { id: 'p-1' },
+      data: expect.objectContaining({ firstName: 'Ana', phone: '666111222' }),
+    });
+    expect(prisma.patient.update.mock.calls[0][0].data.lastName).toBeUndefined();
+    expect(prisma.patient.update.mock.calls[0][0].data.sex).toBeUndefined();
+  });
+
+  it('fills empty demographic text and JSON fields without overwriting manual values', async () => {
+    const existing = {
+      id: 'p-1', organizationId: 'org-1', nhc: '123', firstName: null, lastName: null,
+      birthDate: null, sex: 'UNKNOWN', phone: null, email: null, address: {}, emergencyContact: {},
+      idDocument: null, idDocType: 'DNI', bloodType: 'UNKNOWN', notes: null,
+      createdBy: 'u-1', updatedBy: null, importedData: null, importSource: null, importBatchId: null,
+      createdAt: new Date(), updatedAt: new Date(), deletedAt: null,
+    };
+    const prisma = {
+      patient: {
+        findFirst: jest.fn<() => Promise<typeof existing>>().mockResolvedValue(existing),
+        update: jest.fn<(args: { data: Record<string, unknown> }) => Promise<typeof existing>>()
+          .mockImplementation(async ({ data }) => ({ ...existing, ...data })),
+      },
+    };
+
+    await new PrismaPatientRepository(prisma as any).enrich('p-1', 'org-1', {
+      email: 'ana@example.com', address: { street: 'Calle Mayor' }, emergencyContact: { name: 'Luis' },
+      idDocument: '12345678Z', bloodType: 'A_POS', notes: 'Importada', importedData: {},
+    }, 'u-2');
+
+    expect(prisma.patient.update.mock.calls[0][0].data).toEqual(expect.objectContaining({
+      email: 'ana@example.com', address: { street: 'Calle Mayor' }, emergencyContact: { name: 'Luis' },
+      idDocument: '12345678Z', bloodType: 'A_POS', notes: 'Importada',
+    }));
   });
 });
 

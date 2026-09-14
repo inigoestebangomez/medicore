@@ -586,7 +586,7 @@ export const CorrectionMethodSchema = z.enum(['holm', 'fdr']);
 export type CorrectionMethod = z.infer<typeof CorrectionMethodSchema>;
 
 export const GuidedAnalysisRequestSchema = z.object({
-  queryId: z.string().uuid(),
+  queryId: z.string().uuid().optional(),
   path: GuidedAnalysisPathSchema,
   variables: z.array(z.string().min(1)).default([]),
   exposure: GuidedExposureSchema.optional(),

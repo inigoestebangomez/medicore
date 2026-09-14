@@ -13,6 +13,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ImportController } from './import.controller';
 import { PrismaModule } from '@/infrastructure/database/prisma.module';
 import { PrismaPatientRepository } from '@/infrastructure/database/repositories/patient.repository';
+import { PrismaConsultationRepository } from '@/infrastructure/database/repositories/consultation.repository';
+import { PrismaSurgeryRepository } from '@/infrastructure/database/repositories/surgery.repository';
 import { PrismaImportBatchRepository } from '@/infrastructure/database/repositories/import-batch.repository';
 import { PrismaOrganizationRepository } from '@/infrastructure/database/repositories/organization.repository';
 import { StructuredAnalysisModule } from '@/infrastructure/ai/structured-analysis/structured-analysis.module';
@@ -69,6 +71,8 @@ import { FeatureFlagsService } from '@/infrastructure/config/feature-flags.servi
     },
     // Repositories.
     { provide: 'IPatientRepository', useClass: PrismaPatientRepository },
+    { provide: 'IConsultationRepository', useClass: PrismaConsultationRepository },
+    { provide: 'ISurgeryRepository', useClass: PrismaSurgeryRepository },
     { provide: 'IImportBatchRepository', useClass: PrismaImportBatchRepository },
     { provide: 'IOrganizationRepository', useClass: PrismaOrganizationRepository },
     // Pipeline services.

@@ -16,7 +16,8 @@ export default function GuidedAnalysisPage({
   params: { queryId: string };
 }) {
   const guidedEnabled = useFeatureFlag('RESEARCH_GUIDED_ANALYSIS');
-  const { data: query, isLoading, isError } = useGetSavedQuery(params.queryId);
+  const isNewQuery = params.queryId === 'new';
+  const { data: query, isLoading, isError } = useGetSavedQuery(isNewQuery ? '' : params.queryId);
 
   if (!guidedEnabled) {
     return (
@@ -32,7 +33,7 @@ export default function GuidedAnalysisPage({
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !isNewQuery) {
     return (
       <div className="mx-auto max-w-3xl p-6">
         <div className="animate-pulse space-y-4">
@@ -44,7 +45,7 @@ export default function GuidedAnalysisPage({
     );
   }
 
-  if (isError || !query) {
+  if (isError || (!query && !isNewQuery)) {
     return (
       <div className="mx-auto max-w-3xl p-6">
         <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
@@ -61,13 +62,13 @@ export default function GuidedAnalysisPage({
   }
 
   // Extract available variables from displayFields
-  const availableVariables = query.displayFields ?? [];
-  const cohortSize = query.lastRunCount ?? 0;
+  const availableVariables = query?.displayFields ?? [];
+  const cohortSize = query?.lastRunCount ?? 0;
 
   return (
     <div className="mx-auto max-w-4xl p-6">
       <GuidedAnalysisWizard
-        queryId={params.queryId}
+        queryId={isNewQuery ? null : params.queryId}
         cohortSize={cohortSize}
         availableVariables={availableVariables}
       />

@@ -131,8 +131,11 @@ export class PatientMatcherService {
     }
 
     const nameMatch = this.computeNameMatch(row.patientName, candidate);
-    const birthMatch = this.birthDatesMatch(row.birthDate, candidate.birthDate);
-    const ageMatch = this.agesMatch(row.age, candidate);
+    const birthMatch = this.birthDatesMatch(row.birthDate, candidate.birthDate, row.birthDateEstimated);
+    const ageReference = row.birthDateReferenceYear
+      ? new Date(Date.UTC(row.birthDateReferenceYear, 0, 1))
+      : undefined;
+    const ageMatch = this.agesMatch(row.age, candidate, ageReference);
 
     // 2. Nombre completo + fecha de nacimiento → 90 (auto).
     if (nameMatch === 'full' && birthMatch) {
@@ -238,12 +241,13 @@ export class PatientMatcherService {
   // Field comparators
   // ─────────────────────────────────────────────
 
-  birthDatesMatch(a: Date | null, b: Date | null): boolean {
+  birthDatesMatch(a: Date | null, b: Date | null, estimated = false): boolean {
+    if (estimated) return false;
     if (!a || !b) return false;
     return a.toISOString().slice(0, 10) === b.toISOString().slice(0, 10);
   }
 
-  agesMatch(rowAge: number | null, candidate: Patient, referenceDate: Date = new Date()): boolean {
+  agesMatch(rowAge: number | null, candidate: Patient, referenceDate?: Date): boolean {
     if (rowAge === null) return false;
     // SDD import-data-quality: a candidate with null birthDate has no age to
     // compare against — skip age scoring rather than penalize or falsely match

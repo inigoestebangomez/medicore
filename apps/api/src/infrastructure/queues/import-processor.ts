@@ -9,13 +9,16 @@
 // physician can retry finalize or revert.
 
 import { Processor, Process } from '@nestjs/bull';
-import { Inject, Logger } from '@nestjs/common';
+import { Inject, Logger, Optional } from '@nestjs/common';
 import { UnrecoverableError } from 'bullmq';
 import type { Job } from 'bullmq';
-import type { ColumnMapping, MatchDecision } from '@medicore/contracts';
+import type { ColumnMapping, MatchDecision, MatchResolution } from '@medicore/contracts';
 import type { IImportBatchRepository } from '@/domain/import/import-batch.repository.interface';
 import type { IPatientRepository, CreatePatientInput } from '@/domain/patient/patient.repository.interface';
 import type { Patient } from '@/domain/patient/patient.entity';
+import type { IConsultationRepository, CreateConsultationInput } from '@/domain/consultation/consultation.repository.interface';
+import type { ISurgeryRepository, CreateSurgeryInput } from '@/domain/surgery/surgery.repository.interface';
+import { importMaterializedAuditLog } from '@/domain/import/import-provenance';
 import { DataCleanerService } from '@/application/import/services/data-cleaner.service';
 import { buildPatientInputFromRow } from '@/application/import/services/patient-input-builder';
 import type { IParsedFileCache } from '@/application/import/ports/parsed-file-cache.port';
@@ -32,7 +35,12 @@ export interface ImportFinalizeJobData {
   batchId: string;
   organizationId: string;
   userId: string;
-  matchResolutions: Record<string, MatchDecision>;
+  matchResolutions: Record<string, MatchResolution>;
+}
+
+interface ImportMaterializationCounts {
+  consultationsCreated: number;
+  surgeriesCreated: number;
 }
 
 export const IMPORT_QUEUE = IMPORT_QUEUE_NAME;
@@ -111,6 +119,8 @@ export class ImportProcessor {
     // when the research module is not wired in this deployment.
     @Inject('FieldCatalogCachePort') private readonly fieldCache?: FieldCatalogCachePort,
     @Inject(FeatureFlagsService) private readonly featureFlags: FeatureFlagsService = new FeatureFlagsService(),
+    @Inject('IConsultationRepository') @Optional() private readonly consultationRepo?: IConsultationRepository,
+    @Inject('ISurgeryRepository') @Optional() private readonly surgeryRepo?: ISurgeryRepository,
   ) {}
 
   @Process('finalize')
@@ -119,6 +129,8 @@ export class ImportProcessor {
     enriched: number;
     skipped: number;
     discardedRowCount: number;
+    consultationsCreated?: number;
+    surgeriesCreated?: number;
   }> {
     const { batchId, organizationId, userId, matchResolutions } = job.data;
     this.logger.log(`Finalizing import batch ${batchId}`);
@@ -136,6 +148,7 @@ export class ImportProcessor {
           enriched: batch.enrichedRows,
           skipped: batch.skippedRows,
           discardedRowCount: new Set(batch.ignoredRows.map(({ rowIndex }) => rowIndex)).size,
+          ...(this.materializationConfigured() ? { consultationsCreated: 0, surgeriesCreated: 0 } : {}),
         };
       }
 
@@ -149,6 +162,7 @@ export class ImportProcessor {
         ignoredColumns: batch.ignoredColumns,
         ignoredRows: batch.ignoredRows,
         cellOverrides: batch.cellOverrides ?? undefined,
+        referenceDate: batch.createdAt,
       });
       if (cleaned.unidentifiableRows.length > 0) {
         throw new ImportBlockedByUnidentifiableError(cleaned.unidentifiableRows.length);
@@ -167,6 +181,7 @@ export class ImportProcessor {
       let skipped = 0;
       let alreadyProcessed = 0;
       const affectedIds: string[] = [];
+      const materializedCounts: ImportMaterializationCounts = { consultationsCreated: 0, surgeriesCreated: 0 };
       // SDD import-data-quality: false-record rows flagged by the cleaner are
       // skipped entirely (never create/enrich a patient for an equipment name
       // or admin note that slipped past junk detection).
@@ -177,6 +192,9 @@ export class ImportProcessor {
           ? await this.patientRepo.findByImportBatchRow(batchId, organizationId, row.rowIndex)
           : null;
         if (alreadyWritten) {
+          const materialized = await this.materializeClinicalRecords(alreadyWritten.id, row, batch, userId);
+          materializedCounts.consultationsCreated += materialized.consultationsCreated;
+          materializedCounts.surgeriesCreated += materialized.surgeriesCreated;
           alreadyProcessed++;
           continue;
         }
@@ -188,7 +206,30 @@ export class ImportProcessor {
         }
 
         // Resolve the physician decision for this row index.
-        const decision: MatchDecision = matchResolutions[String(row.rowIndex)] ?? 'new';
+        const resolution = matchResolutions[String(row.rowIndex)] ?? 'new';
+        const decision: MatchDecision = typeof resolution === 'string' ? resolution : resolution.decision;
+        const explicitCandidateId = typeof resolution === 'string' ? undefined : resolution.candidateId;
+
+        // A candidate-aware confirmation is a physician choice, not another
+        // fuzzy-search request. Revalidate it in this tenant immediately
+        // before any write; never fall back to another patient or create one
+        // when the selected candidate has disappeared.
+        let explicitCandidate: Patient | null = null;
+        if (decision !== 'new' && typeof resolution !== 'string') {
+          if (!explicitCandidateId) {
+            this.logger.warn(`Skipping row ${row.rowIndex}: confirmed patient candidate is missing`);
+            skipped++;
+            continue;
+          }
+          explicitCandidate = await this.patientRepo.findById(explicitCandidateId, organizationId);
+          if (!explicitCandidate) {
+            this.logger.warn(
+              `Skipping row ${row.rowIndex}: confirmed patient candidate ${explicitCandidateId} is stale or unavailable for organization ${organizationId}`,
+            );
+            skipped++;
+            continue;
+          }
+        }
 
         // SDD import-data-quality: name normalization + null birthDate + phone
         // come from the shared, pure row → patient-parts builder.
@@ -203,8 +244,21 @@ export class ImportProcessor {
           _batchName: batch.fileName,
           _importedAt: new Date().toISOString(),
           _rowIndex: row.rowIndex,
+          ...row.importedFields,
           ...(row.ageAtImport !== null && row.ageAtImport !== undefined ? { ageAtImport: row.ageAtImport } : {}),
+          ...(row.birthDateEstimated ? {
+            birthDateEstimated: true,
+            birthDateReferenceYear: row.birthDateReferenceYear,
+          } : {}),
           ...row.customFields,
+          ...(row.birthDate ? { birthDate: serializeBatchDate(row.birthDate) } : {}),
+          ...(row.sex ? { sex: row.sex } : {}),
+          ...(parts.phone ? { phone: parts.phone } : {}),
+          ...(parts.email ? { email: parts.email } : {}),
+          ...(parts.idDocument ? { idDocument: parts.idDocument } : {}),
+          ...(parts.idDocType ? { idDocType: parts.idDocType } : {}),
+          ...(parts.bloodType ? { bloodType: parts.bloodType } : {}),
+          ...(parts.notes ? { notes: parts.notes } : {}),
           ...(row.diagnosis ? { diagnosis: row.diagnosis } : {}),
           ...(row.procedure ? { procedure: row.procedure } : {}),
           ...(row.admissionDate ? { admissionDate: serializeBatchDate(row.admissionDate) } : {}),
@@ -219,9 +273,22 @@ export class ImportProcessor {
           ? await this.findImportPatientByNhc(row.nhc, organizationId)
           : null;
         if (existing) {
-          await this.enrichExistingPatient(existing, organizationId, batchId, batchBlock, batch.originalFormat, row.birthDate, row.sex, userId);
+          await this.enrichExistingPatient(existing, organizationId, batchId, batchBlock, batch.originalFormat, row, parts, userId);
           affectedIds.push(existing.id);
           enriched++;
+          const materialized = await this.materializeClinicalRecords(existing.id, row, batch, userId);
+          materializedCounts.consultationsCreated += materialized.consultationsCreated;
+          materializedCounts.surgeriesCreated += materialized.surgeriesCreated;
+          continue;
+        }
+
+        if (explicitCandidate) {
+          await this.enrichExistingPatient(explicitCandidate, organizationId, batchId, batchBlock, batch.originalFormat, row, parts, userId);
+          affectedIds.push(explicitCandidate.id);
+          enriched++;
+          const materialized = await this.materializeClinicalRecords(explicitCandidate.id, row, batch, userId);
+          materializedCounts.consultationsCreated += materialized.consultationsCreated;
+          materializedCounts.surgeriesCreated += materialized.surgeriesCreated;
           continue;
         }
 
@@ -241,16 +308,26 @@ export class ImportProcessor {
           lastName: parts.lastName,
           birthDate: parts.birthDate,
           phone: parts.phone,
+          email: parts.email,
+          address: parts.address,
+          emergencyContact: parts.emergencyContact,
+          idDocument: parts.idDocument,
+          idDocType: parts.idDocType ?? undefined,
+          bloodType: parts.bloodType ?? undefined,
+          notes: parts.notes,
           sex: (row.sex ?? 'UNKNOWN') as any,
           organizationId,
           createdBy: userId,
         };
         const write = await this.createPatientWithRaceRecovery(input, row.nhc, organizationId);
         const createdPatient = write.patient;
-        await this.enrichExistingPatient(createdPatient, organizationId, batchId, batchBlock, batch.originalFormat, row.birthDate, row.sex, userId);
+        await this.enrichExistingPatient(createdPatient, organizationId, batchId, batchBlock, batch.originalFormat, row, parts, userId);
         affectedIds.push(createdPatient.id);
         if (write.created) created++;
         else enriched++;
+        const materialized = await this.materializeClinicalRecords(createdPatient.id, row, batch, userId);
+        materializedCounts.consultationsCreated += materialized.consultationsCreated;
+        materializedCounts.surgeriesCreated += materialized.surgeriesCreated;
       }
 
       const discardedRowCount = cleaned.discardedRowIndices.length;
@@ -286,7 +363,13 @@ export class ImportProcessor {
       }
 
       this.logger.log(`Import batch ${batchId} complete: ${created} new, ${enriched} enriched, ${skipped} skipped, ${discardedRowCount} discarded`);
-      return { created, enriched, skipped, discardedRowCount };
+      return {
+        created,
+        enriched,
+        skipped,
+        discardedRowCount,
+        ...(this.materializationConfigured() ? materializedCounts : {}),
+      };
     } catch (err) {
       return await this.handleFinalizeError(batchId, organizationId, batch, completed, err);
     }
@@ -367,8 +450,8 @@ export class ImportProcessor {
     batchId: string,
     batchBlock: Record<string, unknown>,
     importSource: string,
-    birthDate: Date | null,
-    sex: string | null,
+    row: Parameters<typeof buildPatientInputFromRow>[0],
+    parts: ReturnType<typeof buildPatientInputFromRow>,
     updatedBy: string,
   ): Promise<void> {
     const existingImported = patient.importedData ?? {};
@@ -382,10 +465,184 @@ export class ImportProcessor {
         },
         importBatchId: batchId,
         importSource,
-        ...(birthDate ? { birthDate } : {}),
-        ...(sex ? { sex } : {}),
+        ...(row.patientName ? { firstName: parts.firstName, lastName: parts.lastName } : {}),
+        ...(parts.phone ? { phone: parts.phone } : {}),
+        ...(parts.email ? { email: parts.email } : {}),
+        ...(parts.idDocument ? { idDocument: parts.idDocument } : {}),
+        ...(parts.idDocType ? { idDocType: parts.idDocType } : {}),
+        ...(parts.address ? { address: parts.address } : {}),
+        ...(parts.bloodType ? { bloodType: parts.bloodType } : {}),
+        ...(parts.emergencyContact ? { emergencyContact: parts.emergencyContact } : {}),
+        ...(parts.notes ? { notes: parts.notes } : {}),
+        ...(row.birthDate ? { birthDate: row.birthDate } : {}),
+        ...(row.sex ? { sex: row.sex } : {}),
       },
       updatedBy,
     );
+  }
+
+  private materializationConfigured(): boolean {
+    return Boolean(
+      this.consultationRepo?.create && this.consultationRepo.findByImportBatchRow
+        || this.surgeryRepo?.create && this.surgeryRepo.findByImportBatchRow,
+    );
+  }
+
+  private async materializeClinicalRecords(
+    patientId: string,
+    row: Parameters<typeof buildPatientInputFromRow>[0],
+    batch: NonNullable<Awaited<ReturnType<IImportBatchRepository['findById']>>>,
+    userId: string,
+  ): Promise<ImportMaterializationCounts> {
+    const counts: ImportMaterializationCounts = { consultationsCreated: 0, surgeriesCreated: 0 };
+    const marker = {
+      importBatchId: batch.id,
+      importRowIndex: row.rowIndex,
+      performedBy: userId,
+      performedAt: new Date().toISOString(),
+    };
+    const consultationDate = this.nativeClinicalDate(row, batch.createdAt, row.consultationDate);
+    const surgeryDate = this.nativeClinicalDate(row, batch.createdAt, row.surgeryDate);
+
+    const hasConsultationContent = Boolean(
+      row.consultationDate || row.consultationType || row.chiefComplaint || row.currentIllness
+      || row.physicalExam || row.assessment || row.diagnosisCodes || row.diagnosis || row.plan
+      || row.followUpDate || row.followUpNotes || row.notes || row.testType,
+    );
+    if (hasConsultationContent && (!this.consultationRepo?.create || !this.consultationRepo.findByImportBatchRow)) {
+      this.logger.warn(
+        `Import batch ${batch.id} row ${row.rowIndex}: consultation materialization unavailable; imported history was preserved`,
+      );
+    }
+    const hasSurgeryContent = Boolean(
+      row.surgeryDate || row.procedure || row.surgeryStatus || row.asa || row.anesthesiaType
+      || row.surgeryDurationMinutes !== null || row.technique || row.findings || row.complications
+      || row.postOpNotes || row.outcome || row.hospitalStayDays !== null,
+    );
+    if (hasSurgeryContent && (!this.surgeryRepo?.create || !this.surgeryRepo.findByImportBatchRow)) {
+      this.logger.warn(
+        `Import batch ${batch.id} row ${row.rowIndex}: surgery materialization unavailable; imported history was preserved`,
+      );
+    }
+    if (hasConsultationContent && this.consultationRepo?.create && this.consultationRepo.findByImportBatchRow) {
+      const existing = await this.consultationRepo.findByImportBatchRow(batch.id, batch.organizationId, row.rowIndex);
+      if (!existing) {
+          const details = this.clinicalDetails(row);
+          const consultation: CreateConsultationInput = {
+            organizationId: batch.organizationId,
+            patientId,
+            date: consultationDate,
+            type: (row.consultationType ?? 'FIRST_VISIT') as CreateConsultationInput['type'],
+            physicianId: userId,
+            chiefComplaint: row.chiefComplaint ?? row.diagnosis ?? row.testType ?? row.notes ?? 'Datos clínicos importados',
+            currentIllness: row.currentIllness ?? (details || null),
+            assessment: row.assessment ?? row.diagnosis,
+            plan: row.plan ?? row.procedure,
+            followUpDate: row.followUpDate,
+            followUpNotes: row.followUpNotes,
+            createdBy: userId,
+          };
+          // The native consultation has no free-form diagnosis-code import path.
+          // Keep unvalidated text in the audit marker instead of inventing codes.
+          await this.consultationRepo.create({
+            ...consultation,
+            physicalExam: {
+              ...(row.physicalExam ? { importedText: row.physicalExam } : {}),
+              importAuditLog: importMaterializedAuditLog({
+                ...marker,
+                importedFields: this.importedClinicalFields(row),
+              }),
+            },
+          });
+        counts.consultationsCreated++;
+      }
+    }
+
+    if (hasSurgeryContent && this.surgeryRepo?.create && this.surgeryRepo.findByImportBatchRow) {
+      const existing = await this.surgeryRepo.findByImportBatchRow(batch.id, batch.organizationId, row.rowIndex);
+      if (!existing) {
+        const asa = row.asa ?? null;
+        const status = row.surgeryStatus === 'COMPLETED' && !asa
+          ? 'SCHEDULED'
+          : (row.surgeryStatus ?? 'SCHEDULED');
+        const surgery: CreateSurgeryInput = {
+          organizationId: batch.organizationId,
+          patientId,
+          date: surgeryDate,
+          status: status as CreateSurgeryInput['status'],
+          physicianId: userId,
+          procedureType: row.procedure ?? 'Cirugía importada',
+          asa,
+          anesthesiaType: row.anesthesiaType,
+          preOpNotes: this.clinicalDetails(row) || null,
+          technique: row.technique ? { importedText: row.technique } : null,
+          findings: row.findings ?? null,
+          complications: row.complications ?? null,
+          postOpNotes: row.postOpNotes ?? null,
+          outcome: row.outcome ?? null,
+          duration: row.surgeryDurationMinutes,
+          createdBy: userId,
+          auditLog: importMaterializedAuditLog({
+            ...marker,
+            importedFields: this.importedClinicalFields(row),
+          }),
+        };
+        await this.surgeryRepo.create(surgery);
+        counts.surgeriesCreated++;
+      }
+    }
+
+    return counts;
+  }
+
+  private nativeClinicalDate(
+    row: Parameters<typeof buildPatientInputFromRow>[0],
+    fallback: Date,
+    preferred?: Date | null,
+  ): Date {
+    const now = Date.now();
+    for (const candidate of [preferred, row.admissionDate, row.requestDate, row.completionDate]) {
+      if (candidate instanceof Date && !Number.isNaN(candidate.getTime()) && candidate.getTime() <= now) {
+        return candidate;
+      }
+    }
+    return fallback.getTime() <= now ? fallback : new Date(now);
+  }
+
+  private clinicalDetails(row: Parameters<typeof buildPatientInputFromRow>[0]): string {
+    return [
+      row.currentIllness ? `Enfermedad actual: ${row.currentIllness}` : null,
+      row.physicalExam ? `Exploración física: ${row.physicalExam}` : null,
+      row.assessment ? `Valoración: ${row.assessment}` : null,
+      row.diagnosisCodes ? `Códigos diagnósticos importados: ${row.diagnosisCodes}` : null,
+      row.plan ? `Plan: ${row.plan}` : null,
+      row.followUpDate ? `Fecha de seguimiento: ${row.followUpDate.toISOString()}` : null,
+      row.followUpNotes ? `Notas de seguimiento: ${row.followUpNotes}` : null,
+      row.notes ? `Notas: ${row.notes}` : null,
+      row.testType ? `Prueba: ${row.testType}` : null,
+      row.diagnosis ? `Diagnóstico: ${row.diagnosis}` : null,
+      row.procedure ? `Procedimiento: ${row.procedure}` : null,
+      row.admissionDate ? `Fecha de ingreso: ${row.admissionDate.toISOString()}` : null,
+      row.requestDate ? `Fecha de solicitud: ${row.requestDate.toISOString()}` : null,
+      row.completionDate ? `Fecha de realización: ${row.completionDate.toISOString()}` : null,
+      row.anesthesiaType ? `Tipo de anestesia: ${row.anesthesiaType}` : null,
+      row.technique ? `Técnica quirúrgica: ${row.technique}` : null,
+      row.findings ? `Hallazgos: ${row.findings}` : null,
+      row.complications ? `Complicaciones: ${row.complications}` : null,
+      row.postOpNotes ? `Notas postoperatorias: ${row.postOpNotes}` : null,
+      row.outcome ? `Resultado: ${row.outcome}` : null,
+      row.hospitalStayDays !== null ? `Tiempo de hospitalización: ${row.hospitalStayDays} días` : null,
+      row.surgeryDurationMinutes !== null ? `Tiempo quirúrgico: ${row.surgeryDurationMinutes} minutos` : null,
+    ].filter((value): value is string => Boolean(value)).join('\n');
+  }
+
+  private importedClinicalFields(row: Parameters<typeof buildPatientInputFromRow>[0]): Record<string, unknown> {
+    const fields = new Set([
+      'consultationDate', 'consultationType', 'chiefComplaint', 'currentIllness', 'physicalExam',
+      'assessment', 'diagnosisCodes', 'plan', 'followUpDate', 'followUpNotes', 'surgeryDate',
+      'procedure', 'surgeryStatus', 'asa', 'anesthesiaType', 'surgeryDurationMinutes', 'technique',
+      'findings', 'complications', 'postOpNotes', 'outcome', 'hospitalStayDays',
+    ]);
+    return Object.fromEntries(Object.entries(row.importedFields).filter(([key]) => fields.has(key)));
   }
 }

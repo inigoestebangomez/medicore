@@ -13,10 +13,10 @@ const STATUS_BADGE: Record<SurgeryStatus, string> = {
 };
 
 const STATUS_LABEL: Record<SurgeryStatus, string> = {
-  SCHEDULED: 'Scheduled',
-  COMPLETED: 'Completed',
-  CANCELLED: 'Cancelled',
-  POSTPONED: 'Postponed',
+  SCHEDULED: 'Programada',
+  COMPLETED: 'Completada',
+  CANCELLED: 'Cancelada',
+  POSTPONED: 'Aplazada',
 };
 
 interface SurgeryListProps {
@@ -41,7 +41,7 @@ export function SurgeryList({ patientId }: SurgeryListProps) {
   if (error) {
     return (
       <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">
-        Error loading surgeries: {error.message}
+        Error al cargar las cirugías: {error.message}
       </div>
     );
   }
@@ -51,18 +51,18 @@ export function SurgeryList({ patientId }: SurgeryListProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-on-surface">Surgeries</h2>
+        <h2 className="text-lg font-semibold text-on-surface">Cirugías</h2>
         <Button
           size="sm"
           onClick={() => router.push(`/patients/${patientId}/surgeries/new`)}
         >
-          New Surgery
+          Nueva cirugía
         </Button>
       </div>
 
       {items.length === 0 ? (
         <div className="rounded-lg border border-outline-variant bg-surface-lowest p-8 text-center">
-          <p className="text-sm text-on-surface-variant">No surgeries recorded yet</p>
+          <p className="text-sm text-on-surface-variant">Todavía no hay cirugías registradas</p>
         </div>
       ) : (
         <div className="space-y-2">

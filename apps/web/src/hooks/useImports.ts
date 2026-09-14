@@ -6,7 +6,7 @@ import type {
   ColumnMappingProposal,
   FileSample,
   ImportStatus,
-  MatchDecision,
+  MatchResolution,
   PatientMatch,
   CellOverrides,
   IgnoredColumn,
@@ -211,7 +211,7 @@ export function useFinalizeImport() {
   return useMutation({
     mutationFn: async (input: {
       batchId: string;
-      matchResolutions?: Record<string, MatchDecision>;
+      matchResolutions?: Record<string, MatchResolution>;
     }): Promise<FinalizeImportResponse> => {
       const json = await apiFetch<ApiResponse<FinalizeImportResponse>>(
         `/v1/imports/${input.batchId}/finalize`,

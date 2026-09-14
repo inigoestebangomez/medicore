@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Surgery } from '@/domain/surgery/surgery.entity';
 import type { ISurgeryRepository, CreateSurgeryInput, UpdateSurgeryInput, ListSurgeriesParams, ListOrgSurgeriesParams, ListOrgSurgeriesResult, PatientNameLite } from '@/domain/surgery/surgery.repository.interface';
+import { hasImportMaterializedMarker } from '@/domain/import/import-provenance';
 
 @Injectable()
 export class PrismaSurgeryRepository implements ISurgeryRepository {
@@ -160,6 +161,27 @@ export class PrismaSurgeryRepository implements ISurgeryRepository {
       },
     });
     return count > 0;
+  }
+
+  async findByImportBatchRow(batchId: string, organizationId: string, rowIndex: number): Promise<Surgery | null> {
+    const records = await this.prisma.surgery.findMany({
+      where: { organizationId, deletedAt: null },
+      select: { id: true, auditLog: true },
+    });
+    const record = records.find((candidate) => hasImportMaterializedMarker(candidate.auditLog, batchId, rowIndex));
+    return record ? this.findById(record.id, organizationId) : null;
+  }
+
+  async removeImportedBatch(batchId: string, organizationId: string): Promise<number> {
+    const records = await this.prisma.surgery.findMany({
+      where: { organizationId, deletedAt: null },
+      select: { id: true, auditLog: true },
+    });
+    const imported = records.filter((record) => hasImportMaterializedMarker(record.auditLog, batchId));
+    for (const record of imported) {
+      await this.prisma.surgery.update({ where: { id: record.id }, data: { deletedAt: new Date() } });
+    }
+    return imported.length;
   }
 
   private toEntity(record: any): Surgery {

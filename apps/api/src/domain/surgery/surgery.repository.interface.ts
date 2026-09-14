@@ -90,4 +90,8 @@ export interface ISurgeryRepository {
   update(id: string, organizationId: string, data: UpdateSurgeryInput): Promise<Surgery>;
   softDelete(id: string, organizationId: string): Promise<Surgery>;
   hasScheduledSurgeries(patientId: string, organizationId: string): Promise<boolean>;
+  /** Import-only provenance lookup. Optional keeps patient-only test doubles valid. */
+  findByImportBatchRow?(batchId: string, organizationId: string, rowIndex: number): Promise<Surgery | null>;
+  /** Soft-delete only records materialized by the given import batch. */
+  removeImportedBatch?(batchId: string, organizationId: string): Promise<number>;
 }

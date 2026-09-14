@@ -17,7 +17,7 @@ import { InferentialStep } from './InferentialStep';
 import { ResultsPanel } from './ResultsPanel';
 
 interface GuidedAnalysisWizardProps {
-  queryId: string;
+  queryId: string | null;
   cohortSize: number;
   availableVariables: string[];
 }
@@ -46,7 +46,10 @@ export function GuidedAnalysisWizard({
     async (request: Omit<GuidedAnalysisRequest, 'queryId'>) => {
       setError(null);
       try {
-        const res = await mutation.mutateAsync({ queryId, ...request });
+        const res = await mutation.mutateAsync({
+          ...(queryId ? { queryId } : {}),
+          ...request,
+        });
         setResult(res);
         setStep('results');
       } catch (err) {

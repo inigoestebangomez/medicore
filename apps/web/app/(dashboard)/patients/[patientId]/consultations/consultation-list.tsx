@@ -14,11 +14,11 @@ const TYPE_BADGE: Record<ConsultationType, string> = {
 };
 
 const TYPE_LABEL: Record<ConsultationType, string> = {
-  FIRST_VISIT: 'First Visit',
-  FOLLOW_UP: 'Follow-up',
-  URGENCY: 'Urgency',
-  POST_OP: 'Post-Op',
-  TELECONSULTATION: 'Teleconsultation',
+  FIRST_VISIT: 'Primera visita',
+  FOLLOW_UP: 'Seguimiento',
+  URGENCY: 'Urgencia',
+  POST_OP: 'Postoperatoria',
+  TELECONSULTATION: 'Teleconsulta',
 };
 
 interface ConsultationListProps {
@@ -43,7 +43,7 @@ export function ConsultationList({ patientId }: ConsultationListProps) {
   if (error) {
     return (
       <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">
-        Error loading consultations: {error.message}
+        Error al cargar las consultas: {error.message}
       </div>
     );
   }
@@ -53,18 +53,18 @@ export function ConsultationList({ patientId }: ConsultationListProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-on-surface">Consultations</h2>
+        <h2 className="text-lg font-semibold text-on-surface">Consultas</h2>
         <Button
           size="sm"
           onClick={() => router.push(`/patients/${patientId}/consultations/new`)}
         >
-          New Consultation
+          Nueva consulta
         </Button>
       </div>
 
       {items.length === 0 ? (
         <div className="rounded-lg border border-outline-variant bg-surface-lowest p-8 text-center">
-          <p className="text-sm text-on-surface-variant">No consultations recorded yet</p>
+          <p className="text-sm text-on-surface-variant">Todavía no hay consultas registradas</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -97,7 +97,7 @@ export function ConsultationList({ patientId }: ConsultationListProps) {
                   </p>
                   {consultation.physicianName && (
                     <p className="text-xs text-on-surface-variant/60">
-                      Physician: {consultation.physicianName}
+                      Profesional: {consultation.physicianName}
                     </p>
                   )}
                 </div>

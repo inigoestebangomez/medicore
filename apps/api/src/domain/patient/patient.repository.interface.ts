@@ -56,8 +56,18 @@ export interface UpdatePatientInput {
 // fields (BR-IMP-003): the repository only applies them when the existing
 // standard field is empty.
 export interface EnrichPatientInput {
+  firstName?: string | null;
+  lastName?: string | null;
   birthDate?: Date | null;
   sex?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: Record<string, unknown> | null;
+  emergencyContact?: Record<string, unknown> | null;
+  idDocument?: string | null;
+  idDocType?: string | null;
+  bloodType?: string | null;
+  notes?: string | null;
   importedData: Record<string, unknown>; // full updated importedData object
   importBatchId?: string | null;
   importSource?: string | null;

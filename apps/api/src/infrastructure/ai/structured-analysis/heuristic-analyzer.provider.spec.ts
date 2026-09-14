@@ -60,20 +60,53 @@ describe('HeuristicAnalyzer', () => {
     expect(result.columnMapping).toEqual({ Nombre: 'patientName', 'Nº Paciente': 'nhc' });
   });
 
-  describe('BR-IMP-007 — phone column exclusion', () => {
-    it('should detect "Teléfono" and exclude it', async () => {
+  describe('native demographic mapping', () => {
+    it('should map phone columns explicitly while retaining fallback extraction', async () => {
       const sample: FileSample = {
         columns: ['Teléfono', 'Móvil', 'Tlf', 'Phone', 'NHC', 'Nombre', 'Edad'],
         rows: [],
       } as any;
       const result = await analyzer.analyzeStructure(sample);
-      expect(result.columnMapping['Teléfono']).toBe('ignore');
-      expect(result.columnMapping['Móvil']).toBe('ignore');
-      expect(result.columnMapping['Tlf']).toBe('ignore');
-      expect(result.columnMapping['Phone']).toBe('ignore');
-      // Phone columns are never typed into a clinical field name (BR-IMP-007).
-      expect(result.columnMapping['Teléfono']).not.toBe('nhc');
-      expect(result.columnMapping['Móvil']).not.toBe('patientName');
+      expect(result.columnMapping['Teléfono']).toBe('phone');
+      expect(result.columnMapping['Móvil']).toBe('phone');
+      expect(result.columnMapping['Tlf']).toBe('phone');
+      expect(result.columnMapping['Phone']).toBe('phone');
+    });
+  });
+
+  it('maps hospital stay and surgery duration columns to numeric clinical fields', async () => {
+    const result = await analyzer.analyzeStructure({
+      columns: ['Tiempo de hospitalización (días)', 'Tiempo quirúrgico (minutos)', 'Duración IQ'],
+      rows: [{
+        'Tiempo de hospitalización (días)': '3 días',
+        'Tiempo quirúrgico (minutos)': '138 min',
+        'Duración IQ': 138,
+      }],
+    });
+
+    expect(result.columnMapping['Tiempo de hospitalización (días)']).toBe('hospitalStayDays');
+    expect(result.columnMapping['Tiempo quirúrgico (minutos)']).toBe('surgeryDurationMinutes');
+    expect(result.columnMapping['Duración IQ']).toBe('surgeryDurationMinutes');
+  });
+
+  it('maps consultation and surgery screen column names to their explicit fields', async () => {
+    const result = await analyzer.analyzeStructure({
+      columns: [
+        'Fecha de consulta', 'Motivo de consulta', 'Enfermedad actual', 'Exploración física', 'Valoración',
+        'Códigos diagnósticos', 'Plan', 'Fecha de seguimiento', 'Notas de seguimiento', 'Fecha de cirugía',
+        'Clasificación ASA', 'Tipo de anestesia', 'Técnica quirúrgica', 'Hallazgos', 'Complicaciones',
+        'Notas postoperatorias', 'Resultado',
+      ],
+      rows: [],
+    });
+
+    expect(result.columnMapping).toEqual({
+      'Fecha de consulta': 'consultationDate', 'Motivo de consulta': 'chiefComplaint',
+      'Enfermedad actual': 'currentIllness', 'Exploración física': 'physicalExam', Valoración: 'assessment',
+      'Códigos diagnósticos': 'diagnosisCodes', Plan: 'plan', 'Fecha de seguimiento': 'followUpDate',
+      'Notas de seguimiento': 'followUpNotes', 'Fecha de cirugía': 'surgeryDate', 'Clasificación ASA': 'asa',
+      'Tipo de anestesia': 'anesthesiaType', 'Técnica quirúrgica': 'technique', Hallazgos: 'findings',
+      Complicaciones: 'complications', 'Notas postoperatorias': 'postOpNotes', Resultado: 'outcome',
     });
   });
 

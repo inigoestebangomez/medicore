@@ -4,11 +4,25 @@ const MAX_BLOCKS = 2_000;
 const MAX_KEYS = 100;
 const MAX_VALUE_LENGTH = 2_000;
 const MAX_TOTAL_VALUE_LENGTH = 100_000;
-const METADATA_KEYS = new Set(['_rowIndex', '_rowIndices', '_importedAt', '_batchName']);
+const METADATA_KEYS = new Set(['_rowIndex', '_rowIndices', '_importedAt', '_batchName', 'importAuditLog', 'importedFields']);
 const STANDARD_KEYS = new Set([
-  'nhc', 'patientName', 'birthDate', 'age', 'sex', 'admissionDate', 'diagnosis',
-  'procedure', 'testType', 'requestDate', 'completionDate',
+  'nhc', 'patientName', 'birthDate', 'birthDateEstimated', 'birthDateReferenceYear', 'age', 'sex', 'admissionDate', 'diagnosis',
+  'phone', 'email', 'idDocument', 'idDocType', 'address', 'bloodType',
+  'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelationship', 'notes',
+  'consultationDate', 'consultationType', 'chiefComplaint', 'currentIllness', 'physicalExam', 'assessment',
+  'diagnosisCodes', 'plan', 'followUpDate', 'followUpNotes', 'surgeryDate', 'procedure', 'surgeryStatus',
+  'asa', 'anesthesiaType', 'surgeryDurationMinutes', 'technique', 'findings', 'complications', 'postOpNotes',
+  'outcome', 'testType', 'requestDate', 'completionDate', 'hospitalStayDays',
 ]);
+const STANDARD_FIELD_ORDER = [
+  'nhc', 'patientName', 'birthDate', 'birthDateEstimated', 'birthDateReferenceYear', 'age', 'sex', 'admissionDate', 'diagnosis',
+  'phone', 'email', 'idDocument', 'idDocType', 'address', 'bloodType',
+  'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelationship', 'notes',
+  'consultationDate', 'consultationType', 'chiefComplaint', 'currentIllness', 'physicalExam', 'assessment',
+  'diagnosisCodes', 'plan', 'followUpDate', 'followUpNotes', 'surgeryDate', 'procedure', 'surgeryStatus',
+  'asa', 'anesthesiaType', 'surgeryDurationMinutes', 'technique', 'findings', 'complications', 'postOpNotes',
+  'outcome', 'testType', 'requestDate', 'completionDate', 'hospitalStayDays',
+];
 
 type Scalar = string | number | boolean | null;
 type ProjectedEvent = ImportedClinicalEvent & { sortKey: string; ordinal: number };
@@ -37,6 +51,14 @@ function trustedIndices(block: Record<string, unknown>): number[] {
     ? block._rowIndices
     : Number.isInteger(block._rowIndex) && (block._rowIndex as number) >= 0 ? [block._rowIndex] : [];
   return raw.filter((value): value is number => Number.isInteger(value) && value >= 0);
+}
+
+function orderFields(fields: Record<string, Scalar>, standard: boolean): Record<string, Scalar> {
+  const ordered = Object.entries(fields).sort(([a], [b]) => {
+    if (standard) return STANDARD_FIELD_ORDER.indexOf(a) - STANDARD_FIELD_ORDER.indexOf(b);
+    return a.localeCompare(b, 'es');
+  });
+  return Object.fromEntries(ordered);
 }
 
 export class ImportedClinicalEventProjector {
@@ -85,9 +107,12 @@ export class ImportedClinicalEventProjector {
       if (!displayable) continue;
 
       const importedAt = validDate(block._importedAt);
-      const date = ['admissionDate', 'requestDate', 'completionDate']
+      const clinicalDates = [
+        'consultationDate', 'surgeryDate', 'admissionDate', 'requestDate', 'completionDate', 'followUpDate',
+      ]
         .map((key) => validDate(block[key]))
-        .find((value): value is string => value !== null) ?? importedAt;
+        .filter((value): value is string => value !== null);
+      const date = [...clinicalDates, ...(importedAt ? [importedAt] : [])].sort().at(-1) ?? null;
       const rowGranularity = indices.length > 1 ? 'merged-block' : indices.length === 1 ? 'single-row' : 'legacy-block';
       const firstRow = indices.length ? indices[0] : null;
       const sourceFormat = importSource === 'xlsx' || importSource === 'csv' || importSource === 'tsv' ? importSource : 'unknown';
@@ -96,7 +121,8 @@ export class ImportedClinicalEventProjector {
       items.push({
         id, type: 'import', date, batchId, batchName: typeof block._batchName === 'string' ? block._batchName : null,
         rowIndex: firstRow, rowIndices: indices, rowGranularity, importedAt, sourceFormat,
-        standardFields, customFields, sortKey, ordinal,
+        standardFields: orderFields(standardFields, true),
+        customFields: orderFields(customFields, false), sortKey, ordinal,
       });
     }
 

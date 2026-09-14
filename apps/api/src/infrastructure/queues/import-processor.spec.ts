@@ -151,6 +151,67 @@ describe('ImportProcessor finalize safeguards', () => {
     expect(patientRepo.enrich).toHaveBeenCalledTimes(1);
   });
 
+  it('revalidates and enriches the explicit candidate for a name/age match without NHC', async () => {
+    const candidate = makePatient({ id: 'patient-name-match', nhc: '2026-00001' });
+    const patientRepo = {
+      findById: makeMock().mockResolvedValue(candidate),
+      findByNhc: makeMock().mockResolvedValue(null),
+      findByNhcIncludingDeleted: makeMock().mockResolvedValue(null),
+      create: makeMock(),
+      enrich: makeMock().mockResolvedValue(candidate),
+      findByImportBatchRow: makeMock().mockResolvedValue(null),
+    };
+    const processor = makeProcessor(
+      makeBatchRepo(new ImportBatch({ ...makeImportBatch(), columnMapping: { Nombre: 'patientName', Edad: 'age' } })),
+      patientRepo,
+      makeCache([{ Nombre: 'Ana Garcia', Edad: '45 años', Teléfono: '666111222' }]),
+    );
+
+    await expect(processor.handleFinalize({
+      data: {
+        batchId: 'batch-1', organizationId: 'org-1', userId: 'user-1',
+        matchResolutions: { '0': { decision: 'confirm', candidateId: candidate.id } },
+      },
+    } as any)).resolves.toEqual({ created: 0, enriched: 1, skipped: 0, discardedRowCount: 0 });
+
+    expect(patientRepo.create).not.toHaveBeenCalled();
+    expect(patientRepo.findById).toHaveBeenCalledWith(candidate.id, 'org-1');
+    expect(patientRepo.enrich).toHaveBeenCalledWith(
+      candidate.id,
+      'org-1',
+      expect.objectContaining({ firstName: 'Ana', lastName: 'Garcia', phone: '666111222' }),
+      'user-1',
+    );
+  });
+
+  it('skips a stale explicit candidate without falling back to another patient or creating one', async () => {
+    const patientRepo = {
+      findById: makeMock().mockResolvedValue(null),
+      findByNhc: makeMock().mockResolvedValue(null),
+      findByNhcIncludingDeleted: makeMock().mockResolvedValue(null),
+      create: makeMock().mockResolvedValue(makePatient()),
+      enrich: makeMock().mockResolvedValue(makePatient()),
+      findByImportBatchRow: makeMock().mockResolvedValue(null),
+    };
+    const processor = makeProcessor(makeBatchRepo(), patientRepo, makeCache([
+      { Nombre: 'Ana Garcia' },
+      { Nombre: 'Luis Perez', NHC: '456' },
+    ]));
+    const warn = jest.spyOn((processor as any).logger, 'warn');
+
+    await expect(processor.handleFinalize({
+      data: {
+        batchId: 'batch-1', organizationId: 'org-1', userId: 'user-1',
+        matchResolutions: { '0': { decision: 'confirm', candidateId: 'stale-patient' } },
+      },
+    } as any)).resolves.toEqual({ created: 1, enriched: 0, skipped: 1, discardedRowCount: 0 });
+
+    expect(patientRepo.findByNhc).toHaveBeenCalledTimes(1);
+    expect(patientRepo.create).toHaveBeenCalledTimes(1);
+    expect(patientRepo.enrich).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('stale or unavailable'));
+  });
+
   it('blocks an NHC occupied by a soft-deleted patient without restoring it', async () => {
     const deleted = makePatient({ deletedAt: new Date('2026-01-01') });
     const patientRepo = {
@@ -281,6 +342,222 @@ describe('ImportProcessor finalize safeguards', () => {
 
     const importedData = ((patientRepo.enrich as jest.Mock<any>).mock.calls[0][2] as any).importedData['batch-1'];
     expect(importedData.ageAtImport).toBe('45 años');
+    expect(importedData.birthDateEstimated).toBe(true);
+    expect(importedData.birthDateReferenceYear).toBe(new Date(batch.createdAt).getUTCFullYear());
+  });
+
+  it('creates and preserves mapped native demographics while keeping clinical fields in provenance', async () => {
+    const batch = new ImportBatch({
+      ...makeImportBatch(),
+      createdAt: new Date('2024-02-03T10:00:00.000Z'),
+      columnMapping: {
+        NHC: 'nhc', Nombre: 'patientName', Teléfono: 'phone', Email: 'email', Documento: 'idDocument',
+        Sangre: 'bloodType', Dirección: 'address', Contacto: 'emergencyContactName',
+        ContactoTel: 'emergencyContactPhone', Relación: 'emergencyContactRelationship', Notas: 'notes',
+        Diagnóstico: 'diagnosis', Procedimiento: 'procedure',
+      },
+    });
+    const patient = makePatient();
+    const patientRepo = {
+      findByNhc: makeMock().mockResolvedValue(null),
+      findByNhcIncludingDeleted: makeMock().mockResolvedValue(null),
+      create: makeMock().mockResolvedValue(patient),
+      enrich: makeMock().mockResolvedValue(patient),
+      findByImportBatchRow: makeMock().mockResolvedValue(null),
+    };
+    const processor = makeProcessor(makeBatchRepo(batch), patientRepo, makeCache([{
+      NHC: '123', Nombre: 'Ana Garcia', Teléfono: '666111222', Email: 'ana@example.com', Documento: '12345678Z',
+      Sangre: 'A+', Dirección: 'Calle Mayor', Contacto: 'Luis', ContactoTel: '677222333', Relación: 'Cónyuge',
+      Notas: 'Importada', Diagnóstico: 'rinitis', Procedimiento: 'endoscopia',
+    }]));
+
+    await expect(processor.handleFinalize({
+      data: { batchId: 'batch-1', organizationId: 'org-1', userId: 'user-1', matchResolutions: {} },
+    } as any)).resolves.toEqual({ created: 1, enriched: 0, skipped: 0, discardedRowCount: 0 });
+
+    expect(patientRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+      email: 'ana@example.com', idDocument: '12345678Z', bloodType: 'A_POS',
+      address: { street: 'Calle Mayor' }, emergencyContact: { name: 'Luis', phone: '677222333', relationship: 'Cónyuge' },
+      notes: 'Importada',
+    }));
+    const importedData = ((patientRepo.enrich as jest.Mock<any>).mock.calls[0][2] as any).importedData['batch-1'];
+    expect(importedData.diagnosis).toBe('rinitis');
+    expect(importedData.procedure).toBe('endoscopia');
+  });
+
+  it('materializes explicit clinical fields into native records, scopes them, and is idempotent on retry', async () => {
+    const batch = new ImportBatch({
+      ...makeImportBatch(),
+      createdAt: new Date('2024-02-03T10:00:00.000Z'),
+      columnMapping: {
+        NHC: 'nhc', Nombre: 'patientName', Diagnóstico: 'diagnosis', Procedimiento: 'procedure',
+        Notas: 'notes', Ingreso: 'admissionDate', Estancia: 'hospitalStayDays', Quirófano: 'surgeryDurationMinutes',
+        Consulta: 'consultationDate', Motivo: 'chiefComplaint', Valoracion: 'assessment', Codigos: 'diagnosisCodes',
+        Plan: 'plan', Seguimiento: 'followUpDate', NotasSeguimiento: 'followUpNotes', Cirugia: 'surgeryDate',
+        EstadoCirugia: 'surgeryStatus', ASA: 'asa', Anestesia: 'anesthesiaType', Tecnica: 'technique',
+        Hallazgos: 'findings', Complicaciones: 'complications', PostOp: 'postOpNotes', Resultado: 'outcome',
+      },
+    });
+    const patient = makePatient();
+    let patientLookupCount = 0;
+    let consultation: any = null;
+    let surgery: any = null;
+    const patientRepo = {
+      findByImportBatchRow: makeMock().mockImplementation(async () => (++patientLookupCount > 1 ? patient : null)),
+      findByNhc: makeMock().mockResolvedValue(null),
+      findByNhcIncludingDeleted: makeMock().mockResolvedValue(null),
+      create: makeMock().mockResolvedValue(patient),
+      enrich: makeMock().mockResolvedValue(patient),
+    };
+    const consultationRepo = {
+      findByImportBatchRow: makeMock().mockImplementation(async (_batchId: string, _org: string) => consultation),
+      create: makeMock().mockImplementation(async (input: any) => {
+        consultation = { id: 'consultation-1', ...input };
+        return consultation;
+      }),
+    };
+    const surgeryRepo = {
+      findByImportBatchRow: makeMock().mockImplementation(async (_batchId: string, _org: string) => surgery),
+      create: makeMock().mockImplementation(async (input: any) => {
+        surgery = { id: 'surgery-1', ...input };
+        return surgery;
+      }),
+    };
+    const processor = new ImportProcessor(
+      makeBatchRepo(batch) as any,
+      patientRepo as any,
+      new DataCleanerService(),
+      makeCache([{
+         NHC: '123', Nombre: 'Ana Garcia', Diagnóstico: 'Rinitis', Procedimiento: 'Septoplastia',
+         Notas: 'Importada', Ingreso: '2999-01-01', Estancia: '3 días', Quirófano: '138 min',
+         Consulta: '2024-02-01', Motivo: 'Dolor nasal', Valoracion: 'Rinitis', Codigos: 'R51 pendiente de validar',
+         Plan: 'Tratamiento conservador', Seguimiento: '2024-02-10', NotasSeguimiento: 'Revisar evolución',
+         Cirugia: '2024-02-02', EstadoCirugia: 'completada', ASA: 'ASA III', Anestesia: 'General',
+         Tecnica: 'Endoscópica', Hallazgos: 'Sin hallazgos', Complicaciones: 'Ninguna', PostOp: 'Buena evolución', Resultado: 'Alta',
+      }]) as any,
+      undefined,
+      undefined,
+      consultationRepo as any,
+      surgeryRepo as any,
+    );
+
+    await expect(processor.handleFinalize({
+      data: { batchId: 'batch-1', organizationId: 'org-1', userId: 'user-1', matchResolutions: {} },
+    } as any)).resolves.toEqual(expect.objectContaining({
+      created: 1,
+      consultationsCreated: 1,
+      surgeriesCreated: 1,
+    }));
+
+    expect(consultationRepo.findByImportBatchRow).toHaveBeenCalledWith('batch-1', 'org-1', 0);
+    expect(surgeryRepo.findByImportBatchRow).toHaveBeenCalledWith('batch-1', 'org-1', 0);
+    expect(consultation).toEqual(expect.objectContaining({
+       organizationId: 'org-1', patientId: patient.id, date: new Date('2024-02-01T00:00:00.000Z'),
+       chiefComplaint: 'Dolor nasal', assessment: 'Rinitis', plan: 'Tratamiento conservador',
+       followUpDate: new Date('2024-02-10T00:00:00.000Z'), followUpNotes: 'Revisar evolución',
+       physicalExam: { importAuditLog: [expect.objectContaining({
+         importBatchId: 'batch-1', importRowIndex: 0,
+         importedFields: expect.objectContaining({ diagnosisCodes: 'R51 pendiente de validar' }),
+       })] },
+    }));
+    expect(surgery).toEqual(expect.objectContaining({
+       organizationId: 'org-1', patientId: patient.id, date: new Date('2024-02-02T00:00:00.000Z'),
+       procedureType: 'Septoplastia', status: 'COMPLETED', asa: 'ASA_III', anesthesiaType: 'General',
+       technique: { importedText: 'Endoscópica' }, findings: 'Sin hallazgos', complications: 'Ninguna',
+       postOpNotes: 'Buena evolución', outcome: 'Alta',
+      duration: 138,
+      auditLog: [expect.objectContaining({ importBatchId: 'batch-1', importRowIndex: 0 })],
+    }));
+    const importedData = ((patientRepo.enrich as jest.Mock<any>).mock.calls[0][2] as any).importedData['batch-1'];
+    expect(importedData.hospitalStayDays).toBe('3 días');
+    expect(importedData.surgeryDurationMinutes).toBe('138 min');
+    expect(consultation.currentIllness).toContain('Tiempo de hospitalización: 3 días');
+    expect(surgery.preOpNotes).toContain('Tiempo quirúrgico: 138 minutos');
+
+    const retry = await processor.handleFinalize({
+      data: { batchId: 'batch-1', organizationId: 'org-1', userId: 'user-1', matchResolutions: {} },
+    } as any);
+    expect(retry).toEqual(expect.objectContaining({ created: 0, enriched: 0, consultationsCreated: 0, surgeriesCreated: 0 }));
+    expect(consultationRepo.create).toHaveBeenCalledTimes(1);
+    expect(surgeryRepo.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps invalid numeric clinical values in provenance without native duration', async () => {
+    const batch = new ImportBatch({
+      ...makeImportBatch(),
+      columnMapping: {
+        NHC: 'nhc', Nombre: 'patientName', Procedimiento: 'procedure', Quirófano: 'surgeryDurationMinutes',
+        Estado: 'surgeryStatus', ASA: 'asa',
+      },
+    });
+    const patient = makePatient();
+    const patientRepo = {
+      findByNhc: makeMock().mockResolvedValue(null),
+      findByNhcIncludingDeleted: makeMock().mockResolvedValue(null),
+      create: makeMock().mockResolvedValue(patient),
+      enrich: makeMock().mockResolvedValue(patient),
+      findByImportBatchRow: makeMock().mockResolvedValue(null),
+    };
+    const surgeryRepo = {
+      findByImportBatchRow: makeMock().mockResolvedValue(null),
+      create: makeMock().mockResolvedValue({}),
+    };
+    const processor = new ImportProcessor(
+      makeBatchRepo(batch) as any,
+      patientRepo as any,
+      new DataCleanerService(),
+       makeCache([{ NHC: '123', Nombre: 'Ana Garcia', Procedimiento: 'Septoplastia', Quirófano: 'una hora', Estado: 'completada?', ASA: 'ASA VII' }]) as any,
+      undefined,
+      undefined,
+      undefined,
+      surgeryRepo as any,
+    );
+
+    await expect(processor.handleFinalize({
+      data: { batchId: 'batch-1', organizationId: 'org-1', userId: 'user-1', matchResolutions: {} },
+    } as any)).resolves.toEqual(expect.objectContaining({ created: 1, surgeriesCreated: 1 }));
+
+    expect(surgeryRepo.create).toHaveBeenCalledWith(expect.objectContaining({ duration: null, status: 'SCHEDULED', asa: null }));
+    const importedData = ((patientRepo.enrich as jest.Mock<any>).mock.calls[0][2] as any).importedData['batch-1'];
+    expect(importedData.surgeryDurationMinutes).toBe('una hora');
+    expect(importedData.surgeryStatus).toBe('completada?');
+    expect(importedData.asa).toBe('ASA VII');
+  });
+
+  it('passes address and emergency contact to existing-patient enrichment', async () => {
+    const batch = new ImportBatch({
+      ...makeImportBatch(),
+      columnMapping: {
+        NHC: 'nhc', Nombre: 'patientName', Dirección: 'address', Contacto: 'emergencyContactName',
+        ContactoTel: 'emergencyContactPhone', Relación: 'emergencyContactRelationship',
+      },
+    });
+    const existing = makePatient();
+    const patientRepo = {
+      findByNhc: makeMock().mockResolvedValue(existing),
+      findByNhcIncludingDeleted: makeMock(),
+      create: makeMock(),
+      enrich: makeMock().mockResolvedValue(existing),
+      findByImportBatchRow: makeMock().mockResolvedValue(null),
+    };
+    const processor = makeProcessor(makeBatchRepo(batch), patientRepo, makeCache([{
+      NHC: '123', Nombre: 'Ana Garcia', Dirección: 'Calle Mayor', Contacto: 'Luis',
+      ContactoTel: '677222333', Relación: 'Cónyuge',
+    }]));
+
+    await expect(processor.handleFinalize({
+      data: { batchId: 'batch-1', organizationId: 'org-1', userId: 'user-1', matchResolutions: {} },
+    } as any)).resolves.toEqual({ created: 0, enriched: 1, skipped: 0, discardedRowCount: 0 });
+
+    expect(patientRepo.enrich).toHaveBeenCalledWith(
+      existing.id,
+      'org-1',
+      expect.objectContaining({
+        address: { street: 'Calle Mayor' },
+        emergencyContact: { name: 'Luis', phone: '677222333', relationship: 'Cónyuge' },
+      }),
+      'user-1',
+    );
   });
 
   it('re-reads the active patient after P2002 and enriches instead of exposing Prisma error', async () => {

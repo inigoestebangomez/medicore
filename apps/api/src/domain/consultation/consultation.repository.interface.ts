@@ -92,4 +92,8 @@ export interface IConsultationRepository {
   update(id: string, organizationId: string, data: UpdateConsultationInput): Promise<Consultation>;
   softDelete(id: string, organizationId: string): Promise<Consultation>;
   existsFirstVisitForPatient(patientId: string, organizationId: string): Promise<boolean>;
+  /** Import-only provenance lookup. Optional keeps patient-only test doubles valid. */
+  findByImportBatchRow?(batchId: string, organizationId: string, rowIndex: number): Promise<Consultation | null>;
+  /** Soft-delete only records materialized by the given import batch. */
+  removeImportedBatch?(batchId: string, organizationId: string): Promise<number>;
 }

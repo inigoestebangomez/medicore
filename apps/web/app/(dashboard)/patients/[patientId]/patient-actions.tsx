@@ -68,9 +68,9 @@ export function PatientActions({ patientId }: PatientActionsProps) {
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-outline-variant bg-surface-lowest p-6 shadow-card">
-        <h3 className="text-sm font-semibold text-on-surface">Export Patient Data</h3>
+         <h3 className="text-sm font-semibold text-on-surface">Exportar datos del paciente</h3>
         <p className="mt-1 text-xs text-on-surface-variant">
-          Download the complete clinical history in FHIR R4-compatible JSON format.
+           Descarga el historial clínico completo en formato JSON compatible con FHIR R4.
         </p>
         {exportError && (
           <div className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -83,27 +83,27 @@ export function PatientActions({ patientId }: PatientActionsProps) {
           disabled={exporting}
           className="bg-blue-600 hover:bg-blue-700 text-white"
         >
-          {exporting ? 'Exporting...' : 'Export JSON'}
+           {exporting ? 'Exportando...' : 'Exportar JSON'}
         </Button>
       </div>
 
       <div className="rounded-lg border border-outline-variant bg-surface-lowest p-6 shadow-card">
-        <h3 className="text-sm font-semibold text-on-surface">Download Summary</h3>
+         <h3 className="text-sm font-semibold text-on-surface">Descargar resumen</h3>
         <p className="mt-1 text-xs text-on-surface-variant">
-          Download a plain-text clinical summary of this patient&apos;s history.
+           Descarga un resumen de texto sin formato del historial de este paciente.
         </p>
         <a
           href={`/patients/${patientId}/summary`}
           className="mt-4 inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
-          Download Summary
+           Descargar resumen
         </a>
       </div>
 
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 shadow-card">
-        <h3 className="text-sm font-semibold text-red-800">Anonymize Patient</h3>
+        <h3 className="text-sm font-semibold text-red-800">Anonimizar paciente</h3>
         <p className="mt-1 text-xs text-red-600">
-          This action is <strong>IRREVERSIBLE</strong>. All personally identifiable information (name, contact, documents) will be permanently removed. Clinical data is preserved for legal retention.
+           Esta acción es <strong>IRREVERSIBLE</strong>. Se eliminarán permanentemente todos los datos personales identificables (nombre, contacto y documentos). Los datos clínicos se conservarán por obligación legal.
         </p>
         {anonymizeError && (
           <div className="mt-3 rounded border border-red-300 bg-surface-lowest p-3 text-sm text-red-700">
@@ -112,12 +112,12 @@ export function PatientActions({ patientId }: PatientActionsProps) {
         )}
         {anonymized ? (
           <div className="mt-4 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-            Patient has been anonymized successfully. PII data cannot be recovered.
+             El paciente se ha anonimizado correctamente. Los datos personales no se pueden recuperar.
           </div>
         ) : showAnonymizeConfirm ? (
           <div className="mt-4 space-y-3">
             <p className="text-sm font-medium text-red-800">
-              Are you absolutely sure? This cannot be undone.
+               ¿Estás completamente seguro? Esta acción no se puede deshacer.
             </p>
             <div className="flex gap-3">
               <Button
@@ -126,7 +126,7 @@ export function PatientActions({ patientId }: PatientActionsProps) {
                 disabled={anonymizing}
                 className="bg-red-600 hover:bg-red-700 text-white"
               >
-                {anonymizing ? 'Anonymizing...' : 'Yes, anonymize permanently'}
+                 {anonymizing ? 'Anonimizando...' : 'Sí, anonimizar permanentemente'}
               </Button>
               <Button
                 variant="outline"
@@ -134,7 +134,7 @@ export function PatientActions({ patientId }: PatientActionsProps) {
                 onClick={() => setShowAnonymizeConfirm(false)}
                 disabled={anonymizing}
               >
-                Cancel
+                 Cancelar
               </Button>
             </div>
           </div>
@@ -145,7 +145,7 @@ export function PatientActions({ patientId }: PatientActionsProps) {
             onClick={() => setShowAnonymizeConfirm(true)}
             className="border-red-300 text-red-700 hover:bg-red-50"
           >
-            Anonymize Patient
+             Anonimizar paciente
           </Button>
         )}
       </div>

@@ -5,14 +5,20 @@ import { Patient } from '@/domain/patient/patient.entity';
 import type { IPatientRepository, FindAllParams, SearchParams, CreatePatientInput, UpdatePatientInput, EnrichPatientInput, ImportedDataSnapshot } from '@/domain/patient/patient.repository.interface';
 import { NHC } from '@/domain/patient/value-objects/nhc.vo';
 
-const PLACEHOLDER_BIRTH_DATE = '1900-01-01';
-
 function isValidDate(value: Date | null | undefined): value is Date {
   return value instanceof Date && !Number.isNaN(value.getTime());
 }
 
 function isPlaceholderBirthDate(value: Date | null): boolean {
-  return isValidDate(value) && value.toISOString().slice(0, 10) === PLACEHOLDER_BIRTH_DATE;
+  return isValidDate(value) && value.getUTCFullYear() === 1900;
+}
+
+function isEmptyText(value: string | null | undefined): boolean {
+  return value == null || value.trim() === '';
+}
+
+function isEmptyJson(value: unknown): boolean {
+  return value == null || (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0);
 }
 
 export function shouldReplaceBirthDate(
@@ -259,7 +265,21 @@ export class PrismaPatientRepository implements IPatientRepository {
     if (shouldReplaceBirthDate(existing.birthDate, data.birthDate)) {
       updateData.birthDate = data.birthDate;
     }
-    if (data.sex && !existing.sex) updateData.sex = data.sex as any;
+    if (!isEmptyText(data.firstName) && isEmptyText(existing.firstName)) updateData.firstName = data.firstName;
+    if (!isEmptyText(data.lastName) && isEmptyText(existing.lastName)) updateData.lastName = data.lastName;
+    if (!isEmptyText(data.phone) && isEmptyText(existing.phone)) updateData.phone = data.phone;
+    if (!isEmptyText(data.email) && isEmptyText(existing.email)) updateData.email = data.email;
+    if (!isEmptyJson(data.address) && isEmptyJson(existing.address)) updateData.address = data.address;
+    if (!isEmptyJson(data.emergencyContact) && isEmptyJson(existing.emergencyContact)) updateData.emergencyContact = data.emergencyContact;
+    if (!isEmptyText(data.idDocument) && isEmptyText(existing.idDocument)) updateData.idDocument = data.idDocument;
+    if (data.idDocType && !existing.idDocType) updateData.idDocType = data.idDocType;
+    if (data.bloodType && data.bloodType !== 'UNKNOWN' && (!existing.bloodType || existing.bloodType === 'UNKNOWN')) {
+      updateData.bloodType = data.bloodType;
+    }
+    if (!isEmptyText(data.notes) && isEmptyText(existing.notes)) updateData.notes = data.notes;
+    if (data.sex && data.sex !== 'UNKNOWN' && (!existing.sex || existing.sex === 'UNKNOWN')) {
+      updateData.sex = data.sex as any;
+    }
 
     const record = await this.prisma.patient.update({ where: { id }, data: updateData });
     return this.toEntity(record);

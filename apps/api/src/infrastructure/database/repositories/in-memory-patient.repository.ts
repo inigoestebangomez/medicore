@@ -6,6 +6,11 @@ import type { Patient } from '@/domain/patient/patient.entity';
 import { Patient as PatientEntity } from '@/domain/patient/patient.entity';
 import { NHC } from '@/domain/patient/value-objects/nhc.vo';
 
+function shouldReplaceBirthDate(existing: Date | null, incoming: Date | null | undefined): incoming is Date {
+  if (!(incoming instanceof Date) || Number.isNaN(incoming.getTime()) || incoming.getUTCFullYear() === 1900) return false;
+  return existing === null || (existing instanceof Date && !Number.isNaN(existing.getTime()) && existing.getUTCFullYear() === 1900);
+}
+
 export class InMemoryPatientRepository implements IPatientRepository {
   private patients: Map<string, PatientEntity> = new Map();
   private nhcCounters: Map<string, number> = new Map(); // orgId -> next sequence
@@ -179,8 +184,22 @@ export class InMemoryPatientRepository implements IPatientRepository {
       updatedBy,
       updatedAt: new Date(),
     };
-    if (data.birthDate && !existing.birthDate) props.birthDate = data.birthDate;
-    if (data.sex && !existing.sex) props.sex = data.sex as any;
+    if (shouldReplaceBirthDate(existing.birthDate, data.birthDate)) props.birthDate = data.birthDate;
+    if (data.firstName?.trim() && (!existing.firstName || !existing.firstName.trim())) props.firstName = data.firstName;
+    if (data.lastName?.trim() && (!existing.lastName || !existing.lastName.trim())) props.lastName = data.lastName;
+    if (data.phone?.trim() && (!existing.phone || !existing.phone.trim())) props.phone = data.phone;
+    if (data.email?.trim() && (!existing.email || !existing.email.trim())) props.email = data.email;
+    if (data.address && Object.keys(data.address).length > 0 && (!existing.address || Object.keys(existing.address).length === 0)) {
+      props.address = data.address;
+    }
+    if (data.emergencyContact && Object.keys(data.emergencyContact).length > 0 && (!existing.emergencyContact || Object.keys(existing.emergencyContact).length === 0)) {
+      props.emergencyContact = data.emergencyContact;
+    }
+    if (data.idDocument?.trim() && (!existing.idDocument || !existing.idDocument.trim())) props.idDocument = data.idDocument;
+    if (data.idDocType && !existing.idDocType) props.idDocType = data.idDocType;
+    if (data.bloodType && data.bloodType !== 'UNKNOWN' && (!existing.bloodType || existing.bloodType === 'UNKNOWN')) props.bloodType = data.bloodType;
+    if (data.notes?.trim() && (!existing.notes || !existing.notes.trim())) props.notes = data.notes;
+    if (data.sex && data.sex !== 'UNKNOWN' && (!existing.sex || existing.sex === 'UNKNOWN')) props.sex = data.sex as any;
     const merged = new PatientEntity(props);
     this.patients.set(id, merged);
     return merged;

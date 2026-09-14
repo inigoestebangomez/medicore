@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Consultation } from '@/domain/consultation/consultation.entity';
 import type { IConsultationRepository, CreateConsultationInput, UpdateConsultationInput, ListConsultationsParams, SearchLogsParams } from '@/domain/consultation/consultation.repository.interface';
+import { hasImportMaterializedMarker } from '@/domain/import/import-provenance';
 
 @Injectable()
 export class PrismaConsultationRepository implements IConsultationRepository {
@@ -109,6 +110,27 @@ export class PrismaConsultationRepository implements IConsultationRepository {
       },
     });
     return count > 0;
+  }
+
+  async findByImportBatchRow(batchId: string, organizationId: string, rowIndex: number): Promise<Consultation | null> {
+    const records = await this.prisma.consultation.findMany({
+      where: { organizationId, deletedAt: null },
+      select: { id: true, physicalExam: true },
+    });
+    const record = records.find((candidate) => hasImportMaterializedMarker(candidate.physicalExam, batchId, rowIndex));
+    return record ? this.findById(record.id, organizationId) : null;
+  }
+
+  async removeImportedBatch(batchId: string, organizationId: string): Promise<number> {
+    const records = await this.prisma.consultation.findMany({
+      where: { organizationId, deletedAt: null },
+      select: { id: true, physicalExam: true },
+    });
+    const imported = records.filter((record) => hasImportMaterializedMarker(record.physicalExam, batchId));
+    for (const record of imported) {
+      await this.prisma.consultation.update({ where: { id: record.id }, data: { deletedAt: new Date() } });
+    }
+    return imported.length;
   }
 
   async searchLogs(params: SearchLogsParams): Promise<{ items: Consultation[]; total: number }> {

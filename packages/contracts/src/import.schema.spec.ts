@@ -1,4 +1,42 @@
-import { ImportedClinicalEventSchema, ImportedEventsPageSchema } from './import.schema';
+import {
+  FinalizeImportSchema,
+  ImportedClinicalEventSchema,
+  ImportedEventsPageSchema,
+  StandardFieldSchema,
+} from './import.schema';
+
+describe('standard import fields', () => {
+  it('accepts hospital stay and surgery duration mappings', () => {
+    expect(StandardFieldSchema.parse('hospitalStayDays')).toBe('hospitalStayDays');
+    expect(StandardFieldSchema.parse('surgeryDurationMinutes')).toBe('surgeryDurationMinutes');
+  });
+
+  it('accepts consultation and surgery screen mappings', () => {
+    for (const field of [
+      'consultationDate', 'chiefComplaint', 'currentIllness', 'physicalExam', 'assessment',
+      'diagnosisCodes', 'plan', 'followUpDate', 'followUpNotes', 'surgeryDate', 'asa',
+      'anesthesiaType', 'technique', 'findings', 'complications', 'postOpNotes', 'outcome',
+    ]) {
+      expect(StandardFieldSchema.parse(field)).toBe(field);
+    }
+  });
+});
+
+describe('finalize import resolutions', () => {
+  it('accepts legacy decisions and candidate-aware decisions', () => {
+    expect(FinalizeImportSchema.parse({
+      matchResolutions: {
+        '0': 'new',
+        '1': { decision: 'confirm', candidateId: 'patient-1' },
+      },
+    })).toEqual({
+      matchResolutions: {
+        '0': 'new',
+        '1': { decision: 'confirm', candidateId: 'patient-1' },
+      },
+    });
+  });
+});
 
 describe('imported clinical event contracts', () => {
   it('accepts a merged imported block with explicit provenance', () => {

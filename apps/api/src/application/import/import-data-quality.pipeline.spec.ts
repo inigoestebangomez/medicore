@@ -23,11 +23,11 @@ const mapping: ColumnMapping = {
 const file: ParsedFile = {
   columns: ['NHC', 'Paciente', 'Fecha Nacimiento', 'Edad', 'Teléfono'],
   rows: [
-    // 1) Uppercase name, missing birthDate but age present → title-case + age→birthDate
+    // 1) Uppercase name, missing birthDate but age present → title-case + age provenance + estimated DOB
     { NHC: '1', Paciente: 'ANA GARCIA', 'Fecha Nacimiento': '', Edad: 50, 'Teléfono': '612345678' },
     // 2) Missing birthDate, no age → null birthDate (NOT 1900-01-01)
     { NHC: '2', Paciente: 'JUAN PEREZ', 'Fecha Nacimiento': '', Edad: '', 'Teléfono': '' },
-    // 3) Age-only row (no birthDate column value) → birthDate computed from age
+    // 3) Age-only row (no birthDate column value) → estimated DOB + age provenance
     { NHC: '3', Paciente: 'MARIA LOPEZ', 'Fecha Nacimiento': '', Edad: 30, 'Teléfono': '' },
     // 4) Multi-phone cell → patient phone extracted (first patient phone wins)
     { NHC: '4', Paciente: 'PEDRO RUIZ', 'Fecha Nacimiento': '1990-05-20', Edad: '', 'Teléfono': '666111222 698765432' },
@@ -43,17 +43,19 @@ describe('import-data-quality end-to-end wiring (T-11)', () => {
   let result: CleanResult;
 
   it('runs the full clean() pipeline over the 5-fix fixture without crashing', () => {
-    result = cleaner.clean(file, mapping);
+    result = cleaner.clean(file, mapping, { referenceDate: new Date('2026-08-19T12:00:00.000Z') });
     expect(result.cleanedRows.length).toBe(4); // 4 real rows, 1 false record skipped from cleanedRows
   });
 
-  it('1) uppercase name + age → title-case persisted name and birthDate computed from age', () => {
+  it('1) uppercase name + age → title-case persisted name with stable estimated birthDate', () => {
     const ana = result.cleanedRows.find((r) => r.nhc === '1')!;
     const parts = buildPatientInputFromRow(ana);
     expect(parts.firstName).toBe('Ana');
     expect(parts.lastName).toBe('Garcia');
-    const expectedYear = new Date().getFullYear() - 50;
-    expect(parts.birthDate?.getFullYear()).toBe(expectedYear);
+    expect(parts.birthDate?.toISOString()).toBe('1976-01-01T00:00:00.000Z');
+    expect(ana.ageAtImport).toBe(50);
+    expect(ana.birthDateEstimated).toBe(true);
+    expect(ana.birthDateReferenceYear).toBe(2026);
   });
 
   it('2) missing birthDate and no age → null birthDate (never 1900-01-01)', () => {
@@ -63,10 +65,10 @@ describe('import-data-quality end-to-end wiring (T-11)', () => {
     expect(parts.birthDate?.toISOString()).not.toBe('1900-01-01T00:00:00.000Z');
   });
 
-  it('3) age-only row → birthDate computed from age', () => {
+  it('3) age-only row → stable estimated birthDate is produced', () => {
     const maria = result.cleanedRows.find((r) => r.nhc === '3')!;
-    const expectedYear = new Date().getFullYear() - 30;
-    expect(maria.birthDate?.getFullYear()).toBe(expectedYear);
+    expect(maria.birthDate?.toISOString()).toBe('1996-01-01T00:00:00.000Z');
+    expect(maria.ageAtImport).toBe(30);
   });
 
   it('4) multi-phone cell → patient phone extracted', () => {

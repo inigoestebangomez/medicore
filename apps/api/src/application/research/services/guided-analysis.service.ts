@@ -5,6 +5,7 @@
 // Creates a GuidedAnalysisRun snapshot for reproducibility.
 
 import { Injectable, Inject, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import type {
   GuidedAnalysisRequest,
   GuidedAnalysisResult,
@@ -15,6 +16,7 @@ import type {
   EffectMeasure,
 } from '@medicore/contracts';
 import type { IResearchQueryRepository } from '@/domain/research/research-query.repository.interface';
+import { ResearchQuery } from '@/domain/research/research-query.entity';
 import { ExecuteResearchQueryHandler } from '../queries/execute-research-query.handler';
 import { TestSelectionPolicy } from './test-selection.policy';
 import { ExposureDomainResolver } from './exposure-domain.resolver';
@@ -43,15 +45,35 @@ export class GuidedAnalysisService {
     request: GuidedAnalysisRequest,
     organizationId: string,
   ): Promise<GuidedAnalysisResult> {
-    // 1. Validate cohort exists
-    const query = await this.queryRepo.findById(request.queryId, organizationId);
-    if (!query) {
-      throw new InvalidCohortError(`Research query not found: ${request.queryId}`);
+    // 1. Validate cohort exists (or create empty query for "all patients")
+    let queryId = request.queryId;
+    let query;
+    
+    if (!queryId) {
+      // Create a temporary query that selects all patients
+      const newQuery = ResearchQuery.createPrivate({
+        id: randomUUID(),
+        organizationId,
+        createdBy: 'system', // TODO: get from context
+        name: 'Guided Analysis - All Patients',
+        dataSource: 'all_patients',
+        filters: [],
+        filterLogic: 'AND',
+        displayFields: [],
+        visualizations: [],
+      });
+      query = await this.queryRepo.save(newQuery);
+      queryId = query.id;
+    } else {
+      query = await this.queryRepo.findById(queryId, organizationId);
+      if (!query) {
+        throw new InvalidCohortError(`Research query not found: ${queryId}`);
+      }
     }
 
     // 2. Execute query to get cohort rows
     const executed = await this.executeQuery.execute({
-      queryId: request.queryId,
+      queryId,
       organizationId,
     });
 
@@ -61,7 +83,7 @@ export class GuidedAnalysisService {
 
     // 3. Build cohort context
     const cohort = {
-      queryId: request.queryId,
+      queryId,
       n: executed.totalRows,
       filters: executed.appliedFilters,
     };

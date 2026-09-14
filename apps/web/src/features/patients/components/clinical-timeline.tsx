@@ -63,9 +63,9 @@ const EVENT_ICONS: Record<TimelineEvent['type'], React.ReactNode> = {
 };
 
 const EVENT_LABELS: Record<TimelineEvent['type'], string> = {
-  consultation: 'Consultation',
-  surgery: 'Surgery',
-  imaging: 'Imaging',
+  consultation: 'Consulta',
+  surgery: 'Cirugía',
+  imaging: 'Imagen',
 };
 
 const EVENT_COLORS: Record<TimelineEvent['type'], string> = {
@@ -81,10 +81,95 @@ const DOT_COLORS: Record<TimelineEvent['type'], string> = {
 };
 
 const PAGE_SIZE = 20;
+const IMPORTED_STANDARD_FIELD_ORDER = [
+  'nhc', 'patientName', 'birthDate', 'birthDateEstimated', 'birthDateReferenceYear', 'age', 'sex', 'admissionDate', 'diagnosis',
+  'phone', 'email', 'idDocument', 'idDocType', 'address', 'bloodType',
+  'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelationship', 'notes',
+  'consultationDate', 'consultationType', 'chiefComplaint', 'currentIllness', 'physicalExam', 'assessment',
+  'diagnosisCodes', 'plan', 'followUpDate', 'followUpNotes', 'surgeryDate', 'procedure', 'surgeryStatus',
+  'asa', 'anesthesiaType', 'surgeryDurationMinutes', 'technique', 'findings', 'complications', 'postOpNotes',
+  'outcome', 'testType', 'requestDate', 'completionDate', 'hospitalStayDays',
+];
+const IMPORTED_FIELD_LABELS: Record<string, string> = {
+  nhc: 'NHC',
+  patientName: 'Nombre del paciente',
+  birthDate: 'Fecha de nacimiento',
+  age: 'Edad en la importación',
+  sex: 'Sexo',
+  phone: 'Teléfono',
+  email: 'Email',
+  idDocument: 'Documento de identidad',
+  idDocType: 'Tipo de documento',
+  address: 'Dirección',
+  bloodType: 'Grupo sanguíneo',
+  emergencyContactName: 'Contacto de emergencia',
+  emergencyContactPhone: 'Teléfono de emergencia',
+  emergencyContactRelationship: 'Relación del contacto',
+  notes: 'Notas',
+  ageAtImport: 'Edad en la importación',
+  birthDateEstimated: 'Fecha de nacimiento estimada',
+  birthDateReferenceYear: 'Año de referencia de la edad',
+  admissionDate: 'Fecha de ingreso',
+  consultationDate: 'Fecha de consulta',
+  diagnosis: 'Diagnóstico',
+  diagnosisCodes: 'Códigos diagnósticos',
+  consultationType: 'Tipo de consulta',
+  chiefComplaint: 'Motivo de consulta',
+  currentIllness: 'Enfermedad actual',
+  physicalExam: 'Exploración física',
+  assessment: 'Valoración',
+  plan: 'Plan',
+  followUpDate: 'Fecha de seguimiento',
+  followUpNotes: 'Notas de seguimiento',
+  surgeryDate: 'Fecha de cirugía',
+  procedure: 'Procedimiento',
+  surgeryStatus: 'Estado de cirugía',
+  asa: 'Clasificación ASA',
+  anesthesiaType: 'Tipo de anestesia',
+  surgeryDurationMinutes: 'Tiempo quirúrgico (minutos)',
+  technique: 'Técnica quirúrgica',
+  findings: 'Hallazgos',
+  complications: 'Complicaciones',
+  postOpNotes: 'Notas postoperatorias',
+  outcome: 'Resultado',
+  testType: 'Tipo de estudio',
+  requestDate: 'Fecha de solicitud',
+  completionDate: 'Fecha de realización',
+  hospitalStayDays: 'Tiempo de hospitalización (días)',
+};
 
 function displayValue(value: string | number | boolean | null): string {
   return value === null || value === '' ? '—' : String(value);
 }
+
+function orderedImportedFields(item: ImportedClinicalEvent): Array<[string, string | number | boolean | null]> {
+  const standard = Object.entries(item.standardFields).sort(
+    ([a], [b]) => IMPORTED_STANDARD_FIELD_ORDER.indexOf(a) - IMPORTED_STANDARD_FIELD_ORDER.indexOf(b),
+  );
+  const custom = Object.entries(item.customFields).sort(([a], [b]) => a.localeCompare(b, 'es'));
+  return [...standard, ...custom];
+}
+
+function compareImportedItems(a: ImportedClinicalEvent, b: ImportedClinicalEvent): number {
+  const aTime = a.date ? new Date(a.date).getTime() : Number.NEGATIVE_INFINITY;
+  const bTime = b.date ? new Date(b.date).getTime() : Number.NEGATIVE_INFINITY;
+  return bTime - aTime || a.id.localeCompare(b.id);
+}
+
+const CONSULTATION_TYPE_LABELS: Record<string, string> = {
+  FIRST_VISIT: 'Primera visita',
+  FOLLOW_UP: 'Seguimiento',
+  URGENCY: 'Urgencia',
+  POST_OP: 'Postoperatoria',
+  TELECONSULTATION: 'Teleconsulta',
+};
+
+const SURGERY_STATUS_LABELS: Record<string, string> = {
+  SCHEDULED: 'Programada',
+  COMPLETED: 'Completada',
+  CANCELLED: 'Cancelada',
+  POSTPONED: 'Aplazada',
+};
 
 export function ImportedHistorySection({
   items,
@@ -98,35 +183,37 @@ export function ImportedHistorySection({
   loading?: boolean;
 }) {
   if (items.length === 0 && !loading) return null;
+  const orderedItems = [...items].sort(compareImportedItems);
   return (
     <section aria-labelledby="imported-history-heading" className="mt-8 border-t border-outline-variant pt-6">
-      <h3 id="imported-history-heading" className="mb-3 text-sm font-semibold text-on-surface">Imported history</h3>
+      <h3 id="imported-history-heading" className="mb-3 text-sm font-semibold text-on-surface">Historial importado</h3>
       <p className="mb-4 text-xs text-on-surface-variant">
-        Imported data is shown separately from consultations, surgeries, and imaging. It does not represent a native clinical entity.
+        Estos datos conservan la procedencia de la importación. Cuando contienen información clínica explícita,
+        también se generan consultas o cirugías nativas; el resto permanece aquí como historial importado.
       </p>
-      {loading && items.length === 0 ? <p className="text-sm text-on-surface-variant">Loading imported history…</p> : null}
+      {loading && items.length === 0 ? <p className="text-sm text-on-surface-variant">Cargando historial importado…</p> : null}
       <div className="space-y-3">
-        {items.map((item) => {
-          const fields = [...Object.entries(item.standardFields), ...Object.entries(item.customFields)].slice(0, 5);
+        {orderedItems.map((item) => {
+          const fields = orderedImportedFields(item);
           const provenance = item.rowIndices.length > 1
-            ? `Rows ${item.rowIndices[0]}–${item.rowIndices[item.rowIndices.length - 1]} (merged block)`
-            : item.rowIndex === null ? 'Source row unavailable' : `Row ${item.rowIndex}`;
+            ? `Filas ${item.rowIndices[0]}–${item.rowIndices[item.rowIndices.length - 1]} (bloque agrupado)`
+            : item.rowIndex === null ? 'Fila de origen no disponible' : `Fila ${item.rowIndex}`;
           return (
             <article key={item.id} className="rounded-lg border border-outline-variant bg-surface-lowest p-3">
               <div className="flex items-center justify-between gap-3">
-                <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Imported data</span>
-                <time className="text-xs text-on-surface-variant/60">{item.date ? new Date(item.date).toLocaleDateString('es-ES') : 'Undated'}</time>
+                <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Dato importado</span>
+                <time className="text-xs text-on-surface-variant/60">{item.date ? new Date(item.date).toLocaleDateString('es-ES') : 'Sin fecha'}</time>
               </div>
-              <p className="mt-2 text-xs font-medium text-on-surface-variant">{provenance}{item.batchId ? ` · Batch ${item.batchId}` : ''}</p>
+              <p className="mt-2 text-xs font-medium text-on-surface-variant">{provenance}{item.batchId ? ` · Lote ${item.batchId}` : ''}</p>
               {item.rowGranularity === 'merged-block' ? (
-                <p className="mt-1 text-xs text-on-surface-variant">Values are the surviving values for this merged persisted block.</p>
+                <p className="mt-1 text-xs text-on-surface-variant">Se muestran los valores conservados en este bloque agrupado.</p>
               ) : null}
               <dl className="mt-2 space-y-1 text-sm">
                 {fields.map(([key, value]) => {
                   const text = displayValue(value);
                   return (
                     <div key={key}>
-                      <dt className="inline font-medium text-on-surface-variant">{key}: </dt>
+                      <dt className="inline font-medium text-on-surface-variant">{IMPORTED_FIELD_LABELS[key] ?? key}: </dt>
                       <dd className="inline whitespace-pre-wrap break-words text-on-surface">{text.length > 280 ? `${text.slice(0, 280)}…` : text}</dd>
                     </div>
                   );
@@ -138,7 +225,7 @@ export function ImportedHistorySection({
       </div>
       {hasMore ? (
         <button type="button" onClick={onLoadMore} disabled={loading} className="mt-4 text-sm font-medium text-primary underline disabled:opacity-50">
-          Load more imported history
+          Cargar más historial importado
         </button>
       ) : null}
     </section>
@@ -186,7 +273,7 @@ export function ClinicalTimeline({ patientId }: ClinicalTimelineProps) {
     consultationsQuery.error?.message ??
     surgeriesQuery.error?.message ??
     imagingQuery.error?.message ??
-    'Failed to load timeline';
+    'No se pudo cargar la cronología';
 
   if (isLoading) {
     return (
@@ -210,7 +297,7 @@ export function ClinicalTimeline({ patientId }: ClinicalTimelineProps) {
         id: item.id,
         type: 'consultation',
         date: item.date,
-        label: item.type.replace(/_/g, ' '),
+        label: CONSULTATION_TYPE_LABELS[item.type] ?? item.type.replace(/_/g, ' '),
         description: item.chiefComplaint,
         href: `/patients/${patientId}/consultations/${item.id}`,
       }),
@@ -220,7 +307,7 @@ export function ClinicalTimeline({ patientId }: ClinicalTimelineProps) {
         id: item.id,
         type: 'surgery',
         date: item.date,
-        label: item.status,
+        label: SURGERY_STATUS_LABELS[item.status] ?? item.status,
         description: item.procedureType,
         href: `/patients/${patientId}/surgeries/${item.id}`,
       }),
@@ -231,14 +318,14 @@ export function ClinicalTimeline({ patientId }: ClinicalTimelineProps) {
         type: 'imaging',
         date: item.date,
         label: item.type.replace(/_/g, ' '),
-        description: item.description ?? 'No description',
+        description: item.description ?? 'Sin descripción',
         href: `/patients/${patientId}/imaging/${item.id}`,
       }),
     ),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   if (events.length === 0 && importedQuery.items.length === 0 && !importedQuery.isLoading) {
-    return <div className="py-8 text-center text-sm text-on-surface-variant/60">No clinical events recorded yet</div>;
+    return <div className="py-8 text-center text-sm text-on-surface-variant/60">Todavía no hay eventos clínicos registrados</div>;
   }
 
   return (

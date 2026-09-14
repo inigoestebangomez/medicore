@@ -70,7 +70,7 @@ const ALL_FLAGS: ResearchFlag[] = [
 // Flags that default to OFF (opt-in) rather than ON (opt-out).
 const OPT_IN_FLAGS: Set<FeatureFlag> = new Set([
   'IMPORT_IDENTITY_LIGHT',
-  'RESEARCH_GUIDED_ANALYSIS',
+  // 'RESEARCH_GUIDED_ANALYSIS', // Enabled by default for development
 ]);
 
 @Injectable()

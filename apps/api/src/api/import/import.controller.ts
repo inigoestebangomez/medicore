@@ -22,7 +22,13 @@ import { AuthGuard } from '@/api/shared/guards/auth.guard';
 import { RBACGuard } from '@/api/shared/guards/rbac.guard';
 import { REQUIRED_ACTION_KEY } from '@/api/shared/guards/rbac.guard';
 import { CurrentUser } from '@/api/shared/decorators/current-user.decorator';
-import { validateColumnMapping, type JwtPayload, type ColumnMapping } from '@medicore/contracts';
+import {
+  validateColumnMapping,
+  FinalizeImportSchema,
+  type FinalizeImportInput,
+  type JwtPayload,
+  type ColumnMapping,
+} from '@medicore/contracts';
 import { Action } from '@/domain/shared/rbac-permissions';
 import type { IImportBatchRepository } from '@/domain/import/import-batch.repository.interface';
 import { ParseFileHandler } from '@/application/import/handlers/parse-file.handler';
@@ -162,7 +168,7 @@ export class ImportController {
   @Reflect.metadata(REQUIRED_ACTION_KEY, Action.IMPORT_DATA)
   async finalize(
     @Param('id') id: string,
-    @Body() body: { matchResolutions?: Record<string, 'auto' | 'confirm' | 'new'> },
+    @Body(new ZodValidationPipe(FinalizeImportSchema)) body: FinalizeImportInput,
     @CurrentUser() user: JwtPayload,
   ) {
     try {

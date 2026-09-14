@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatImportPreviewValue, ImportWizard } from './import-wizard';
+import type { ConfirmImportResponse } from '@/hooks/useImports';
 
 const mocks = vi.hoisted(() => ({
   parse: vi.fn(),
@@ -50,6 +51,29 @@ const parsed = {
   provider: 'heuristic',
 };
 
+const bulkMatchesResponse: ConfirmImportResponse = {
+  batchId: 'batch-1',
+  totalRows: 6,
+  cleanedRowCount: 3,
+  junkRowCount: 0,
+  skippedRowCount: 0,
+  discardedRowCount: 0,
+  matches: [
+    { rowIndex: 0, candidateId: 'patient-1', score: 60, decision: 'confirm' as const, reason: 'nombre completo exacto' },
+    { rowIndex: 1, candidateId: 'patient-2', score: 70, decision: 'confirm' as const, reason: 'nombre parcial (apellidos)' },
+    { rowIndex: 2, candidateId: 'patient-3', score: 100, decision: 'auto' as const, reason: 'NHC exacto' },
+  ],
+  pendingResolutionCount: 2,
+  autoMatchCount: 1,
+  newPatientCount: 0,
+  fullIdentityRows: [{ rowIndex: 0 }, { rowIndex: 1 }, { rowIndex: 2 }],
+  identityLightRows: [],
+  unidentifiableRows: [],
+  fullIdentityCount: 3,
+  identityLightCount: 0,
+  unidentifiableCount: 0,
+};
+
 describe('ImportWizard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -74,6 +98,17 @@ describe('ImportWizard', () => {
     mocks.detail.mockReturnValue({ data: null });
     mocks.preview.mockReturnValue({ data: undefined, isPending: false, error: null });
   });
+
+  async function openMatches(response = bulkMatchesResponse) {
+    mocks.confirm.mockResolvedValue(response);
+    render(<ImportWizard />);
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, {
+      target: { files: [new File(['data'], 'patients.xlsx')] },
+    });
+    await waitFor(() => expect(screen.getByText('Revisar mapeo de columnas')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar mapeo' }));
+    await waitFor(() => expect(screen.getByText('Resolver cruces de pacientes')).toBeInTheDocument());
+  }
 
   describe('Excel date preview formatting', () => {
     it('formats numeric and string serials with the cleaner semantics', () => {
@@ -102,6 +137,19 @@ describe('ImportWizard', () => {
       expect(formatImportPreviewValue(50, 'age')).toBe('50');
       expect(formatImportPreviewValue(46170, 'custom')).toBe('46170');
       expect(formatImportPreviewValue(46170, 'ignore')).toBe('46170');
+    });
+
+    it('keeps hospital stay and surgery duration values as numeric/text previews', () => {
+      expect(formatImportPreviewValue(3, 'hospitalStayDays')).toBe('3');
+      expect(formatImportPreviewValue('3 días', 'hospitalStayDays')).toBe('3 días');
+      expect(formatImportPreviewValue(138, 'surgeryDurationMinutes')).toBe('138');
+      expect(formatImportPreviewValue('138 min', 'surgeryDurationMinutes')).toBe('138 min');
+    });
+
+    it('formats consultation and surgery dates using the same date handling', () => {
+      expect(formatImportPreviewValue('15/01/2026', 'consultationDate')).toBe('15/01/2026');
+      expect(formatImportPreviewValue(46023, 'surgeryDate')).toBe('01/01/2026');
+      expect(formatImportPreviewValue('not a date', 'followUpDate')).toBe('not a date');
     });
   });
 
@@ -164,6 +212,125 @@ describe('ImportWizard', () => {
     expect(screen.getByLabelText('Fila 1, Nacimiento')).toHaveValue('27/3/25');
     fireEvent.click(screen.getByRole('button', { name: 'Descartar Fila 1, Nacimiento' }));
     expect(screen.getByLabelText('Fila 1, Nacimiento')).toHaveValue('');
+  });
+
+  it('shows only effective mapped cells in resolver data and keeps indexed column references', async () => {
+    const editedParsed = {
+      ...parsed,
+      totalRows: 1,
+      sample: {
+        columns: ['NHC', 'Nombre', 'Teléfono familiar', 'Notas'],
+        rows: [{ NHC: '123456', Nombre: 'Ana', 'Teléfono familiar': '666999888', Notas: 'descartada' }],
+      },
+      proposal: {
+        ...parsed.proposal,
+        columnMapping: {
+          NHC: 'nhc' as const,
+          Nombre: 'patientName' as const,
+          'Teléfono familiar': 'phone' as const,
+          Notas: 'custom' as const,
+        },
+      },
+    };
+    mocks.parse.mockResolvedValue(editedParsed);
+    mocks.confirm.mockResolvedValue({
+      ...bulkMatchesResponse,
+      totalRows: 1,
+      matches: [{ rowIndex: 0, candidateId: null, score: 0, decision: 'new', reason: 'no matching candidate found' }],
+      pendingResolutionCount: 0,
+      newPatientCount: 1,
+      fullIdentityRows: [{ rowIndex: 0 }],
+      fullIdentityCount: 1,
+      identityLightRows: [],
+      unidentifiableRows: [],
+      identityLightCount: 0,
+      unidentifiableCount: 0,
+    });
+
+    render(<ImportWizard />);
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, {
+      target: { files: [new File(['data'], 'patients.xlsx')] },
+    });
+    await waitFor(() => expect(screen.getByText('Revisar mapeo de columnas')).toBeInTheDocument());
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Descartar columna' })[2]);
+    fireEvent.click(screen.getByRole('button', { name: 'Descartar Fila 1, Notas' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar mapeo' }));
+
+    await waitFor(() => expect(screen.getByText('Resolver cruces de pacientes')).toBeInTheDocument());
+    expect(screen.queryByText(/666999888/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/descartada/)).not.toBeInTheDocument();
+    expect(screen.getByText('Columna 1 · NHC:')).toBeInTheDocument();
+    expect(screen.getByText('Columna 2 · Nombre:')).toBeInTheDocument();
+  });
+
+  it('applies Crear nuevos pacientes to all selected visible matches and preserves automatic rows', async () => {
+    await openMatches();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Seleccionar visibles' }));
+    expect(screen.getByText('2 seleccionadas')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Crear nuevos pacientes' }));
+
+    expect(screen.getByLabelText('Seleccionar fila 1')).not.toBeChecked();
+    expect(screen.getByLabelText('Seleccionar fila 2')).not.toBeChecked();
+    expect(screen.getAllByRole('combobox')[0]).toHaveValue('new');
+    expect(screen.getAllByRole('combobox')[1]).toHaveValue('new');
+    expect(screen.queryByLabelText('Seleccionar fila 3')).not.toBeInTheDocument();
+
+    mocks.finalize.mockResolvedValue({ batchId: 'batch-1', status: 'PROCESSING', message: 'queued' });
+    fireEvent.click(screen.getByRole('button', { name: 'Finalizar importación' }));
+    await waitFor(() => expect(mocks.finalize).toHaveBeenCalledWith({
+      batchId: 'batch-1',
+      matchResolutions: {
+        '0': 'new',
+        '1': 'new',
+        '2': { decision: 'auto', candidateId: 'patient-3' },
+      },
+    }));
+  });
+
+  it('applies Mismo paciente (enriquecer) to all selected visible matches', async () => {
+    await openMatches();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Seleccionar visibles' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mismo paciente (enriquecer)' }));
+
+    expect(screen.getAllByRole('combobox')[0]).toHaveValue('confirm');
+    expect(screen.getAllByRole('combobox')[1]).toHaveValue('confirm');
+    expect(screen.getByText('0 seleccionadas')).toBeInTheDocument();
+  });
+
+  it('preserves an individual decision when a bulk action applies to another row', async () => {
+    await openMatches();
+
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'confirm' } });
+    fireEvent.click(screen.getByLabelText('Seleccionar fila 2'));
+    fireEvent.click(screen.getByRole('button', { name: 'Crear nuevos pacientes' }));
+
+    expect(screen.getAllByRole('combobox')[0]).toHaveValue('confirm');
+    expect(screen.getAllByRole('combobox')[1]).toHaveValue('new');
+  });
+
+  it('excludes automatic and unidentifiable rows and clears visible selection', async () => {
+    const response = {
+      ...bulkMatchesResponse,
+      unidentifiableRows: [{ rowIndex: 5, reason: 'pending_decision' }],
+      unidentifiableCount: 1,
+      pendingResolutionCount: 3,
+    };
+    await openMatches(response);
+
+    expect(screen.getByLabelText('Seleccionar fila 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Seleccionar fila 2')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Seleccionar fila 3')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Seleccionar visibles' }));
+    expect(screen.getByText('2 seleccionadas')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Limpiar selección' }));
+    expect(screen.getByText('0 seleccionadas')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Crear nuevos pacientes' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Sin identificar/ }));
+    expect(screen.queryByLabelText('Seleccionar fila 6')).not.toBeInTheDocument();
   });
 
   it('proposes Nombre and Nº Paciente as separate identity fields', async () => {

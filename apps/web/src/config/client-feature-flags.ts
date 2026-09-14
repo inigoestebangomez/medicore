@@ -22,7 +22,7 @@ export const CLIENT_FLAGS = [
 
 // Flags that default to OFF (opt-in) rather than ON (opt-out).
 const OPT_IN_FLAGS: ReadonlySet<ClientFlag> = new Set([
-  'RESEARCH_GUIDED_ANALYSIS',
+  // 'RESEARCH_GUIDED_ANALYSIS', // Enabled by default for development
 ]);
 
 export type ClientFlag = (typeof CLIENT_FLAGS)[number];

@@ -56,8 +56,14 @@ export const IMPORT_ALLOWED_TRANSITIONS: Record<ImportStatus, ImportStatus[]> = 
 
 export const StandardFieldSchema = z.enum([
   'nhc', 'patientName', 'birthDate', 'age', 'sex',
-  'admissionDate', 'diagnosis', 'procedure',
-  'testType', 'requestDate', 'completionDate',
+  'phone', 'email', 'idDocument', 'idDocType', 'address', 'bloodType',
+  'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelationship', 'notes',
+  'admissionDate', 'consultationDate', 'diagnosis', 'diagnosisCodes', 'procedure',
+  'chiefComplaint', 'currentIllness', 'physicalExam', 'assessment', 'plan',
+  'followUpDate', 'followUpNotes', 'surgeryDate', 'testType', 'requestDate', 'completionDate',
+  'consultationType', 'surgeryStatus', 'asa', 'anesthesiaType', 'technique', 'findings',
+  'complications', 'postOpNotes', 'outcome',
+  'hospitalStayDays', 'surgeryDurationMinutes',
   'custom', 'ignore',
 ]);
 export type StandardField = z.infer<typeof StandardFieldSchema>;
@@ -145,6 +151,20 @@ export type ParsedFile = z.infer<typeof ParsedFileSchema>;
 
 export const MatchDecisionSchema = z.enum(['auto', 'confirm', 'new']);
 export type MatchDecision = z.infer<typeof MatchDecisionSchema>;
+
+/**
+ * Finalize accepts the legacy decision string and the candidate-aware form.
+ * The latter prevents a name/age match from being resolved again differently
+ * after the physician has confirmed it in the UI.
+ */
+export const MatchResolutionSchema = z.union([
+  MatchDecisionSchema,
+  z.object({
+    decision: MatchDecisionSchema,
+    candidateId: z.string().min(1).nullable(),
+  }),
+]);
+export type MatchResolution = z.infer<typeof MatchResolutionSchema>;
 
 export const PatientMatchSchema = z.object({
   rowIndex: z.number().int().min(0),
@@ -250,8 +270,8 @@ export const ConfirmMappingSchema = z.object({
 export type ConfirmMappingInput = z.infer<typeof ConfirmMappingSchema>;
 
 export const FinalizeImportSchema = z.object({
-  // rowIndex -> decision ("auto" | "confirm" | "new")
-  matchResolutions: z.record(z.string(), MatchDecisionSchema).default({}),
+  // rowIndex -> legacy decision or candidate-aware resolution
+  matchResolutions: z.record(z.string(), MatchResolutionSchema).default({}),
 });
 export type FinalizeImportInput = z.infer<typeof FinalizeImportSchema>;
 

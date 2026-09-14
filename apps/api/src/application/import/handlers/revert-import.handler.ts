@@ -4,9 +4,11 @@
 // enriched. Manual standard fields are never touched (precedence: manual >
 // imported, BR-IMP-003). Also purges the parsed-file cache.
 
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import type { IImportBatchRepository } from '@/domain/import/import-batch.repository.interface';
 import type { IPatientRepository } from '@/domain/patient/patient.repository.interface';
+import type { IConsultationRepository } from '@/domain/consultation/consultation.repository.interface';
+import type { ISurgeryRepository } from '@/domain/surgery/surgery.repository.interface';
 import type { IParsedFileCache } from '../ports/parsed-file-cache.port';
 import { ImportBatchNotFoundError } from '@/domain/import/errors/import-batch-not-found.error';
 import { ImportAlreadyFinalizedError } from '@/domain/import/errors/import-already-finalized.error';
@@ -21,6 +23,8 @@ export interface RevertImportResult {
   batchId: string;
   reverted: boolean;
   affectedPatients: number;
+  affectedConsultations?: number;
+  affectedSurgeries?: number;
 }
 
 @Injectable()
@@ -29,6 +33,8 @@ export class RevertImportHandler {
     @Inject('IImportBatchRepository') private readonly batchRepo: IImportBatchRepository,
     @Inject('IPatientRepository') private readonly patientRepo: IPatientRepository,
     @Inject('IParsedFileCache') private readonly cache: IParsedFileCache,
+    @Inject('IConsultationRepository') @Optional() private readonly consultationRepo?: IConsultationRepository,
+    @Inject('ISurgeryRepository') @Optional() private readonly surgeryRepo?: ISurgeryRepository,
   ) {}
 
   async execute(cmd: RevertImportCommand): Promise<RevertImportResult> {
@@ -52,6 +58,13 @@ export class RevertImportHandler {
       cmd.organizationId,
     );
 
+    const affectedConsultations = this.consultationRepo?.removeImportedBatch
+      ? await this.consultationRepo.removeImportedBatch(cmd.batchId, cmd.organizationId)
+      : 0;
+    const affectedSurgeries = this.surgeryRepo?.removeImportedBatch
+      ? await this.surgeryRepo.removeImportedBatch(cmd.batchId, cmd.organizationId)
+      : 0;
+
     await this.cache.delete(cmd.batchId, cmd.organizationId);
     void revertedBatch;
     void cmd.revertedBy;
@@ -60,6 +73,9 @@ export class RevertImportHandler {
       batchId: cmd.batchId,
       reverted: true,
       affectedPatients: affected,
+      ...(this.consultationRepo?.removeImportedBatch || this.surgeryRepo?.removeImportedBatch
+        ? { affectedConsultations, affectedSurgeries }
+        : {}),
     };
   }
 }

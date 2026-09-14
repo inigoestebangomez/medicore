@@ -5,7 +5,8 @@
 // patient deltas, notification toasts, and quick lifecycle actions.
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import { useStudiesWithBadges, useFreezeStudy, useArchiveStudy } from '@/hooks/useStudiesWithBadges';
 import { StudyCard } from './StudyCard';
 import { StudySuggestionPanel } from './StudySuggestionPanel';
@@ -25,6 +26,7 @@ const FILTERS: Array<{ label: string; value?: StudyDTO['status'] }> = [
 ];
 
 export function MyStudiesDashboard({ onNewPatients }: MyStudiesDashboardProps) {
+  const router = useRouter();
   const [status, setStatus] = useState<StudyDTO['status'] | undefined>(undefined);
   const { studies, isLoading } = useStudiesWithBadges(status, onNewPatients);
 
@@ -42,12 +44,9 @@ export function MyStudiesDashboard({ onNewPatients }: MyStudiesDashboardProps) {
             Cohortes en vivo sobre consultas guardadas — recálculo automático al importar.
           </p>
         </div>
-        <Link
-          href="/research/new"
-          className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-on-primary hover:opacity-90"
-        >
+        <Button size="sm" onClick={() => router.push('/research/new')}>
           Nuevo estudio
-        </Link>
+        </Button>
       </div>
 
       <div className="flex gap-2">

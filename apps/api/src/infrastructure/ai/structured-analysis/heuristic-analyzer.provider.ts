@@ -37,18 +37,55 @@ const FIELD_PATTERNS: FieldPattern[] = [
   { field: 'age', patterns: [/^edad$/, /\bedad\b/] },
   // sex
   { field: 'sex', patterns: [/^sexo$/, /\bsexo\b/, /genero/, /g[eé]nero/, /gender/] },
+  // Native patient demographics
+  { field: 'phone', patterns: [/tel[eé]fono/, /\btlf\b/, /tel[eé]f/, /m[oó]vil/, /\bphone\b/, /tlfno/, /celular/, /\bcel\b/] },
+  { field: 'email', patterns: [/correo/, /e[- ]?mail/, /email/] },
+  { field: 'idDocType', patterns: [/tipo.*documento/, /document.*tipo/, /tipo.*identidad/] },
+  { field: 'idDocument', patterns: [/documento.*identidad/, /identidad/, /dni/, /nie/, /pasaporte/, /passport/] },
+  { field: 'address', patterns: [/direcci[oó]n/, /domicilio/, /address/] },
+  { field: 'bloodType', patterns: [/grupo.*sangu[ií]neo/, /tipo.*sangre/, /blood.*type/] },
+  { field: 'emergencyContactName', patterns: [/contacto.*emergencia.*nombre/, /nombre.*contacto.*emergencia/] },
+  { field: 'emergencyContactPhone', patterns: [/contacto.*emergencia.*tel/, /tel.*contacto.*emergencia/] },
+  { field: 'emergencyContactRelationship', patterns: [/relaci[oó]n.*contacto/, /parentesco/, /contacto.*relaci[oó]n/] },
+  { field: 'notes', patterns: [/^notas?$/, /observaciones/, /comentarios/, /notes?/] },
+  // Consultation detail fields. Specific labels precede generic diagnosis and
+  // procedure patterns so clinical screen columns keep their intended target.
+  { field: 'consultationDate', patterns: [/fecha.*consulta/, /consulta.*fecha/] },
+  { field: 'chiefComplaint', patterns: [/motivo.*consulta/, /motivo.*visita/] },
+  { field: 'currentIllness', patterns: [/enfermedad.*actual/, /antecedentes?.*actual/] },
+  { field: 'physicalExam', patterns: [/exploraci[oó]n.*f[ií]sica/, /examen.*f[ií]sico/] },
+  { field: 'assessment', patterns: [/valoraci[oó]n/, /evaluaci[oó]n.*cl[ií]nica/] },
+  { field: 'diagnosisCodes', patterns: [/c[oó]digos?.*diagn[oó]st/, /diagn[oó]st.*c[oó]digos?/] },
+  { field: 'plan', patterns: [/^plan$/, /plan.*tratamiento/] },
+  { field: 'followUpDate', patterns: [/fecha.*seguimiento/, /seguimiento.*fecha/] },
+  { field: 'followUpNotes', patterns: [/notas?.*seguimiento/, /seguimiento.*notas?/] },
+  // hospitalStayDays — duration of the hospital stay
+  { field: 'hospitalStayDays', patterns: [/tiempo.*hospitalizaci/, /hospitalizaci/, /^estancia$/, /estancia.*(?:hospital|d[ií]a)/, /d[ií]as?.*hospital/] },
+  // surgeryDurationMinutes — operating-room duration. Keep this before the
+  // generic procedure rule because "Duración IQ" also contains "IQ".
+  { field: 'surgeryDurationMinutes', patterns: [/tiempo.*quir[uú]rgic/, /duraci[oó]n.*quir[uú]rgic/, /duraci[oó]n.*cirug/, /duraci[oó]n.*intervenci/, /tiempo.*cirug/, /tiempo.*iq/, /duraci[oó]n.*iq/, /minutos?.*quir[uú]rgic/] },
+  { field: 'surgeryDate', patterns: [/fecha.*cirug/, /fecha.*quir/, /fecha.*intervenci/, /cirug.*fecha/] },
+  { field: 'asa', patterns: [/^asa$/, /clasificaci[oó]n.*asa/] },
+  { field: 'anesthesiaType', patterns: [/tipo.*anestesia/, /anestesia/] },
+  { field: 'technique', patterns: [/t[eé]cnica.*quir/, /t[eé]cnica.*operator/] },
+  { field: 'findings', patterns: [/hallazgos?/, /findings?/] },
+  { field: 'complications', patterns: [/complicaci[oó]n/] },
+  { field: 'postOpNotes', patterns: [/notas?.*post.*operator/, /postoperator.*notas?/] },
+  { field: 'outcome', patterns: [/resultado/, /evoluci[oó]n.*final/] },
   // admissionDate — common in hospital surgical exports
-  { field: 'admissionDate', patterns: [/fecha.*ingr/, /fecha.*intervenci/, /fecha.*iq/, /fecha.*quir/, /f\.?\s*iq/, /fecha.*cirug/, /admission/] },
+  { field: 'admissionDate', patterns: [/fecha.*ingr/, /fecha.*iq/, /f\.?\s*iq/, /admission/] },
   // diagnosis
   { field: 'diagnosis', patterns: [/diagn.*stico/, /sospecha/, /^dx$/, /\bdx\b/, /diagnost/] },
   // procedure
-  { field: 'procedure', patterns: [/procedimiento/, /intervenci/, /\biq\b/, /t[eé]cnica.*quir/, /cirug/, /procedure/] },
+  { field: 'procedure', patterns: [/procedimiento/, /intervenci/, /\biq\b/, /cirug/, /procedure/] },
   // testType — clinical test/study type (EMG, TAC, audiometría, etc.)
   { field: 'testType', patterns: [/^prueba$/, /\bprueba\b/, /tipo.*prueba/, /tipo.*estudio/, /exploraci/, /^estudio$/, /\bestudio\b/] },
   // requestDate — when the test was ordered/requested
   { field: 'requestDate', patterns: [/fecha.*solicitud/, /fecha.*petici/, /solicitud/, /fecha.*prescripci/] },
   // completionDate — when the test was actually performed
   { field: 'completionDate', patterns: [/fecha.*realizaci/, /fecha.*ejecuci/, /realizaci/, /fecha.*completad/] },
+  { field: 'consultationType', patterns: [/tipo.*consulta/, /consulta.*tipo/] },
+  { field: 'surgeryStatus', patterns: [/estado.*cirug/, /estado.*intervenci/, /surgery.*status/] },
 ];
 
 // These identifiers must be checked before the generic /paciente/ rule. A
@@ -63,7 +100,8 @@ const PATIENT_IDENTIFIER_PATTERNS: RegExp[] = [
   /^id\s+paciente$/,
 ];
 
-// Phone-like columns — always mapped to 'ignore' (BR-IMP-007)
+// Phone-like columns are mapped explicitly when recognizable. The cleaner still
+// scans every cell as a fallback for files whose phone column was mis-mapped.
 const PHONE_PATTERNS: RegExp[] = [
   /tel[eé]fono/, /\btlf\b/, /tel[eé]f/, /\bm[oó]vil\b/, /\bmvl\b/, /\bphone\b/, /tlfno/, /contacto.*tel/, /\bcel\b/,
 ];
@@ -133,9 +171,10 @@ export class HeuristicAnalyzer implements StructuredAnalysisProvider {
     for (const col of sample.columns) {
       const norm = normalizeName(col);
 
-      // BR-IMP-007: phone columns are ALWAYS excluded first.
-      if (PHONE_PATTERNS.some((re) => re.test(norm))) {
-        mapping[col] = 'ignore';
+       // Prefer an explicit phone mapping; the cleaner still has a full-row
+       // extractor for files whose phone column is not recognized here.
+       if (PHONE_PATTERNS.some((re) => re.test(norm))) {
+         mapping[col] = 'phone';
         totalTypedColumns++;
         continue;
       }

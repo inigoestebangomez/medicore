@@ -34,7 +34,22 @@ interface ListResponse {
 const patientKeys = {
   all: ['patients'] as const,
   lists: () => [...patientKeys.all, 'list'] as const,
-  search: (query: string) => [...patientKeys.all, 'search', query] as const,
+  list: (page: number, pageSize: number, sortBy: string, sortOrder: string) => [
+    ...patientKeys.lists(),
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+  ] as const,
+  search: (query: string, page: number, pageSize: number, sortBy: string, sortOrder: string) => [
+    ...patientKeys.all,
+    'search',
+    query,
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
+  ] as const,
   detail: (id: string) => [...patientKeys.all, 'detail', id] as const,
 };
 
@@ -62,9 +77,13 @@ export function usePatients(params?: {
   }
 
   const endpoint = isSearch ? `${API_BASE}/search` : API_BASE;
+  const sortBy = params?.sortBy ?? '';
+  const sortOrder = params?.sortOrder ?? '';
 
   return useQuery<ListResponse>({
-    queryKey: isSearch ? patientKeys.search(searchQuery) : patientKeys.lists(),
+    queryKey: isSearch
+      ? patientKeys.search(searchQuery, page, pageSize, sortBy, sortOrder)
+      : patientKeys.list(page, pageSize, sortBy, sortOrder),
     queryFn: async () => {
       const res = await apiFetch<{ data: ListResponse } | ListResponse>(
         `${endpoint}?${queryParams.toString()}`,

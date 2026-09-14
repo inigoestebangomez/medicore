@@ -35,3 +35,24 @@ describe('PatientMatcherService — agesMatch null safety (SDD import-data-quali
     expect(matcher.agesMatch(50, candidate, new Date('2026-06-10'))).toBe(true);
   });
 });
+
+describe('PatientMatcherService — estimated birth dates', () => {
+  it('does not award exact-date auto-match points for an estimated birth date', () => {
+    const candidate = makeCandidate(new Date('1976-01-01'));
+    const result = matcher.score({
+      rowIndex: 0, nhc: null, patientName: 'Ana Garcia', birthDate: new Date('1976-01-01'),
+      birthDateEstimated: true, birthDateReferenceYear: 2026, age: 50, ageAtImport: 50,
+      sex: null, email: null, idDocument: null, idDocType: null, address: null, bloodType: null,
+      emergencyContactName: null, emergencyContactPhone: null, emergencyContactRelationship: null, notes: null,
+      phone: null, customFields: {}, raw: {}, importedFields: {},
+       admissionDate: null, consultationDate: null, diagnosis: null, diagnosisCodes: null, procedure: null,
+       chiefComplaint: null, currentIllness: null, physicalExam: null, assessment: null, plan: null,
+       followUpDate: null, followUpNotes: null, surgeryDate: null, testType: null, requestDate: null, completionDate: null,
+       hospitalStayDays: null, surgeryDurationMinutes: null, consultationType: null, surgeryStatus: null,
+       asa: null, anesthesiaType: null, technique: null, findings: null, complications: null, postOpNotes: null, outcome: null,
+    }, candidate);
+
+    expect(result.score).toBe(60);
+    expect(result.reason).toBe('nombre completo exacto');
+  });
+});

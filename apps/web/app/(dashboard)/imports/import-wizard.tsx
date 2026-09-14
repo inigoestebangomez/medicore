@@ -28,6 +28,7 @@ import type {
   MatchDecision,
   PreviewOverrides,
   IgnoredRow,
+  MatchResolution,
   StandardField,
 } from '@medicore/contracts';
 import { validateColumnMapping } from '@medicore/contracts';
@@ -40,12 +41,43 @@ const FIELD_OPTIONS: StandardField[] = [
   'birthDate',
   'age',
   'sex',
+  'phone',
+  'email',
+  'idDocument',
+  'idDocType',
+  'address',
+  'bloodType',
+  'emergencyContactName',
+  'emergencyContactPhone',
+  'emergencyContactRelationship',
+  'notes',
   'admissionDate',
+  'consultationDate',
   'diagnosis',
+  'diagnosisCodes',
   'procedure',
+  'chiefComplaint',
+  'currentIllness',
+  'physicalExam',
+  'assessment',
+  'plan',
+  'followUpDate',
+  'followUpNotes',
+  'surgeryDate',
   'testType',
   'requestDate',
   'completionDate',
+  'hospitalStayDays',
+  'surgeryDurationMinutes',
+  'consultationType',
+  'surgeryStatus',
+  'asa',
+  'anesthesiaType',
+  'technique',
+  'findings',
+  'complications',
+  'postOpNotes',
+  'outcome',
   'custom',
   'ignore',
 ];
@@ -56,22 +88,56 @@ const FIELD_LABELS: Record<string, string> = {
   birthDate: 'Fecha de nacimiento',
   age: 'Edad',
   sex: 'Sexo',
+  phone: 'Teléfono',
+  email: 'Email',
+  idDocument: 'Documento de identidad',
+  idDocType: 'Tipo de documento',
+  address: 'Dirección',
+  bloodType: 'Grupo sanguíneo',
+  emergencyContactName: 'Contacto de emergencia',
+  emergencyContactPhone: 'Teléfono de emergencia',
+  emergencyContactRelationship: 'Relación del contacto',
+  notes: 'Notas',
   admissionDate: 'Fecha de ingreso',
+  consultationDate: 'Fecha de consulta',
   diagnosis: 'Diagnóstico',
+  diagnosisCodes: 'Códigos diagnósticos',
   procedure: 'Procedimiento',
+  chiefComplaint: 'Motivo de consulta',
+  currentIllness: 'Enfermedad actual',
+  physicalExam: 'Exploración física',
+  assessment: 'Valoración',
+  plan: 'Plan',
+  followUpDate: 'Fecha de seguimiento',
+  followUpNotes: 'Notas de seguimiento',
+  surgeryDate: 'Fecha de cirugía',
   testType: 'Prueba / Tipo de estudio',
   requestDate: 'Fecha de solicitud',
   completionDate: 'Fecha de realización',
+  hospitalStayDays: 'Tiempo de hospitalización (días)',
+  surgeryDurationMinutes: 'Tiempo quirúrgico (minutos)',
   custom: 'Campo personalizado',
+  consultationType: 'Tipo de consulta',
+  surgeryStatus: 'Estado de cirugía',
+  asa: 'Clasificación ASA',
+  anesthesiaType: 'Tipo de anestesia',
+  technique: 'Técnica quirúrgica',
+  findings: 'Hallazgos',
+  complications: 'Complicaciones',
+  postOpNotes: 'Notas postoperatorias',
+  outcome: 'Resultado',
   ignore: 'Ignorar',
 };
 
 const DATE_FIELDS = new Set<StandardField>([
   'birthDate',
   'admissionDate',
+  'consultationDate',
+  'surgeryDate',
   'requestDate',
   'completionDate',
 ]);
+const NUMERIC_FIELDS = new Set<StandardField>(['hospitalStayDays', 'surgeryDurationMinutes']);
 const EXCEL_SERIAL_MIN = 59;
 const EXCEL_SERIAL_MAX = 80000;
 const EXCEL_SERIAL_EPOCH_OFFSET = 25569;
@@ -128,6 +194,7 @@ function parseImportPreviewDate(value: unknown): Date | null {
 /** Formats explicit dates only in columns mapped to a date field. */
 export function formatImportPreviewValue(value: unknown, field?: StandardField): string {
   if (value == null) return '';
+  if (NUMERIC_FIELDS.has(field ?? 'ignore')) return String(value);
   if (!DATE_FIELDS.has(field ?? 'ignore')) return String(value);
   const date = parseImportPreviewDate(value);
   return date
@@ -273,15 +340,24 @@ export function ImportWizard({
   }
 
   async function onFinalize() {
-    if (!parsed) return;
+    if (!parsed || !confirmed) return;
     setError(null);
     // Disable the previous terminal detail while the explicit retry is sent.
     // No automatic retry is performed, avoiding duplicate-prone submissions.
     setFinalizeResult(null);
     try {
+      const matchesByRow = new Map(confirmed.matches.map((match) => [String(match.rowIndex), match]));
+      const candidateAwareResolutions: Record<string, MatchResolution> = Object.fromEntries(
+        Object.entries(resolutions).map(([rowIndex, decision]) => {
+          const match = matchesByRow.get(rowIndex);
+          return decision === 'new'
+            ? [rowIndex, decision]
+            : [rowIndex, { decision, candidateId: match?.candidateId ?? null }];
+        }),
+      );
       const result = await finalizeMut.mutateAsync({
         batchId: parsed.batchId,
-        matchResolutions: resolutions,
+        matchResolutions: candidateAwareResolutions,
       });
       setFinalizeResult(result);
       setStep('processing');
@@ -345,10 +421,15 @@ export function ImportWizard({
       )}
 
       {step === 'matches' && confirmed && parsed && (
-        <MatchesStep
-          parsed={parsed}
-          confirmed={confirmed}
-          resolutions={resolutions}
+         <MatchesStep
+           parsed={parsed}
+           confirmed={confirmed}
+           mapping={mapping}
+           previewOverrides={previewOverrides}
+           ignoredColumns={ignoredColumns}
+           ignoredRows={ignoredRows}
+           cellOverrides={cellOverrides}
+           resolutions={resolutions}
           setResolutions={setResolutions}
           onFinalize={onFinalize}
           finalizing={finalizeMut.isPending}
@@ -486,7 +567,7 @@ function MappingStep({
   function updateCell(rowIndex: number, column: string, value: string) {
     const field = mapping[column];
     if (
-      ['birthDate', 'admissionDate', 'requestDate', 'completionDate'].includes(field) &&
+      DATE_FIELDS.has(field) &&
       !isDateValue(value)
     ) {
       setCellErrors({ ...cellErrors, [`${rowIndex}:${column}`]: 'Introduce una fecha válida' });
@@ -587,7 +668,10 @@ function MappingStep({
           <tbody className="divide-y divide-outline-variant">
             {cols.map((col) => (
               <tr key={col}>
-                <td className="px-3 py-2 font-medium text-on-surface">{col}</td>
+                 <td className="px-3 py-2 font-medium text-on-surface">
+                   <div>{col}</div>
+                   <div className="mt-0.5 text-xs font-normal text-on-surface-variant">Columna {cols.indexOf(col) + 1}</div>
+                 </td>
                 <td className="px-3 py-2">
                   <select
                     value={mapping[col] ?? 'ignore'}
@@ -670,14 +754,17 @@ function MappingStep({
               <tr>
                 <th className="sticky left-0 bg-surface-low px-2 py-1.5 font-medium">#</th>
                 <th className="bg-surface-low px-2 py-1.5 font-medium">Acción fila</th>
-                {cols.map((col) => (
-                  <th key={col} className="whitespace-nowrap px-2 py-1.5 font-medium">
-                    {col}
-                    {mapping[col] && mapping[col] !== 'ignore' && (
-                      <span className="ml-1 text-primary">→ {FIELD_LABELS[mapping[col]]}</span>
-                    )}
-                  </th>
-                ))}
+                 {cols.map((col) => (
+                   <th key={col} className="whitespace-nowrap px-2 py-1.5 font-medium">
+                     <div>{col}</div>
+                     {mapping[col] && mapping[col] !== 'ignore' && (
+                       <div className="text-primary">{FIELD_LABELS[mapping[col]]}</div>
+                     )}
+                     <div className="mt-0.5 text-[10px] font-normal text-on-surface-variant/70">
+                       Columna {cols.indexOf(col) + 1}
+                     </div>
+                   </th>
+                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant">
@@ -772,6 +859,11 @@ function MappingStep({
 function MatchesStep({
   parsed,
   confirmed,
+  mapping,
+  previewOverrides,
+  ignoredColumns,
+  ignoredRows,
+  cellOverrides,
   resolutions,
   setResolutions,
   onFinalize,
@@ -780,6 +872,11 @@ function MatchesStep({
 }: {
   parsed: ParseFileResponse;
   confirmed: ConfirmImportResponse;
+  mapping: ColumnMapping;
+  previewOverrides: PreviewOverrides;
+  ignoredColumns: IgnoredColumn[];
+  ignoredRows: IgnoredRow[];
+  cellOverrides: CellOverrides;
   resolutions: Record<string, MatchDecision>;
   setResolutions: (r: Record<string, MatchDecision>) => void;
   onFinalize: () => void;
@@ -787,6 +884,12 @@ function MatchesStep({
   onBack: () => void;
 }) {
   const [activeBucket, setActiveBucket] = useState<'full' | 'light' | 'unidentifiable'>('full');
+  const [resolverPage, setResolverPage] = useState(1);
+  const [selectedRowIndexes, setSelectedRowIndexes] = useState<Set<number>>(new Set());
+  const resolverPreview = useImportPreview(parsed.batchId, resolverPage, 50);
+  const resolverPreviewRows = resolverPreview.data?.rows ?? [];
+  const resolverPreviewByIndex = new Map(resolverPreviewRows.map((row) => [row.rowIndex, row.values]));
+  const resolverTotalPages = Math.max(1, Math.ceil(parsed.totalRows / 50));
   const bucketRows =
     activeBucket === 'full'
       ? confirmed.fullIdentityRows
@@ -797,7 +900,29 @@ function MatchesStep({
   const pending = confirmed.matches.filter(
     (m) => m.decision !== 'auto' && bucketIndexes.has(m.rowIndex),
   );
+  const visibleBucketRows = bucketRows.filter(
+    (row) => row.rowIndex >= (resolverPage - 1) * 50 && row.rowIndex < resolverPage * 50,
+  );
+  const visiblePending = pending.filter(
+    (match) => match.rowIndex >= (resolverPage - 1) * 50 && match.rowIndex < resolverPage * 50,
+  );
   const hasUnidentifiable = confirmed.unidentifiableRows.length > 0;
+  const unidentifiableIndexes = new Set(confirmed.unidentifiableRows.map((row) => row.rowIndex));
+  const eligibleRowIndexes = new Set(
+    confirmed.matches
+      .filter((m) => m.decision !== 'auto' && !unidentifiableIndexes.has(m.rowIndex))
+      .map((m) => m.rowIndex),
+  );
+  const visibleRowIndexes = visiblePending.map((m) => m.rowIndex);
+  const allVisibleSelected =
+    visibleRowIndexes.length > 0 && visibleRowIndexes.every((rowIndex) => selectedRowIndexes.has(rowIndex));
+
+  useEffect(() => {
+    setSelectedRowIndexes((current) => {
+      const next = new Set([...current].filter((rowIndex) => eligibleRowIndexes.has(rowIndex)));
+      return next.size === current.size ? current : next;
+    });
+  }, [confirmed.matches, confirmed.unidentifiableRows]);
 
   /** Traduce el score y reason técnico a un mensaje comprensible. */
   function scoreLabel(m: (typeof pending)[number]): { label: string; color: string } {
@@ -819,9 +944,45 @@ function MatchesStep({
     return map[reason] ?? reason;
   }
 
-  /** Busca los datos crudos de la fila en el sample del Excel. */
-  function rowData(rowIndex: number): Record<string, unknown> | null {
-    return parsed.sample.rows[rowIndex] ?? null;
+  /** Returns only values still effective after the mapping-screen edits. */
+  function rowData(rowIndex: number): Array<{ key: string; label: string; value: string }> {
+    const rawRow = resolverPreviewByIndex.get(rowIndex) ?? parsed.sample.rows[rowIndex];
+    if (!rawRow || ignoredRows.some((row) => row.rowIndex === rowIndex)) return [];
+    const ignored = new Set(ignoredColumns.map((item) => item.column));
+    const preview = previewOverrides[String(rowIndex)] ?? {};
+    const cells = cellOverrides[String(rowIndex)] ?? {};
+
+    return parsed.sample.columns.flatMap((column, columnIndex) => {
+      if (ignored.has(column) || mapping[column] === 'ignore' || Object.prototype.hasOwnProperty.call(cells, column)) {
+        return [];
+      }
+      const value = Object.prototype.hasOwnProperty.call(preview, column)
+        ? preview[column]
+        : rawRow[column];
+      const text = Object.prototype.hasOwnProperty.call(preview, column)
+        ? String(value ?? '')
+        : formatImportPreviewValue(value, mapping[column]);
+      return text.trim()
+        ? [{ key: column, label: `Columna ${columnIndex + 1} · ${column}`, value: text }]
+        : [];
+    });
+  }
+
+  function selectVisibleRows() {
+    setSelectedRowIndexes((current) => new Set([...current, ...visibleRowIndexes]));
+  }
+
+  function clearSelection() {
+    setSelectedRowIndexes(new Set());
+  }
+
+  function applyBulkResolution(decision: Extract<MatchDecision, 'confirm' | 'new'>) {
+    const next = { ...resolutions };
+    for (const rowIndex of selectedRowIndexes) {
+      if (eligibleRowIndexes.has(rowIndex)) next[String(rowIndex)] = decision;
+    }
+    setResolutions(next);
+    clearSelection();
   }
 
   return (
@@ -833,6 +994,34 @@ function MatchesStep({
           {confirmed.newPatientCount} nuevos
         </p>
       </div>
+
+      {resolverTotalPages > 1 && (
+        <div className="flex items-center justify-between gap-2 text-xs text-on-surface-variant">
+          <span>
+            Filas {(resolverPage - 1) * 50 + 1}–{Math.min(resolverPage * 50, parsed.totalRows)} de {parsed.totalRows}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={resolverPage <= 1 || resolverPreview.isFetching}
+              onClick={() => setResolverPage((page) => page - 1)}
+            >
+              Página anterior
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={resolverPage >= resolverTotalPages || resolverPreview.isFetching}
+              onClick={() => setResolverPage((page) => page + 1)}
+            >
+              Página siguiente
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-2 sm:grid-cols-3" role="tablist" aria-label="Grupos de filas">
         {(
@@ -889,12 +1078,49 @@ function MatchesStep({
         </div>
       )}
 
-      {bucketRows.length === 0 ? (
+      <div className="flex flex-wrap items-center gap-2 rounded-md border border-outline-variant bg-surface-low p-3">
+        <span className="mr-1 text-sm text-on-surface-variant">
+          {selectedRowIndexes.size} seleccionadas
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={selectVisibleRows}
+          disabled={visiblePending.length === 0 || allVisibleSelected}
+        >
+          Seleccionar visibles
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clearSelection}
+          disabled={selectedRowIndexes.size === 0}
+        >
+          Limpiar selección
+        </Button>
+        <span className="h-5 w-px bg-outline-variant" aria-hidden="true" />
+        <Button
+          size="sm"
+          onClick={() => applyBulkResolution('new')}
+          disabled={selectedRowIndexes.size === 0}
+        >
+          Crear nuevos pacientes
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => applyBulkResolution('confirm')}
+          disabled={selectedRowIndexes.size === 0}
+        >
+          Mismo paciente (enriquecer)
+        </Button>
+      </div>
+
+      {visibleBucketRows.length === 0 ? (
         <p className="text-sm text-on-surface-variant">No hay filas en este grupo.</p>
       ) : activeBucket === 'unidentifiable' ? (
         <div className="space-y-2">
-          {bucketRows.map((row) => {
-            const data = rowData(row.rowIndex);
+          {visibleBucketRows.map((row) => {
+             const data = rowData(row.rowIndex);
             return (
               <div
                 key={row.rowIndex}
@@ -904,21 +1130,19 @@ function MatchesStep({
                   <span className="font-medium text-on-surface">Fila {row.rowIndex + 1}</span>
                   <span className="ml-2 text-on-surface-variant">Pendiente de identificación</span>
                 </div>
-                {data && (
+                 {data.length > 0 && (
                   <div className="mt-2 rounded border border-outline-variant bg-surface-lowest p-2">
                     <p className="mb-1 text-[10px] font-medium uppercase text-on-surface-variant/60">
                       Contenido disponible de la fila
                     </p>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                      {Object.entries(data).map(([key, val]) => {
-                        const sval = String(val ?? '');
-                        if (!sval.trim()) return null;
-                        return (
-                          <span key={key} className="text-on-surface-variant">
-                            <span className="text-on-surface-variant/60">{key}:</span>{' '}
-                            <span className="font-medium text-on-surface">{sval}</span>
-                          </span>
-                        );
+                       {data.map(({ key, label, value }) => {
+                         return (
+                           <span key={key} className="text-on-surface-variant">
+                             <span className="text-on-surface-variant/60">{label}:</span>{' '}
+                             <span className="font-medium text-on-surface">{value}</span>
+                           </span>
+                         );
                       })}
                     </div>
                   </div>
@@ -927,13 +1151,13 @@ function MatchesStep({
             );
           })}
         </div>
-      ) : pending.length === 0 ? (
+      ) : visiblePending.length === 0 ? (
         <p className="text-sm text-on-surface-variant">No hay cruces pendientes en este grupo.</p>
       ) : (
         <div className="space-y-2">
-          {pending.map((m) => {
+          {visiblePending.map((m) => {
             const s = scoreLabel(m);
-            const data = rowData(m.rowIndex);
+             const data = rowData(m.rowIndex);
             return (
               <div
                 key={m.rowIndex}
@@ -942,6 +1166,22 @@ function MatchesStep({
                 {/* Cabecera: score y decisión */}
                 <div className="mb-2 flex items-center justify-between">
                   <div>
+                    <label className="mr-2 inline-flex items-center gap-2 text-sm text-on-surface">
+                      <input
+                        type="checkbox"
+                        aria-label={`Seleccionar fila ${m.rowIndex + 1}`}
+                        checked={selectedRowIndexes.has(m.rowIndex)}
+                        onChange={(e) => {
+                          setSelectedRowIndexes((current) => {
+                            const next = new Set(current);
+                            if (e.target.checked) next.add(m.rowIndex);
+                            else next.delete(m.rowIndex);
+                            return next;
+                          });
+                        }}
+                        className="h-4 w-4 rounded border-outline accent-primary"
+                      />
+                    </label>
                     <span className="text-sm font-medium text-on-surface">
                       Fila {m.rowIndex + 1}
                     </span>
@@ -968,20 +1208,18 @@ function MatchesStep({
                 <p className="mb-1.5 text-xs text-on-surface-variant">{reasonLabel(m.reason)}</p>
 
                 {/* Datos de la fila del Excel */}
-                {data && (
+                 {data.length > 0 && (
                   <div className="rounded border border-outline-variant bg-surface-lowest p-2">
                     <p className="mb-1 text-[10px] font-medium uppercase text-on-surface-variant/60">
                       Datos del archivo
                     </p>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                      {Object.entries(data).map(([key, val]) => {
-                        const sval = String(val ?? '—');
-                        if (sval === '—' || sval === '') return null;
-                        return (
-                          <span key={key} className="text-on-surface-variant">
-                            <span className="text-on-surface-variant/60">{key}:</span>{' '}
-                            <span className="font-medium text-on-surface">{sval}</span>
-                          </span>
+                       {data.map(({ key, label, value }) => {
+                         return (
+                           <span key={key} className="text-on-surface-variant">
+                             <span className="text-on-surface-variant/60">{label}:</span>{' '}
+                             <span className="font-medium text-on-surface">{value}</span>
+                           </span>
                         );
                       })}
                     </div>
