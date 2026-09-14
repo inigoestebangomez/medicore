@@ -32,7 +32,18 @@ export function InferentialStep({
   const [correction, setCorrection] = useState<CorrectionMethod | ''>('');
   const [alpha, setAlpha] = useState(0.05);
 
-  const isValid = domain && elementIds.trim().split(',').length >= 2 && outcome;
+  const isValid = domain && elementIds.trim().length > 0 && outcome;
+
+  // Variables por defecto cuando no hay variables cargadas
+  const defaultVariables = [
+    'age',
+    'sex',
+    'bloodType',
+    'hospitalStayDays',
+    'surgeryDurationMinutes',
+  ];
+
+  const availableVariables = variables.length > 0 ? variables : defaultVariables;
 
   const handleRun = () => {
     if (!isValid) return;
@@ -74,15 +85,18 @@ export function InferentialStep({
         {/* Exposure elements */}
         <div>
           <label className="block text-sm font-medium">
-            Elementos de exposición (separados por coma, mínimo 2)
+            Elementos de exposición (separados por coma)
           </label>
           <input
             type="text"
             value={elementIds}
             onChange={(e) => setElementIds(e.target.value)}
-            placeholder="ej: drug_a, drug_b"
+            placeholder="ej: omeprazol, levogastrol"
             className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
           />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Puede añadir uno o varios elementos para comparar
+          </p>
         </div>
 
         {/* Outcome */}
@@ -94,10 +108,15 @@ export function InferentialStep({
             className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
           >
             <option value="">— Seleccione —</option>
-            {variables.map((v) => (
+            {availableVariables.map((v) => (
               <option key={v} value={v}>{v}</option>
             ))}
           </select>
+          {variables.length === 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Mostrando variables comunes. Para ver todas las variables disponibles, ejecute primero una consulta de investigación.
+            </p>
+          )}
         </div>
 
         {/* Correction */}

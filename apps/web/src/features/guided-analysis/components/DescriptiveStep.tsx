@@ -32,6 +32,17 @@ export function DescriptiveStep({
     onRun({ path: 'descriptive', variables: selected, alpha: 0.05 });
   };
 
+  // Variables por defecto cuando no hay variables cargadas
+  const defaultVariables = [
+    'age',
+    'sex',
+    'bloodType',
+    'hospitalStayDays',
+    'surgeryDurationMinutes',
+  ];
+
+  const availableVariables = variables.length > 0 ? variables : defaultVariables;
+
   return (
     <div className="space-y-4">
       <div>
@@ -43,7 +54,7 @@ export function DescriptiveStep({
 
       <div className="rounded-lg border border-border p-4">
         <div className="flex flex-wrap gap-2">
-          {variables.map((v) => (
+          {availableVariables.map((v) => (
             <button
               key={v}
               type="button"
@@ -61,6 +72,11 @@ export function DescriptiveStep({
         {selected.length === 0 && (
           <p className="mt-2 text-xs text-muted-foreground">
             Seleccione al menos una variable.
+          </p>
+        )}
+        {variables.length === 0 && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Mostrando variables comunes. Para ver todas las variables disponibles, ejecute primero una consulta de investigación.
           </p>
         )}
       </div>
