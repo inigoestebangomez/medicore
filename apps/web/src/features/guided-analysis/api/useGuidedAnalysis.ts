@@ -23,7 +23,7 @@ async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
 export async function runGuidedAnalysis(
   request: GuidedAnalysisRequest,
 ): Promise<GuidedAnalysisResult> {
-  return apiFetch<GuidedAnalysisResult>('/api/research/guided/analyses', {
+  return apiFetch<GuidedAnalysisResult>('/v1/research/guided/analyses', {
     method: 'POST',
     body: JSON.stringify(request),
   });

@@ -22,6 +22,12 @@ export function DescriptiveStep({
 }: DescriptiveStepProps) {
   const [selected, setSelected] = useState<string[]>([]);
 
+  const handleAddCustomVariable = (variableName: string) => {
+    if (!selected.includes(variableName)) {
+      setSelected([...selected, variableName]);
+    }
+  };
+
   const handleRun = () => {
     if (selected.length === 0) return;
     onRun({ path: 'descriptive', variables: selected, alpha: 0.05 });
@@ -44,6 +50,7 @@ export function DescriptiveStep({
           multi
           placeholder="Seleccione variables"
           searchPlaceholder="Buscar variable…"
+          onAddCustom={handleAddCustomVariable}
         />
         {selected.length === 0 && (
           <p className="mt-2 text-xs text-muted-foreground">

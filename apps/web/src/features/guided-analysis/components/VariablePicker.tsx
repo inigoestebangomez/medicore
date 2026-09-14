@@ -9,7 +9,6 @@ import {
   CLINICAL_SECTIONS,
   CLINICAL_SECTION_LABELS,
   FIELD_TO_SECTION,
-  classifyField,
   type ClinicalSection,
 } from '@/components/research/clinical-sections.registry';
 
@@ -19,6 +18,7 @@ interface VariablePickerProps {
   multi?: boolean;
   placeholder?: string;
   searchPlaceholder?: string;
+  onAddCustom?: (variableName: string) => void;
 }
 
 // Extended field catalog with labels (Spanish)
@@ -106,8 +106,11 @@ export function VariablePicker({
   multi = false,
   placeholder = 'Seleccione una variable',
   searchPlaceholder = 'Buscar variable…',
+  onAddCustom,
 }: VariablePickerProps) {
   const [search, setSearch] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newVarName, setNewVarName] = useState('');
   const [expandedSections, setExpandedSections] = useState<Set<ClinicalSection>>(
     new Set(['Demographics', 'Diagnoses', 'Surgery', 'Medication']),
   );
@@ -170,16 +173,36 @@ export function VariablePicker({
 
   const isSelected = (field: string) => selectedValues.includes(field);
 
+  const handleAddCustomVariable = () => {
+    if (newVarName.trim() && onAddCustom) {
+      onAddCustom(newVarName.trim());
+      setNewVarName('');
+      setShowAddModal(false);
+    }
+  };
+
   return (
     <div className="space-y-2">
-      {/* Search */}
-      <input
-        type="text"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder={searchPlaceholder}
-        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-      />
+      {/* Search + Add button */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={searchPlaceholder}
+          className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+        />
+        {onAddCustom && (
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="rounded-md bg-secondary px-3 py-2 text-sm text-secondary-foreground hover:bg-secondary/80"
+            title="Añadir variable personalizada"
+          >
+            + Nueva
+          </button>
+        )}
+      </div>
 
       {/* Selected chips */}
       {selectedValues.length > 0 && (
@@ -261,6 +284,49 @@ export function VariablePicker({
           </div>
         )}
       </div>
+
+      {/* Add Custom Variable Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-background p-6 shadow-lg">
+            <h3 className="text-lg font-semibold">Añadir variable personalizada</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Introduzca el nombre de la variable. La aplicación le guiará para mapearla a un dato existente en la base de datos.
+            </p>
+            <input
+              type="text"
+              value={newVarName}
+              onChange={(e) => setNewVarName(e.target.value)}
+              placeholder="Nombre de la variable (ej: presión arterial sistólica)"
+              className="mt-4 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAddCustomVariable();
+              }}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setNewVarName('');
+                }}
+                className="rounded-md border border-border px-4 py-2 text-sm hover:bg-secondary"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleAddCustomVariable}
+                disabled={!newVarName.trim()}
+                className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                Añadir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

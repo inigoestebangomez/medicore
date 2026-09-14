@@ -29,19 +29,26 @@ export function InferentialStep({
 }: InferentialStepProps) {
   const [domain, setDomain] = useState<string>('treatment');
   const [elements, setElements] = useState<string[]>([]);
-  const [outcome, setOutcome] = useState<string>('');
+  const [outcomes, setOutcomes] = useState<string[]>([]);
   const [correction, setCorrection] = useState<CorrectionMethod | ''>('');
   const [alpha, setAlpha] = useState(0.05);
 
-  const isValid = domain && elements.length > 0 && outcome;
+  const isValid = domain && elements.length > 0 && outcomes.length > 0;
+
+  const handleAddCustomVariable = (variableName: string) => {
+    // Add custom variable to outcomes
+    if (!outcomes.includes(variableName)) {
+      setOutcomes([...outcomes, variableName]);
+    }
+  };
 
   const handleRun = () => {
     if (!isValid) return;
     onRun({
       path: 'inferential',
-      variables: [],
+      variables: outcomes,
       exposure: { domain, elementIds: elements },
-      outcome,
+      outcome: outcomes[0], // Use first outcome as primary
       correction: correction || undefined,
       alpha,
     });
@@ -95,17 +102,18 @@ export function InferentialStep({
 
         {/* Outcome */}
         <div>
-          <label className="block text-sm font-medium">Variable resultado</label>
+          <label className="block text-sm font-medium">Variables resultado</label>
           <p className="mt-1 text-xs text-muted-foreground">
-            Seleccione la variable que desea analizar
+            Seleccione una o varias variables para analizar
           </p>
           <div className="mt-2">
             <VariablePicker
-              value={outcome}
-              onChange={(v) => setOutcome(typeof v === 'string' ? v : '')}
-              multi={false}
-              placeholder="Seleccione variable resultado"
+              value={outcomes}
+              onChange={(v) => setOutcomes(Array.isArray(v) ? v : v ? [v] : [])}
+              multi
+              placeholder="Seleccione variables resultado"
               searchPlaceholder="Buscar variable…"
+              onAddCustom={handleAddCustomVariable}
             />
           </div>
         </div>
