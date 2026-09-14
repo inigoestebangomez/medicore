@@ -21,5 +21,6 @@ import { AuthModule } from '@/api/auth/auth.module';
       useClass: PrismaPatientRepository,
     },
   ],
+  exports: ['ISurgeryRepository'],
 })
 export class SurgeriesModule {}

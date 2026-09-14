@@ -3,27 +3,30 @@ import { Module } from '@nestjs/common';
 import { ClinicalRecordController } from './clinical-record.controller';
 import { PrismaModule } from '@/infrastructure/database/prisma.module';
 import { AuthModule } from '@/api/auth/auth.module';
-import { PrismaPatientRepository } from '@/infrastructure/database/repositories/patient.repository';
+import { PatientsModule } from '@/api/patients/patients.module';
+import { SurgeriesModule } from '@/api/surgeries/surgeries.module';
+import { MedicationsModule } from '@/api/medications/medications.module';
 import { PrismaHistoryRepository } from '@/infrastructure/database/repositories/clinical-record-history.repository';
 import { PrismaCurrentIllnessRepository } from '@/infrastructure/database/repositories/clinical-record-illness.repository';
 import { PrismaPhysicalExamRepository } from '@/infrastructure/database/repositories/clinical-record-exam.repository';
 import { PrismaLabReportRepository } from '@/infrastructure/database/repositories/clinical-record-lab.repository';
 import { PrismaDiagnosisRepository } from '@/infrastructure/database/repositories/clinical-record-diagnosis.repository';
-import { PrismaSurgeryRepository } from '@/infrastructure/database/repositories/surgery.repository';
-import { PrismaMedicationRepository } from '@/infrastructure/database/repositories/medication.repository';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    PatientsModule,
+    SurgeriesModule,
+    MedicationsModule,
+  ],
   controllers: [ClinicalRecordController],
   providers: [
-    { provide: 'IPatientRepository', useClass: PrismaPatientRepository },
     { provide: 'IHistoryRepository', useClass: PrismaHistoryRepository },
     { provide: 'ICurrentIllnessRepository', useClass: PrismaCurrentIllnessRepository },
     { provide: 'IPhysicalExamRepository', useClass: PrismaPhysicalExamRepository },
     { provide: 'ILabReportRepository', useClass: PrismaLabReportRepository },
     { provide: 'IDiagnosisRepository', useClass: PrismaDiagnosisRepository },
-    { provide: 'ISurgeryRepository', useClass: PrismaSurgeryRepository },
-    { provide: 'IMedicationRepository', useClass: PrismaMedicationRepository },
   ],
   exports: [
     'IHistoryRepository',
@@ -31,8 +34,6 @@ import { PrismaMedicationRepository } from '@/infrastructure/database/repositori
     'IPhysicalExamRepository',
     'ILabReportRepository',
     'IDiagnosisRepository',
-    'ISurgeryRepository',
-    'IMedicationRepository',
   ],
 })
 export class ClinicalRecordModule {}
