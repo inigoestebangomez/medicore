@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import type { GuidedAnalysisRequest } from '@medicore/contracts';
+import { VariablePicker } from './VariablePicker';
 
 interface DescriptiveStepProps {
   variables: string[];
@@ -14,34 +15,17 @@ interface DescriptiveStepProps {
 }
 
 export function DescriptiveStep({
-  variables,
+  variables: _variables,
   onRun,
   onBack,
   isLoading,
 }: DescriptiveStepProps) {
   const [selected, setSelected] = useState<string[]>([]);
 
-  const toggleVariable = (v: string) => {
-    setSelected((prev) =>
-      prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v],
-    );
-  };
-
   const handleRun = () => {
     if (selected.length === 0) return;
     onRun({ path: 'descriptive', variables: selected, alpha: 0.05 });
   };
-
-  // Variables por defecto cuando no hay variables cargadas
-  const defaultVariables = [
-    'age',
-    'sex',
-    'bloodType',
-    'hospitalStayDays',
-    'surgeryDurationMinutes',
-  ];
-
-  const availableVariables = variables.length > 0 ? variables : defaultVariables;
 
   return (
     <div className="space-y-4">
@@ -53,30 +37,17 @@ export function DescriptiveStep({
       </div>
 
       <div className="rounded-lg border border-border p-4">
-        <div className="flex flex-wrap gap-2">
-          {availableVariables.map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => toggleVariable(v)}
-              className={`rounded-full px-3 py-1 text-sm transition ${
-                selected.includes(v)
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
+        <p className="mb-2 text-sm font-medium">Seleccione las variables que desea describir</p>
+        <VariablePicker
+          value={selected}
+          onChange={(v) => setSelected(Array.isArray(v) ? v : [])}
+          multi
+          placeholder="Seleccione variables"
+          searchPlaceholder="Buscar variable…"
+        />
         {selected.length === 0 && (
           <p className="mt-2 text-xs text-muted-foreground">
             Seleccione al menos una variable.
-          </p>
-        )}
-        {variables.length === 0 && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Mostrando variables comunes. Para ver todas las variables disponibles, ejecute primero una consulta de investigación.
           </p>
         )}
       </div>

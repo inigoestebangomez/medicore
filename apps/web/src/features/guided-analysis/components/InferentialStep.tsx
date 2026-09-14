@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import type { GuidedAnalysisRequest, CorrectionMethod } from '@medicore/contracts';
+import { VariablePicker } from './VariablePicker';
 
 interface InferentialStepProps {
   variables: string[];
@@ -21,33 +22,21 @@ const EXPOSURE_DOMAINS = [
 ] as const;
 
 export function InferentialStep({
-  variables,
+  variables: _variables,
   onRun,
   onBack,
   isLoading,
 }: InferentialStepProps) {
   const [domain, setDomain] = useState<string>('treatment');
-  const [elementIds, setElementIds] = useState<string>('');
+  const [elements, setElements] = useState<string[]>([]);
   const [outcome, setOutcome] = useState<string>('');
   const [correction, setCorrection] = useState<CorrectionMethod | ''>('');
   const [alpha, setAlpha] = useState(0.05);
 
-  const isValid = domain && elementIds.trim().length > 0 && outcome;
-
-  // Variables por defecto cuando no hay variables cargadas
-  const defaultVariables = [
-    'age',
-    'sex',
-    'bloodType',
-    'hospitalStayDays',
-    'surgeryDurationMinutes',
-  ];
-
-  const availableVariables = variables.length > 0 ? variables : defaultVariables;
+  const isValid = domain && elements.length > 0 && outcome;
 
   const handleRun = () => {
     if (!isValid) return;
-    const elements = elementIds.split(',').map((s) => s.trim()).filter(Boolean);
     onRun({
       path: 'inferential',
       variables: [],
@@ -73,7 +62,10 @@ export function InferentialStep({
           <label className="block text-sm font-medium">Dominio de exposición</label>
           <select
             value={domain}
-            onChange={(e) => setDomain(e.target.value)}
+            onChange={(e) => {
+              setDomain(e.target.value);
+              setElements([]);
+            }}
             className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
           >
             {EXPOSURE_DOMAINS.map((d) => (
@@ -85,38 +77,37 @@ export function InferentialStep({
         {/* Exposure elements */}
         <div>
           <label className="block text-sm font-medium">
-            Elementos de exposición (separados por coma)
+            Elementos de exposición
           </label>
-          <input
-            type="text"
-            value={elementIds}
-            onChange={(e) => setElementIds(e.target.value)}
-            placeholder="ej: omeprazol, levogastrol"
-            className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
           <p className="mt-1 text-xs text-muted-foreground">
-            Puede añadir uno o varios elementos para comparar
+            Seleccione uno o varios elementos del dominio "{EXPOSURE_DOMAINS.find((d) => d.value === domain)?.label}"
           </p>
+          <div className="mt-2">
+            <VariablePicker
+              value={elements}
+              onChange={(v) => setElements(Array.isArray(v) ? v : [])}
+              multi
+              placeholder="Seleccione elementos de exposición"
+              searchPlaceholder="Buscar elemento…"
+            />
+          </div>
         </div>
 
         {/* Outcome */}
         <div>
           <label className="block text-sm font-medium">Variable resultado</label>
-          <select
-            value={outcome}
-            onChange={(e) => setOutcome(e.target.value)}
-            className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-          >
-            <option value="">— Seleccione —</option>
-            {availableVariables.map((v) => (
-              <option key={v} value={v}>{v}</option>
-            ))}
-          </select>
-          {variables.length === 0 && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Mostrando variables comunes. Para ver todas las variables disponibles, ejecute primero una consulta de investigación.
-            </p>
-          )}
+          <p className="mt-1 text-xs text-muted-foreground">
+            Seleccione la variable que desea analizar
+          </p>
+          <div className="mt-2">
+            <VariablePicker
+              value={outcome}
+              onChange={(v) => setOutcome(typeof v === 'string' ? v : '')}
+              multi={false}
+              placeholder="Seleccione variable resultado"
+              searchPlaceholder="Buscar variable…"
+            />
+          </div>
         </div>
 
         {/* Correction */}
