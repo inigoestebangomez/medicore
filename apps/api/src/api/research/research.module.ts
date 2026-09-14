@@ -77,6 +77,7 @@ import { ExportV3JobRegistry } from '@/application/research/export/export-v3.job
 import { ExportV3Handler } from '@/application/research/export/export-v3.handler';
 import { ExportV3StatusHandler } from '@/application/research/queries/export-v3-status.handler';
 import { ExportV3DownloadHandler } from '@/application/research/queries/export-v3-download.handler';
+import { GuidedPdfGenerator } from '@/application/research/export/guided-pdf.generator';
 // Research V5 — guided statistical analysis
 import { GuidedAnalysisController } from './guided-analysis.controller';
 import { GuidedAnalysisService } from '@/application/research/services/guided-analysis.service';
@@ -223,6 +224,7 @@ import { PrismaStatisticalAnalysisRepository } from '@/infrastructure/database/r
     ExportV3Handler,
     ExportV3StatusHandler,
     ExportV3DownloadHandler,
+    GuidedPdfGenerator,
     // BullMQ queue token for the PDF render worker (design AD-4).
     {
       provide: 'PDF_QUEUE',
