@@ -156,6 +156,28 @@ describe('Guided text export', () => {
   });
 });
 
+describe('Guided export failure (R5S2)', () => {
+  it('throws a retryable error when PDF generation fails, leaving the run unchanged', async () => {
+    const failingRenderer = {
+      render: async () => {
+        throw new Error('PDF renderer unavailable');
+      },
+    };
+    const generator = new GuidedPdfGenerator(failingRenderer as any);
+    const result = buildMockResult();
+
+    await expect(generator.generate({ result })).rejects.toThrow('PDF renderer unavailable');
+    // The original result is not mutated
+    expect(result.runId).toBe('run-1');
+    expect(result.results).toHaveLength(1);
+  });
+
+  it('text generation does not throw on valid input', () => {
+    const result = buildMockResult();
+    expect(() => generateGuidedText({ result })).not.toThrow();
+  });
+});
+
 describe('Guided PDF export', () => {
   it('generates a PDF buffer', async () => {
     const generator = new GuidedPdfGenerator(new SimplePdfRenderer());
