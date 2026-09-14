@@ -14,14 +14,25 @@ export const CLIENT_FLAGS = [
   'RESEARCH_FORM_BUILDER',
   'RESEARCH_VARIABLE_LIBRARY',
   'RESEARCH_AGREEMENT_TESTS',
+  // Research Engine V5 — guided statistical analysis (opt-in, default OFF)
+  'RESEARCH_GUIDED_ANALYSIS',
   // Seven clinical categories (sdd/patient-seven-categories)
   'CLINICAL_RECORD_V2',
 ] as const;
+
+// Flags that default to OFF (opt-in) rather than ON (opt-out).
+const OPT_IN_FLAGS: ReadonlySet<ClientFlag> = new Set([
+  'RESEARCH_GUIDED_ANALYSIS',
+]);
 
 export type ClientFlag = (typeof CLIENT_FLAGS)[number];
 
 export function isFlagEnabled(flag: ClientFlag): boolean {
   const v = process.env[`NEXT_PUBLIC_${flag}`];
+  // Opt-in flags default to OFF; require explicit enable.
+  if (OPT_IN_FLAGS.has(flag)) {
+    return v === 'true' || v === '1';
+  }
   // Absent → enabled (opt-out: flags default ON).
   return v === undefined || v === '' || v === 'true' || v === '1';
 }
