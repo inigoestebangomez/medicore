@@ -19,7 +19,6 @@ import { ExecuteResearchQueryHandler } from '../queries/execute-research-query.h
 import { TestSelectionPolicy } from './test-selection.policy';
 import { ExposureDomainResolver } from './exposure-domain.resolver';
 import { PythonStatsService } from '@/infrastructure/stats/python-stats.service';
-import { formatPValue } from './p-value-format';
 
 export class InvalidCohortError extends Error {
   constructor(message: string) {
@@ -207,7 +206,7 @@ export class GuidedAnalysisService {
     request: GuidedAnalysisRequest,
     executed: Awaited<ReturnType<ExecuteResearchQueryHandler['execute']>>,
     cohort: GuidedAnalysisResult['cohort'],
-    organizationId: string,
+    _organizationId: string,
   ): Promise<GuidedAnalysisResult> {
     if (!request.exposure) {
       throw new InvalidCohortError('Inferential analysis requires an exposure domain and elements.');

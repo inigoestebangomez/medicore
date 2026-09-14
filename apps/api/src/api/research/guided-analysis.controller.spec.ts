@@ -7,7 +7,16 @@ import { GuidedAnalysisController } from './guided-analysis.controller';
 import { GuidedAnalysisService, InvalidCohortError } from '@/application/research/services/guided-analysis.service';
 import { BadRequestException } from '@nestjs/common';
 
-function buildController(stubs: { execute?: jest.Mock }) {
+// Helper: jest.fn() defaults ReturnType to `unknown`, and ResolveType<unknown>
+// resolves to `never`, so mockResolvedValue(value) errors under strict typing.
+function byVal<T>(value: T) {
+  return jest.fn(() => Promise.resolve(value));
+}
+function byReject<T>(value: T) {
+  return jest.fn(() => Promise.reject(value));
+}
+
+function buildController(stubs: { execute?: any }) {
   const service = {
     execute: stubs.execute ?? jest.fn(),
   } as unknown as GuidedAnalysisService;
@@ -35,7 +44,7 @@ describe('GuidedAnalysisController', () => {
     };
 
     const controller = buildController({
-      execute: jest.fn().mockResolvedValue(expectedResult),
+      execute: byVal(expectedResult),
     });
 
     const body = {
@@ -70,7 +79,7 @@ describe('GuidedAnalysisController', () => {
     };
 
     const controller = buildController({
-      execute: jest.fn().mockResolvedValue(expectedResult),
+      execute: byVal(expectedResult),
     });
 
     const body = {
@@ -89,7 +98,7 @@ describe('GuidedAnalysisController', () => {
 
   it('throws BadRequestException for invalid cohort (empty cohort)', async () => {
     const controller = buildController({
-      execute: jest.fn().mockRejectedValue(new InvalidCohortError('Cohort is empty.')),
+      execute: byReject(new InvalidCohortError('Cohort is empty.')),
     });
 
     const body = {
