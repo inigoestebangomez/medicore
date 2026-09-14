@@ -572,7 +572,7 @@ export type GuidedAnalysisPath = z.infer<typeof GuidedAnalysisPathSchema>;
 
 export const GuidedExposureSchema = z.object({
   domain: z.string().min(1), // "diagnosis" | "treatment" | "surgery" | "procedure"
-  elementIds: z.array(z.string().min(1)).min(2), // ≥2 valid elements required
+  elementIds: z.array(z.string().min(1)).min(1), // ≥1 element required
 });
 export type GuidedExposure = z.infer<typeof GuidedExposureSchema>;
 
